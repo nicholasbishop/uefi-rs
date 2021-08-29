@@ -1,10 +1,8 @@
 mod cargo;
-mod target;
 
 use anyhow::Error;
-use cargo::{run_cargo, CargoCommand, Package};
+use cargo::{run_cargo, CargoCommand, Package, UefiTarget};
 use structopt::StructOpt;
-use target::UefiTarget;
 
 /// Task runner for uefi.
 #[derive(StructOpt)]
