@@ -4,6 +4,7 @@ members = [
     "uefi-macros",
     "uefi-services",
     "uefi-test-runner",
+    "xtask",
 ]
 
 [profile.dev]
