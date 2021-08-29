@@ -30,6 +30,7 @@ enum Action {
     Build(ActionBuild),
     Clippy(ActionClippy),
     Doc(ActionDoc),
+    Qemu(ActionQemu),
 
     /// Run CI checks.
     Ci {
@@ -73,6 +74,22 @@ struct ActionDoc {
     treat_warnings_as_errors: bool,
 }
 
+/// Build uefi-test-runner and run under QEMU.
+#[derive(StructOpt)]
+struct ActionQemu {
+    /// UEFI target to build for
+    #[structopt(default_value)]
+    target: UefiTarget,
+
+    /// build in release mode
+    #[structopt(long)]
+    release: bool,
+
+    /// run without a GUI
+    #[structopt(long)]
+    headless: bool,
+}
+
 fn build(action: ActionBuild) -> Result<(), Error> {
     run_cargo(CargoCommand::Build {
         packages: &Package::apps(),
@@ -109,7 +126,9 @@ fn ci(job: CiJob) -> Result<(), Error> {
                 release: false,
             })?;
         }
-        CiJob::BuildAndTestX86_64 => todo!(),
+        CiJob::BuildAndTestX86_64 => {
+            todo!();
+        }
     }
     Ok(())
 }
@@ -129,6 +148,10 @@ fn doc(action: ActionDoc) -> Result<(), Error> {
         open: action.open,
         treat_warnings_as_errors: action.treat_warnings_as_errors,
     })
+}
+
+fn qemu(action: ActionQemu) -> Result<(), Error> {
+    todo!();
 }
 
 fn test() -> Result<(), Error> {
@@ -155,6 +178,7 @@ fn main() -> Result<(), Error> {
         Action::Ci { job } => ci(job),
         Action::Clippy(action) => clippy(action),
         Action::Doc(action) => doc(action),
+        Action::Qemu(action) => qemu(action),
         Action::Test => test(),
     }
 }
