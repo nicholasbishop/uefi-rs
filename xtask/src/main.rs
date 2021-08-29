@@ -51,8 +51,8 @@ fn build(action: &ActionBuild) -> Result<(), Error> {
 
 fn clippy() -> Result<(), Error> {
     run_cargo(CargoCommand::Clippy {
-        all_features: true,
-        treat_warnings_as_errors: false,
+        treat_warnings_as_errors: true,
+        features: &["alloc", "exts", "logger"],
     })
 }
 

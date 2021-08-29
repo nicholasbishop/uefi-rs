@@ -30,14 +30,20 @@ pub enum CargoCommand {
         extra_args: &'static [&'static str],
     },
     Clippy {
-        all_features: bool,
         treat_warnings_as_errors: bool,
+        features: &'static [&'static str],
     },
     Test {
         workspace: bool,
         exclude: &'static [Package],
         features: &'static [&'static str],
     },
+}
+
+fn add_features_args(cmd: &mut Command, features: &[&str]) {
+    if !features.is_empty() {
+        cmd.add_args(&["--features", &features.join(",")]);
+    }
 }
 
 pub fn run_cargo(command: CargoCommand) -> Result<(), Error> {
@@ -62,13 +68,11 @@ pub fn run_cargo(command: CargoCommand) -> Result<(), Error> {
             cmd.add_args(extra_args);
         }
         CargoCommand::Clippy {
-            all_features,
             treat_warnings_as_errors,
+            features,
         } => {
             cmd.add_arg("clippy");
-            if all_features {
-                cmd.add_arg("--all-features");
-            }
+            add_features_args(&mut cmd, features);
             if treat_warnings_as_errors {
                 cmd.add_args(&["--", "-Dwarnings"]);
             }
@@ -85,9 +89,7 @@ pub fn run_cargo(command: CargoCommand) -> Result<(), Error> {
             for package in exclude {
                 cmd.add_args(&["--exclude", package.name()]);
             }
-            if !features.is_empty() {
-                cmd.add_args(&["--features", &features.join(",")]);
-            }
+            add_features_args(&mut cmd, features);
         }
     }
     cmd.run()?;
