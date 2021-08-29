@@ -75,7 +75,7 @@ struct ActionDoc {
 
 fn build(action: ActionBuild) -> Result<(), Error> {
     run_cargo(CargoCommand::Build {
-        packages: &[Package::Template, Package::UefiTestRunner],
+        packages: &Package::apps(),
         target: action.target,
         release: action.release,
         extra_args: &["-Zbuild-std=core,compiler_builtins,alloc"],
@@ -124,7 +124,7 @@ fn clippy(action: ActionClippy) -> Result<(), Error> {
 fn doc(action: ActionDoc) -> Result<(), Error> {
     run_cargo(CargoCommand::Doc {
         no_deps: true,
-        packages: &[Package::Uefi, Package::UefiMacros, Package::UefiServices],
+        packages: &Package::libraries(),
         features: &["alloc", "exts", "logger"],
         open: action.open,
         treat_warnings_as_errors: action.treat_warnings_as_errors,

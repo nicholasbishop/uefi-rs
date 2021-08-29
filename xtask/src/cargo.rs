@@ -33,6 +33,14 @@ pub enum Package {
 }
 
 impl Package {
+    pub fn apps() -> [Package; 2] {
+        [Self::Template, Self::UefiTestRunner]
+    }
+
+    pub fn libraries() -> [Package; 3] {
+        [Self::Uefi, Self::UefiMacros, Self::UefiServices]
+    }
+
     fn name(&self) -> &str {
         match self {
             Self::Template => "uefi_app",
