@@ -73,7 +73,7 @@ struct ActionDoc {
     treat_warnings_as_errors: bool,
 }
 
-fn build(action: &ActionBuild) -> Result<(), Error> {
+fn build(action: ActionBuild) -> Result<(), Error> {
     run_cargo(CargoCommand::Build {
         packages: &[Package::Template, Package::UefiTestRunner],
         target: action.target,
@@ -92,10 +92,10 @@ fn ci(job: CiJob) -> Result<(), Error> {
         }
         CiJob::Lint => {
             run_cargo(CargoCommand::Format { check: true })?;
-            clippy(&ActionClippy {
+            clippy(ActionClippy {
                 treat_warnings_as_errors: true,
             })?;
-            doc(&ActionDoc {
+            doc(ActionDoc {
                 open: false,
                 treat_warnings_as_errors: true,
             })?;
@@ -104,7 +104,7 @@ fn ci(job: CiJob) -> Result<(), Error> {
             test()?;
         }
         CiJob::BuildAarch64 => {
-            build(&ActionBuild {
+            build(ActionBuild {
                 target: UefiTarget::Aarch64,
                 release: false,
             })?;
@@ -114,14 +114,14 @@ fn ci(job: CiJob) -> Result<(), Error> {
     Ok(())
 }
 
-fn clippy(action: &ActionClippy) -> Result<(), Error> {
+fn clippy(action: ActionClippy) -> Result<(), Error> {
     run_cargo(CargoCommand::Clippy {
         treat_warnings_as_errors: action.treat_warnings_as_errors,
         features: &["alloc", "exts", "logger"],
     })
 }
 
-fn doc(action: &ActionDoc) -> Result<(), Error> {
+fn doc(action: ActionDoc) -> Result<(), Error> {
     run_cargo(CargoCommand::Doc {
         no_deps: true,
         packages: &[Package::Uefi, Package::UefiMacros, Package::UefiServices],
@@ -150,9 +150,9 @@ fn test() -> Result<(), Error> {
 fn main() -> Result<(), Error> {
     let opt = Opt::from_args();
 
-    match &opt.action {
+    match opt.action {
         Action::Build(action) => build(action),
-        Action::Ci { job } => ci(*job),
+        Action::Ci { job } => ci(job),
         Action::Clippy(action) => clippy(action),
         Action::Doc(action) => doc(action),
         Action::Test => test(),
