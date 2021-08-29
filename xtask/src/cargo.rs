@@ -11,7 +11,7 @@ pub enum Package {
 }
 
 impl Package {
-    fn name(&self) -> &'static str {
+    fn name(&self) -> &str {
         match self {
             Self::Template => "uefi_app",
             Self::Uefi => "uefi",
@@ -22,27 +22,27 @@ impl Package {
     }
 }
 
-pub enum CargoCommand {
+pub enum CargoCommand<'a> {
     Build {
-        packages: &'static [Package],
+        packages: &'a [Package],
         target: UefiTarget,
         release: bool,
-        extra_args: &'static [&'static str],
+        extra_args: &'a [&'a str],
     },
     Clippy {
         treat_warnings_as_errors: bool,
-        features: &'static [&'static str],
+        features: &'a [&'a str],
     },
     Doc {
         no_deps: bool,
-        packages: &'static [Package],
-        features: &'static [&'static str],
+        packages: &'a [Package],
+        features: &'a [&'a str],
         open: bool,
     },
     Test {
         workspace: bool,
-        exclude: &'static [Package],
-        features: &'static [&'static str],
+        exclude: &'a [Package],
+        features: &'a [&'a str],
     },
 }
 

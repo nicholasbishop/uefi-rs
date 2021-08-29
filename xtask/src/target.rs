@@ -37,7 +37,7 @@ impl FromStr for UefiTarget {
 }
 
 impl UefiTarget {
-    pub fn target_triple(&self) -> &'static str {
+    pub fn target_triple(&self) -> &str {
         match self {
             Self::Aarch64 => "aarch64-unknown-uefi",
             Self::X86_64 => "x86_64-unknown-uefi",
