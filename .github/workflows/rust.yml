@@ -102,22 +102,8 @@ jobs:
             components: rustfmt, clippy, rust-src
             override: true
 
-      - name: Run cargo fmt
+      - name: Run cargo xtask ci lint
         uses: actions-rs/cargo@v1
         with:
-          command: fmt
-          args: --all -- --check
-
-      - name: Run clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --target x86_64-unknown-uefi --all-features -- -Dwarnings
-
-      - name: Run cargo doc
-        uses: actions-rs/cargo@v1
-        env:
-          RUSTDOCFLAGS: -Dwarnings
-        with:
-          command: doc
-          args: --target x86_64-unknown-uefi --all-features
+          command: xtask
+          args: ci lint
