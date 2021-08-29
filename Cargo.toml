@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "template",
+    "uefi",
     "uefi-macros",
     "uefi-services",
     "uefi-test-runner",
