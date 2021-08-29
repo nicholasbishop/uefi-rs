@@ -13,17 +13,29 @@ struct Opt {
     action: Action,
 }
 
+#[derive(Clone, Copy, StructOpt)]
+enum CiJob {
+    All,
+    Lint,
+    Test,
+    BuildAarch64,
+    BuildAndTestX86_64,
+}
+
 #[derive(StructOpt)]
 enum Action {
     Build(ActionBuild),
     Clippy(ActionClippy),
     Doc(ActionDoc),
 
+    /// Run CI checks.
+    Ci {
+        #[structopt(default_value)]
+        job: CiJob,
+    },
+
     /// Run tests and doctests.
     Test,
-
-    /// Run tests similar to what the CI checks.
-    Presubmit,
 }
 
 /// Build the application packages.
@@ -36,6 +48,12 @@ struct ActionBuild {
     /// build in release mode
     #[structopt(long)]
     release: bool,
+}
+
+#[derive(StructOpt)]
+struct ActionCi {
+    #[structopt(subcommand)]
+    job: CiJob,
 }
 
 /// Run clippy.
@@ -65,6 +83,32 @@ fn build(action: &ActionBuild) -> Result<(), Error> {
         release: action.release,
         extra_args: &["-Zbuild-std=core,compiler_builtins,alloc"],
     })
+}
+
+fn ci(job: CiJob) -> Result<(), Error> {
+    match job {
+        CiJob::All => {
+            ci(CiJob::Lint)?;
+            ci(CiJob::Test)?;
+            ci(CiJob::BuildAarch64)?;
+            ci(CiJob::BuildAndTestX86_64)?;
+        }
+        CiJob::Lint => {
+            run_cargo(CargoCommand::Format { check: true })?;
+            clippy(&ActionClippy {
+                treat_warnings_as_errors: true,
+            })?;
+            doc(&ActionDoc {
+                open: false,
+                treat_warnings_as_errors: true,
+            })?;
+        }
+        CiJob::Test => {
+            test()?;
+        }
+        CiJob::BuildAarch64 => todo!(),
+        CiJob::BuildAndTestX86_64 => todo!(),
+    }
 }
 
 fn clippy(action: &ActionClippy) -> Result<(), Error> {
@@ -100,26 +144,14 @@ fn test() -> Result<(), Error> {
     })
 }
 
-fn presubmit() -> Result<(), Error> {
-    run_cargo(CargoCommand::Format { check: true })?;
-    clippy(&ActionClippy {
-        treat_warnings_as_errors: true,
-    })?;
-    doc(&ActionDoc {
-        open: false,
-        treat_warnings_as_errors: true,
-    })?;
-    test()
-}
-
 fn main() -> Result<(), Error> {
     let opt = Opt::from_args();
 
     match &opt.action {
         Action::Build(action) => build(action),
-        Action::Doc(action) => doc(action),
+        Action::Ci { job } => ci(job),
         Action::Clippy(action) => clippy(action),
+        Action::Doc(action) => doc(action),
         Action::Test => test(),
-        Action::Presubmit => presubmit(),
     }
 }
