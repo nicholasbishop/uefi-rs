@@ -54,29 +54,29 @@ impl Package {
 
 pub enum CargoCommand<'a> {
     Build {
-        packages: &'a [Package],
-        target: UefiTarget,
-        release: bool,
         extra_args: &'a [&'a str],
+        packages: &'a [Package],
+        release: bool,
+        target: UefiTarget,
     },
     Clippy {
-        treat_warnings_as_errors: bool,
         features: &'a [&'a str],
+        treat_warnings_as_errors: bool,
     },
     Doc {
-        no_deps: bool,
-        packages: &'a [Package],
         features: &'a [&'a str],
+        no_deps: bool,
         open: bool,
+        packages: &'a [Package],
         treat_warnings_as_errors: bool,
     },
     Format {
         check: bool,
     },
     Test {
-        workspace: bool,
         exclude: &'a [Package],
         features: &'a [&'a str],
+        workspace: bool,
     },
 }
 
@@ -90,10 +90,10 @@ pub fn run_cargo(command: CargoCommand) -> Result<(), Error> {
     let mut cmd = Command::with_args("cargo", &["+nightly"]);
     match command {
         CargoCommand::Build {
-            packages,
-            target,
-            release,
             extra_args,
+            packages,
+            release,
+            target,
         } => {
             cmd.add_args(&["build", "--target", target.target_triple()]);
             for package in packages {
@@ -105,8 +105,8 @@ pub fn run_cargo(command: CargoCommand) -> Result<(), Error> {
             cmd.add_args(extra_args);
         }
         CargoCommand::Clippy {
-            treat_warnings_as_errors,
             features,
+            treat_warnings_as_errors,
         } => {
             cmd.add_arg("clippy");
             add_features_args(&mut cmd, features);
@@ -115,10 +115,10 @@ pub fn run_cargo(command: CargoCommand) -> Result<(), Error> {
             }
         }
         CargoCommand::Doc {
-            no_deps,
-            packages,
             features,
+            no_deps,
             open,
+            packages,
             treat_warnings_as_errors,
         } => {
             cmd.add_arg("doc");
@@ -143,9 +143,9 @@ pub fn run_cargo(command: CargoCommand) -> Result<(), Error> {
             }
         }
         CargoCommand::Test {
-            workspace,
             exclude,
             features,
+            workspace,
         } => {
             cmd.add_arg("test");
             if workspace {
