@@ -27,8 +27,14 @@ pub enum CargoCommand {
         package: Package,
         target: UefiTarget,
         release: bool,
+        extra_args: &'static [&'static str],
+    },
+    Clippy {
+        all_features: bool,
+        treat_warnings_as_errors: bool,
     },
     Test {
+        workspace: bool,
         exclude: &'static [Package],
         features: &'static [&'static str],
     },
@@ -41,6 +47,7 @@ pub fn run_cargo(command: CargoCommand) -> Result<(), Error> {
             package,
             target,
             release,
+            extra_args,
         } => {
             cmd.add_args(&[
                 "build",
@@ -48,14 +55,33 @@ pub fn run_cargo(command: CargoCommand) -> Result<(), Error> {
                 package.name(),
                 "--target",
                 target.target_triple(),
-                "-Zbuild-std=core,compiler_builtins,alloc",
             ]);
             if release {
                 cmd.add_arg("--release");
             }
+            cmd.add_args(extra_args);
         }
-        CargoCommand::Test { exclude, features } => {
-            cmd.add_args(&["test", "--workspace"]);
+        CargoCommand::Clippy {
+            all_features,
+            treat_warnings_as_errors,
+        } => {
+            cmd.add_arg("clippy");
+            if all_features {
+                cmd.add_arg("--all-features");
+            }
+            if treat_warnings_as_errors {
+                cmd.add_args(&["--", "-Dwarnings"]);
+            }
+        }
+        CargoCommand::Test {
+            workspace,
+            exclude,
+            features,
+        } => {
+            cmd.add_arg("test");
+            if workspace {
+                cmd.add_arg("--workspace");
+            }
             for package in exclude {
                 cmd.add_args(&["--exclude", package.name()]);
             }

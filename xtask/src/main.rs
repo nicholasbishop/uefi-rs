@@ -42,6 +42,7 @@ fn build(action: &ActionBuild) -> Result<(), Error> {
             package,
             target: action.target,
             release: action.release,
+            extra_args: &["-Zbuild-std=core,compiler_builtins,alloc"],
         })?;
     }
 
@@ -49,11 +50,15 @@ fn build(action: &ActionBuild) -> Result<(), Error> {
 }
 
 fn clippy() -> Result<(), Error> {
-    todo!();
+    run_cargo(CargoCommand::Clippy {
+        all_features: true,
+        treat_warnings_as_errors: false,
+    })
 }
 
 fn test() -> Result<(), Error> {
     run_cargo(CargoCommand::Test {
+        workspace: true,
         exclude: &[
             // Exclude uefi-services for now as compilation fails with
             // duplicate lang item errors.
