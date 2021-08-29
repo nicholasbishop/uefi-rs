@@ -16,6 +16,9 @@ struct Opt {
 #[derive(StructOpt)]
 enum Action {
     Build(ActionBuild),
+
+    /// Run tests and doctests
+    Test,
 }
 
 /// Build all packages.
@@ -42,10 +45,26 @@ fn build(action: &ActionBuild) -> Result<(), Error> {
     Ok(())
 }
 
+fn test() -> Result<(), Error> {
+    run_cargo(CargoCommand::Test {
+        exclude: &[
+            // Exclude uefi-services for now as compilation fails with
+            // duplicate lang item errors.
+            Package::UefiServices,
+            // Also exclude the two applications, as they both depend on
+            // uefi-services.
+            Package::Template,
+            Package::UefiTestRunner,
+        ],
+        features: &["exts"],
+    })
+}
+
 fn main() -> Result<(), Error> {
     let opt = Opt::from_args();
 
     match &opt.action {
         Action::Build(action) => build(action),
+        Action::Test => test(),
     }
 }
