@@ -1,7 +1,9 @@
 mod cargo;
+mod qemu;
 
 use anyhow::Error;
 use cargo::{run_cargo, CargoCommand, Package, UefiTarget};
+use qemu::run_qemu_test;
 use structopt::StructOpt;
 
 /// Task runner for uefi.
@@ -76,7 +78,7 @@ struct ActionDoc {
 
 /// Build uefi-test-runner and run under QEMU.
 #[derive(StructOpt)]
-struct ActionQemu {
+pub struct ActionQemu {
     /// UEFI target to build for
     #[structopt(default_value)]
     target: UefiTarget,
@@ -151,7 +153,12 @@ fn doc(action: ActionDoc) -> Result<(), Error> {
 }
 
 fn qemu(action: ActionQemu) -> Result<(), Error> {
-    todo!();
+    build(ActionBuild {
+        target: action.target,
+        release: action.release,
+    })?;
+
+    run_qemu_test(action)
 }
 
 fn test() -> Result<(), Error> {
