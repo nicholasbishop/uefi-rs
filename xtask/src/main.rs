@@ -23,6 +23,9 @@ enum Action {
 
     /// Run tests and doctests.
     Test,
+
+    /// Run tests similar to what the CI checks.
+    Presubmit,
 }
 
 /// Build the application packages.
@@ -86,6 +89,12 @@ fn test() -> Result<(), Error> {
     })
 }
 
+fn presubmit() -> Result<(), Error> {
+    run_cargo(CargoCommand::Format { check: true })?;
+    clippy()?;
+    test()
+}
+
 fn main() -> Result<(), Error> {
     let opt = Opt::from_args();
 
@@ -94,5 +103,6 @@ fn main() -> Result<(), Error> {
         Action::Doc(action) => doc(action),
         Action::Clippy => clippy(),
         Action::Test => test(),
+        Action::Presubmit => presubmit(),
     }
 }

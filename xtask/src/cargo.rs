@@ -39,6 +39,9 @@ pub enum CargoCommand<'a> {
         features: &'a [&'a str],
         open: bool,
     },
+    Format {
+        check: bool,
+    },
     Test {
         workspace: bool,
         exclude: &'a [Package],
@@ -96,6 +99,12 @@ pub fn run_cargo(command: CargoCommand) -> Result<(), Error> {
             add_features_args(&mut cmd, features);
             if open {
                 cmd.add_arg("--open");
+            }
+        }
+        CargoCommand::Format { check } => {
+            cmd.add_arg("fmt");
+            if check {
+                cmd.add_args(&["--", "--check"]);
             }
         }
         CargoCommand::Test {
