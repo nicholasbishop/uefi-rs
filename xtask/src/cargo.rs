@@ -9,10 +9,6 @@ pub enum Package {
 }
 
 impl Package {
-    pub fn apps() -> [Self; 2] {
-        [Self::Template, Self::UefiTestRunner]
-    }
-
     fn name(&self) -> &'static str {
         match self {
             Self::Template => "uefi_app",
@@ -24,7 +20,7 @@ impl Package {
 
 pub enum CargoCommand {
     Build {
-        package: Package,
+        packages: &'static [Package],
         target: UefiTarget,
         release: bool,
         extra_args: &'static [&'static str],
@@ -50,18 +46,15 @@ pub fn run_cargo(command: CargoCommand) -> Result<(), Error> {
     let mut cmd = Command::with_args("cargo", &["+nightly"]);
     match command {
         CargoCommand::Build {
-            package,
+            packages,
             target,
             release,
             extra_args,
         } => {
-            cmd.add_args(&[
-                "build",
-                "--package",
-                package.name(),
-                "--target",
-                target.target_triple(),
-            ]);
+            cmd.add_args(&["build", "--target", target.target_triple()]);
+            for package in packages {
+                cmd.add_args(&["--package", package.name()]);
+            }
             if release {
                 cmd.add_arg("--release");
             }

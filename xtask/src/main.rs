@@ -17,14 +17,14 @@ struct Opt {
 enum Action {
     Build(ActionBuild),
 
-    /// Run clippy
+    /// Run clippy.
     Clippy,
 
-    /// Run tests and doctests
+    /// Run tests and doctests.
     Test,
 }
 
-/// Build all packages.
+/// Build the application packages.
 #[derive(StructOpt)]
 struct ActionBuild {
     /// UEFI target to build for
@@ -37,16 +37,12 @@ struct ActionBuild {
 }
 
 fn build(action: &ActionBuild) -> Result<(), Error> {
-    for package in Package::apps() {
-        run_cargo(CargoCommand::Build {
-            package,
-            target: action.target,
-            release: action.release,
-            extra_args: &["-Zbuild-std=core,compiler_builtins,alloc"],
-        })?;
-    }
-
-    Ok(())
+    run_cargo(CargoCommand::Build {
+        packages: &[Package::Template, Package::UefiTestRunner],
+        target: action.target,
+        release: action.release,
+        extra_args: &["-Zbuild-std=core,compiler_builtins,alloc"],
+    })
 }
 
 fn clippy() -> Result<(), Error> {
