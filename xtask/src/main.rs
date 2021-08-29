@@ -103,7 +103,12 @@ fn ci(job: CiJob) -> Result<(), Error> {
         CiJob::Test => {
             test()?;
         }
-        CiJob::BuildAarch64 => todo!(),
+        CiJob::BuildAarch64 => {
+            build(&ActionBuild {
+                target: UefiTarget::Aarch64,
+                release: false,
+            })?;
+        }
         CiJob::BuildAndTestX86_64 => todo!(),
     }
     Ok(())
