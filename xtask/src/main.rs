@@ -16,6 +16,7 @@ struct Opt {
 #[derive(StructOpt)]
 enum Action {
     Build(ActionBuild),
+    Doc(ActionDoc),
 
     /// Run clippy.
     Clippy,
@@ -36,6 +37,14 @@ struct ActionBuild {
     release: bool,
 }
 
+/// Generate documentation.
+#[derive(StructOpt)]
+struct ActionDoc {
+    /// open the docs in a browser
+    #[structopt(long)]
+    open: bool,
+}
+
 fn build(action: &ActionBuild) -> Result<(), Error> {
     run_cargo(CargoCommand::Build {
         packages: &[Package::Template, Package::UefiTestRunner],
@@ -49,6 +58,15 @@ fn clippy() -> Result<(), Error> {
     run_cargo(CargoCommand::Clippy {
         treat_warnings_as_errors: true,
         features: &["alloc", "exts", "logger"],
+    })
+}
+
+fn doc(action: &ActionDoc) -> Result<(), Error> {
+    run_cargo(CargoCommand::Doc {
+        no_deps: true,
+        packages: &[Package::Uefi, Package::UefiMacros, Package::UefiServices],
+        features: &["alloc", "exts", "logger"],
+        open: action.open,
     })
 }
 
@@ -73,6 +91,7 @@ fn main() -> Result<(), Error> {
 
     match &opt.action {
         Action::Build(action) => build(action),
+        Action::Doc(action) => doc(action),
         Action::Clippy => clippy(),
         Action::Test => test(),
     }

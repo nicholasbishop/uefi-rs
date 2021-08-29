@@ -4,6 +4,8 @@ use command_run::Command;
 
 pub enum Package {
     Template,
+    Uefi,
+    UefiMacros,
     UefiServices,
     UefiTestRunner,
 }
@@ -12,6 +14,8 @@ impl Package {
     fn name(&self) -> &'static str {
         match self {
             Self::Template => "uefi_app",
+            Self::Uefi => "uefi",
+            Self::UefiMacros => "uefi-macros",
             Self::UefiServices => "uefi-services",
             Self::UefiTestRunner => "uefi-test-runner",
         }
@@ -28,6 +32,12 @@ pub enum CargoCommand {
     Clippy {
         treat_warnings_as_errors: bool,
         features: &'static [&'static str],
+    },
+    Doc {
+        no_deps: bool,
+        packages: &'static [Package],
+        features: &'static [&'static str],
+        open: bool,
     },
     Test {
         workspace: bool,
@@ -68,6 +78,24 @@ pub fn run_cargo(command: CargoCommand) -> Result<(), Error> {
             add_features_args(&mut cmd, features);
             if treat_warnings_as_errors {
                 cmd.add_args(&["--", "-Dwarnings"]);
+            }
+        }
+        CargoCommand::Doc {
+            no_deps,
+            packages,
+            features,
+            open,
+        } => {
+            cmd.add_arg("doc");
+            if no_deps {
+                cmd.add_arg("--no-deps");
+            }
+            for package in packages {
+                cmd.add_args(&["--package", package.name()]);
+            }
+            add_features_args(&mut cmd, features);
+            if open {
+                cmd.add_arg("--open");
             }
         }
         CargoCommand::Test {
