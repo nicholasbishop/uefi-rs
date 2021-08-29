@@ -24,9 +24,11 @@ jobs:
           components: rust-src
       # TODO: cache Rust binaries
 
-    - name: Build
-      run: ./build.py build --target aarch64
-      working-directory: ./uefi-test-runner
+    - name: Run cargo xtask ci build-aarch64
+      uses: actions-rs/cargo@v1
+      with:
+        command: xtask
+        args: ci build-aarch64
 
   build_and_test:
     name: Build and run tests on x86_64
@@ -48,19 +50,11 @@ jobs:
           components: rust-src
       # TODO: cache Rust binaries
 
-    - name: Build template
+    - name: Run cargo xtask ci build-and-test-x86-64
       uses: actions-rs/cargo@v1
       with:
-          command: build
-          args: --target x86_64-unknown-uefi --manifest-path template/Cargo.toml
-
-    - name: Build
-      run: ./build.py build
-      working-directory: ./uefi-test-runner
-
-    - name: Run VM tests
-      run: ./build.py run --headless --ci
-      working-directory: ./uefi-test-runner
+        command: xtask
+        args: ci build-and-test-x86-64
 
   test:
     name: Run tests and documentation tests
@@ -77,15 +71,11 @@ jobs:
             components: rust-src
             override: true
 
-      - name: Run cargo test
+      - name: Run cargo xtask ci test
         uses: actions-rs/cargo@v1
-        env:
-          # This works around "duplicate item in crate core" errors:
-          # https://github.com/rust-lang/wg-cargo-std-aware/issues/56
-          CARGO_PROFILE_DEV_PANIC: unwind
         with:
-          command: test
-          args: -Zbuild-std=std --target x86_64-unknown-linux-gnu --features=exts
+          command: xtask
+          args: ci test
 
   lints:
     name: Lints
