@@ -16,10 +16,8 @@ struct Opt {
 #[derive(StructOpt)]
 enum Action {
     Build(ActionBuild),
+    Clippy(ActionClippy),
     Doc(ActionDoc),
-
-    /// Run clippy.
-    Clippy,
 
     /// Run tests and doctests.
     Test,
@@ -40,6 +38,14 @@ struct ActionBuild {
     release: bool,
 }
 
+/// Run clippy.
+#[derive(StructOpt)]
+struct ActionClippy {
+    /// treat warnings as errors
+    #[structopt(long)]
+    treat_warnings_as_errors: bool,
+}
+
 /// Generate documentation.
 #[derive(StructOpt)]
 struct ActionDoc {
@@ -57,9 +63,9 @@ fn build(action: &ActionBuild) -> Result<(), Error> {
     })
 }
 
-fn clippy() -> Result<(), Error> {
+fn clippy(action: &ActionClippy) -> Result<(), Error> {
     run_cargo(CargoCommand::Clippy {
-        treat_warnings_as_errors: true,
+        treat_warnings_as_errors: action.treat_warnings_as_errors,
         features: &["alloc", "exts", "logger"],
     })
 }
@@ -91,7 +97,9 @@ fn test() -> Result<(), Error> {
 
 fn presubmit() -> Result<(), Error> {
     run_cargo(CargoCommand::Format { check: true })?;
-    clippy()?;
+    clippy(&ActionClippy {
+        treat_warnings_as_errors: true,
+    })?;
     test()
 }
 
@@ -101,7 +109,7 @@ fn main() -> Result<(), Error> {
     match &opt.action {
         Action::Build(action) => build(action),
         Action::Doc(action) => doc(action),
-        Action::Clippy => clippy(),
+        Action::Clippy(action) => clippy(action),
         Action::Test => test(),
         Action::Presubmit => presubmit(),
     }
