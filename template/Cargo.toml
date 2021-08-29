@@ -8,5 +8,5 @@ rlibc = "1.0.0"
 
 # In a real application, change these to point to the latest release
 # on crates.io.
-uefi = { path = "..", features = ["exts"] }
+uefi = { path = "../uefi", features = ["exts"] }
 uefi-services = { path = "../uefi-services" }
