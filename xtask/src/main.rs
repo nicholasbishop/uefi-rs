@@ -52,6 +52,10 @@ struct ActionDoc {
     /// open the docs in a browser
     #[structopt(long)]
     open: bool,
+
+    /// treat warnings as errors
+    #[structopt(long)]
+    treat_warnings_as_errors: bool,
 }
 
 fn build(action: &ActionBuild) -> Result<(), Error> {
@@ -76,6 +80,7 @@ fn doc(action: &ActionDoc) -> Result<(), Error> {
         packages: &[Package::Uefi, Package::UefiMacros, Package::UefiServices],
         features: &["alloc", "exts", "logger"],
         open: action.open,
+        treat_warnings_as_errors: action.treat_warnings_as_errors,
     })
 }
 
@@ -98,6 +103,10 @@ fn test() -> Result<(), Error> {
 fn presubmit() -> Result<(), Error> {
     run_cargo(CargoCommand::Format { check: true })?;
     clippy(&ActionClippy {
+        treat_warnings_as_errors: true,
+    })?;
+    doc(&ActionDoc {
+        open: false,
         treat_warnings_as_errors: true,
     })?;
     test()

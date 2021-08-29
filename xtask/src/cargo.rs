@@ -38,6 +38,7 @@ pub enum CargoCommand<'a> {
         packages: &'a [Package],
         features: &'a [&'a str],
         open: bool,
+        treat_warnings_as_errors: bool,
     },
     Format {
         check: bool,
@@ -88,6 +89,7 @@ pub fn run_cargo(command: CargoCommand) -> Result<(), Error> {
             packages,
             features,
             open,
+            treat_warnings_as_errors,
         } => {
             cmd.add_arg("doc");
             if no_deps {
@@ -99,6 +101,9 @@ pub fn run_cargo(command: CargoCommand) -> Result<(), Error> {
             add_features_args(&mut cmd, features);
             if open {
                 cmd.add_arg("--open");
+            }
+            if treat_warnings_as_errors {
+                cmd.env.insert("RUSTDOCFLAGS".into(), "-Dwarnings".into());
             }
         }
         CargoCommand::Format { check } => {
