@@ -15,10 +15,15 @@ struct Opt {
 
 #[derive(Clone, Copy, StructOpt)]
 enum CiJob {
+    /// Run all of the jobs.
     All,
+    /// Check formatting, run clippy, and check for docstring warnings.
     Lint,
+    /// Run tests and documentation tests.
     Test,
+    /// Build for the aarch64 UEFI target.
     BuildAarch64,
+    /// Build and run tests on the x86_64 UEFI target.
     BuildAndTestX86_64,
 }
 
@@ -30,7 +35,7 @@ enum Action {
 
     /// Run CI checks.
     Ci {
-        #[structopt(default_value)]
+        #[structopt(subcommand)]
         job: CiJob,
     },
 
@@ -48,12 +53,6 @@ struct ActionBuild {
     /// build in release mode
     #[structopt(long)]
     release: bool,
-}
-
-#[derive(StructOpt)]
-struct ActionCi {
-    #[structopt(subcommand)]
-    job: CiJob,
 }
 
 /// Run clippy.
@@ -109,6 +108,7 @@ fn ci(job: CiJob) -> Result<(), Error> {
         CiJob::BuildAarch64 => todo!(),
         CiJob::BuildAndTestX86_64 => todo!(),
     }
+    Ok(())
 }
 
 fn clippy(action: &ActionClippy) -> Result<(), Error> {
@@ -149,7 +149,7 @@ fn main() -> Result<(), Error> {
 
     match &opt.action {
         Action::Build(action) => build(action),
-        Action::Ci { job } => ci(job),
+        Action::Ci { job } => ci(*job),
         Action::Clippy(action) => clippy(action),
         Action::Doc(action) => doc(action),
         Action::Test => test(),

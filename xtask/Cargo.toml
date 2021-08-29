@@ -8,3 +8,4 @@ publish = false
 anyhow = "1.0"
 command-run = { version = "1.0", default-features = false }
 structopt = { version = "0.3", default-features = false }
+strum = { version = "0.21", features = ["derive"] }
