@@ -17,6 +17,9 @@ struct Opt {
 enum Action {
     Build(ActionBuild),
 
+    /// Run clippy
+    Clippy,
+
     /// Run tests and doctests
     Test,
 }
@@ -45,6 +48,10 @@ fn build(action: &ActionBuild) -> Result<(), Error> {
     Ok(())
 }
 
+fn clippy() -> Result<(), Error> {
+    todo!();
+}
+
 fn test() -> Result<(), Error> {
     run_cargo(CargoCommand::Test {
         exclude: &[
@@ -65,6 +72,7 @@ fn main() -> Result<(), Error> {
 
     match &opt.action {
         Action::Build(action) => build(action),
+        Action::Clippy => clippy(),
         Action::Test => test(),
     }
 }
