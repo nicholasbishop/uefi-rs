@@ -7,7 +7,7 @@ use qemu::run_qemu_test;
 use structopt::StructOpt;
 
 /// UEFI target to build for.
-#[derive(Clone, Copy, strum::Display, strum::EnumString)]
+#[derive(Clone, Copy, Eq, PartialEq, strum::Display, strum::EnumString)]
 #[strum(serialize_all = "snake_case")]
 pub enum UefiTarget {
     Aarch64,
@@ -113,6 +113,14 @@ pub struct ActionQemu {
     /// run without a GUI
     #[structopt(long)]
     headless: bool,
+
+    /// run without KVM acceleration
+    #[structopt(long)]
+    no_kvm: bool,
+
+    /// exit instead of reboot
+    #[structopt(long)]
+    no_reboot: bool,
 }
 
 fn build(action: ActionBuild) -> Result<(), Error> {
