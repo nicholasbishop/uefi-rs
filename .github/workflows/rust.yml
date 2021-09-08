@@ -81,7 +81,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: -Zbuild-std=std --target x86_64-unknown-linux-gnu --features=exts
+          args: -Zbuild-std=std --target x86_64-unknown-linux-gnu --features=exts --package uefi --package uefi-macros
 
   lints:
     name: Lints

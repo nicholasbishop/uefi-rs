@@ -1,0 +1,53 @@
+error: Entry attribute accepts no arguments
+  --> $DIR/entry.rs:19:13
+   |
+19 |     #[entry(some_arg)]
+   |             ^^^^^^^^
+
+error: Entry method must have no ABI modifier
+  --> $DIR/entry.rs:20:5
+   |
+20 |     extern "C" fn efi_main(_handle: Handle, _st: SystemTable<Boot>) -> Status {
+   |     ^^^^^^^^^^
+
+error: Entry method must have no ABI modifier
+  --> $DIR/entry.rs:29:5
+   |
+29 |     extern "C" fn efi_main(_handle: Handle, _st: SystemTable<Boot>) -> Status {
+   |     ^^^^^^^^^^
+
+error: Entry method should not be async
+  --> $DIR/entry.rs:38:5
+   |
+38 |     async fn efi_main(_handle: Handle, _st: SystemTable<Boot>) -> Status {
+   |     ^^^^^
+
+error: Entry method should not be const
+  --> $DIR/entry.rs:47:5
+   |
+47 |     const fn efi_main(_handle: Handle, _st: SystemTable<Boot>) -> Status {
+   |     ^^^^^
+
+error: Entry method should not be generic
+  --> $DIR/entry.rs:56:17
+   |
+56 |     fn efi_main<T>(_handle: Handle, _st: SystemTable<Boot>) -> Status {
+   |                 ^
+
+error[E0308]: mismatched types
+  --> $DIR/entry.rs:65:8
+   |
+65 |     fn efi_main(_handle: Handle, _st: SystemTable<Boot>, _x: usize) -> bool {
+   |        ^^^^^^^^ incorrect number of function parameters
+   |
+   = note: expected fn pointer `extern "efiapi" fn(uefi::Handle, uefi::table::SystemTable<uefi::table::Boot>) -> uefi::Status`
+                 found fn item `extern "efiapi" fn(uefi::Handle, uefi::table::SystemTable<uefi::table::Boot>, usize) -> bool {bad_args::efi_main}`
+
+error[E0308]: mismatched types
+  --> $DIR/entry.rs:74:8
+   |
+74 |     fn efi_main(_handle: Handle, _st: SystemTable<Boot>) -> bool {
+   |        ^^^^^^^^ expected struct `uefi::Status`, found `bool`
+   |
+   = note: expected fn pointer `extern "efiapi" fn(uefi::Handle, uefi::table::SystemTable<_>) -> uefi::Status`
+                 found fn item `extern "efiapi" fn(uefi::Handle, uefi::table::SystemTable<_>) -> bool {bad_return_type::efi_main}`
