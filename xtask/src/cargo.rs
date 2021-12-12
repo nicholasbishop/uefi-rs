@@ -2,7 +2,7 @@ use std::process::Command;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Triple {
-    // TODO: add Default?
+    Default,
     X86_64UnknownUefi,
     // TODO
 }
@@ -49,7 +49,7 @@ pub struct Cargo {
     pub features: Features,
     pub nightly: bool,
     pub packages: Packages,
-    pub target: Option<Triple>,
+    pub target: Triple,
 }
 
 impl Cargo {
@@ -71,6 +71,8 @@ impl Cargo {
             }
             CargoAction::Doc { open } => {
                 action = "doc";
+                // Treat all warnings as errors.
+                cmd.env("RUSTDOCFLAGS", "-Dwarnings");
                 if open {
                     extra_args.push("--open");
                 }
@@ -79,8 +81,8 @@ impl Cargo {
         cmd.arg(action);
 
         match self.target {
-            None => {}
-            Some(Triple::X86_64UnknownUefi) => {
+            Triple::Default => {}
+            Triple::X86_64UnknownUefi => {
                 cmd.args(&[
                     "--target",
                     "x86_64-unknown-uefi",

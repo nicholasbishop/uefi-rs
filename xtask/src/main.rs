@@ -53,7 +53,7 @@ fn build(opt: &Opt) -> Result<()> {
         features: Features::MoreCode,
         nightly: true,
         packages: Packages::EverythingExceptXtask,
-        target: Some(Triple::X86_64UnknownUefi),
+        target: Triple::X86_64UnknownUefi,
     };
     run_cmd(cargo.command(), opt.verbose)
 }
@@ -65,7 +65,7 @@ fn clippy(opt: &Opt) -> Result<()> {
         features: Features::MoreCode,
         nightly: true,
         packages: Packages::EverythingExceptXtask,
-        target: Some(Triple::X86_64UnknownUefi),
+        target: Triple::X86_64UnknownUefi,
     };
     run_cmd(cargo.command(), opt.verbose)?;
 
@@ -75,7 +75,7 @@ fn clippy(opt: &Opt) -> Result<()> {
         features: Features::None,
         nightly: false,
         packages: Packages::Xtask,
-        target: None,
+        target: Triple::Default,
     };
     run_cmd(cargo.command(), opt.verbose)
 }
@@ -86,7 +86,7 @@ fn doc(opt: &Opt, open: bool) -> Result<()> {
         features: Features::MoreCode,
         nightly: true,
         packages: Packages::Published,
-        target: Some(Triple::X86_64UnknownUefi),
+        target: Triple::X86_64UnknownUefi,
     };
     run_cmd(cargo.command(), opt.verbose)
 }
