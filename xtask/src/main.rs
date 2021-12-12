@@ -1,4 +1,7 @@
+mod cargo;
+
 use anyhow::{bail, Error};
+use cargo::{Cargo, CargoAction, Features, Packages, Triple};
 use clap::{Parser, Subcommand};
 use std::process::Command;
 
@@ -19,7 +22,10 @@ struct Opt {
 enum Action {
     Build,
     Clippy,
-    Doc,
+    Doc {
+        #[clap(long)]
+        open: bool,
+    },
     Run,
     Test,
 }
@@ -42,46 +48,47 @@ fn run_cmd(mut cmd: Command, verbose: bool) -> Result<()> {
 }
 
 fn build(opt: &Opt) -> Result<()> {
-    let mut cmd = Command::new("cargo");
-    cmd.args(&[
-        "+nightly",
-        "build",
-        "--target",
-        "x86_64-unknown-uefi",
-        "-Zbuild-std=core,compiler_builtins,alloc",
-        "-Zbuild-std-features=compiler-builtins-mem",
-        "--workspace",
-        "--exclude",
-        "xtask",
-    ]);
-    run_cmd(cmd, opt.verbose)
+    let cargo = Cargo {
+        action: CargoAction::Build,
+        features: Features::MoreCode,
+        nightly: true,
+        packages: Packages::EverythingExceptXtask,
+        target: Some(Triple::X86_64UnknownUefi),
+    };
+    run_cmd(cargo.command(), opt.verbose)
 }
 
 fn clippy(opt: &Opt) -> Result<()> {
-    let mut cmd = Command::new("cargo");
-    cmd.args(&[
-        "+nightly",
-        "clippy",
-        "--target",
-        "x86_64-unknown-uefi",
-        "-Zbuild-std=core,compiler_builtins,alloc",
-        "-Zbuild-std-features=compiler-builtins-mem",
-        "--workspace",
-        "--exclude",
-        "xtask",
-        // Enable all the features in the uefi package that enable more
-        // code.
-        "--features=alloc,exts,logger",
-        // Treat all warnings as errors.
-        "--",
-        "-D",
-        "warnings",
-    ]);
-    run_cmd(cmd, opt.verbose)?;
+    // Run clippy on all the UEFI packages.
+    let cargo = Cargo {
+        action: CargoAction::Clippy,
+        features: Features::MoreCode,
+        nightly: true,
+        packages: Packages::EverythingExceptXtask,
+        target: Some(Triple::X86_64UnknownUefi),
+    };
+    run_cmd(cargo.command(), opt.verbose)?;
 
-    let mut cmd = Command::new("cargo");
-    cmd.args(&["clippy", "--package", "xtask", "--", "-D", "warnings"]);
-    run_cmd(cmd, opt.verbose)
+    // Run clippy on xtask.
+    let cargo = Cargo {
+        action: CargoAction::Clippy,
+        features: Features::None,
+        nightly: false,
+        packages: Packages::Xtask,
+        target: None,
+    };
+    run_cmd(cargo.command(), opt.verbose)
+}
+
+fn doc(opt: &Opt, open: bool) -> Result<()> {
+    let cargo = Cargo {
+        action: CargoAction::Doc { open },
+        features: Features::MoreCode,
+        nightly: true,
+        packages: Packages::Published,
+        target: Some(Triple::X86_64UnknownUefi),
+    };
+    run_cmd(cargo.command(), opt.verbose)
 }
 
 fn main() -> Result<()> {
@@ -90,6 +97,7 @@ fn main() -> Result<()> {
     match opt.action {
         Action::Build => build(opt),
         Action::Clippy => clippy(opt),
+        Action::Doc { open } => doc(opt, open),
         _ => todo!(),
     }
 }
