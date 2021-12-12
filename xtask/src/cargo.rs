@@ -17,11 +17,18 @@ pub enum Packages {
 
     /// Just the xtask package.
     Xtask,
+
+    /// Just the uefi and uefi-macros packages.
+    UefiAndUefiMacros,
 }
 
 #[derive(Clone, Copy, Debug)]
 pub enum Features {
+    /// Don't enable any extra features.
     None,
+
+    /// Just the exts feature.
+    Exts,
 
     /// All the features in the uefi package that enable more code.
     MoreCode,
@@ -31,6 +38,7 @@ impl Features {
     fn as_comma_separated_str(&self) -> Option<&'static str> {
         match self {
             Self::None => None,
+            Self::Exts => Some("exts"),
             Self::MoreCode => Some("alloc,exts,logger"),
         }
     }
@@ -41,6 +49,7 @@ pub enum CargoAction {
     Build,
     Clippy,
     Doc { open: bool },
+    Test,
 }
 
 #[derive(Debug)]
@@ -77,6 +86,9 @@ impl Cargo {
                     extra_args.push("--open");
                 }
             }
+            CargoAction::Test => {
+                action = "test";
+            }
         };
         cmd.arg(action);
 
@@ -101,6 +113,9 @@ impl Cargo {
             }
             Packages::Xtask => {
                 cmd.args(&["--package", "xtask"]);
+            }
+            Packages::UefiAndUefiMacros => {
+                cmd.args(&["--package", "uefi", "--package", "uefi-macros"]);
             }
         }
 

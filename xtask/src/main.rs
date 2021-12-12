@@ -91,6 +91,19 @@ fn doc(opt: &Opt, open: bool) -> Result<()> {
     run_cmd(cargo.command(), opt.verbose)
 }
 
+fn test(opt: &Opt) -> Result<()> {
+    let cargo = Cargo {
+        action: CargoAction::Test,
+        features: Features::Exts,
+        nightly: false,
+        // Don't test uefi-services (or the packages that depend on it)
+        // as it has lang items that conflict with `std`.
+        packages: Packages::UefiAndUefiMacros,
+        target: Triple::Default,
+    };
+    run_cmd(cargo.command(), opt.verbose)
+}
+
 fn main() -> Result<()> {
     let opt = &Opt::parse();
 
@@ -98,6 +111,7 @@ fn main() -> Result<()> {
         Action::Build => build(opt),
         Action::Clippy => clippy(opt),
         Action::Doc { open } => doc(opt, open),
+        Action::Test => test(opt),
         _ => todo!(),
     }
 }
