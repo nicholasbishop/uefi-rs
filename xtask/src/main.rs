@@ -57,11 +57,39 @@ fn build(opt: &Opt) -> Result<()> {
     run_cmd(cmd, opt.verbose)
 }
 
+fn clippy(opt: &Opt) -> Result<()> {
+    let mut cmd = Command::new("cargo");
+    cmd.args(&[
+        "+nightly",
+        "clippy",
+        "--target",
+        "x86_64-unknown-uefi",
+        "-Zbuild-std=core,compiler_builtins,alloc",
+        "-Zbuild-std-features=compiler-builtins-mem",
+        "--workspace",
+        "--exclude",
+        "xtask",
+        // Enable all the features in the uefi package that enable more
+        // code.
+        "--features=alloc,exts,logger",
+        // Treat all warnings as errors.
+        "--",
+        "-D",
+        "warnings",
+    ]);
+    run_cmd(cmd, opt.verbose)?;
+
+    let mut cmd = Command::new("cargo");
+    cmd.args(&["clippy", "--package", "xtask", "--", "-D", "warnings"]);
+    run_cmd(cmd, opt.verbose)
+}
+
 fn main() -> Result<()> {
     let opt = &Opt::parse();
 
     match opt.action {
         Action::Build => build(opt),
+        Action::Clippy => clippy(opt),
         _ => todo!(),
     }
 }
