@@ -5,7 +5,7 @@ use fs_err::{File, OpenOptions};
 use nix::sys::stat::Mode;
 use nix::unistd::mkfifo;
 use std::ffi::OsString;
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use tempfile::TempDir;
@@ -100,6 +100,32 @@ fn add_pflash_args(cmd: &mut Command, file: &Path, read_only: bool) {
 
     cmd.arg("-drive");
     cmd.arg(arg);
+}
+
+struct Io<R: Read, W: Write> {
+    reader: BufReader<R>,
+    writer: W,
+}
+
+impl<R: Read, W: Write> Io<R, W> {
+    fn new(r: R, w: W) -> Self {
+        Self {
+            reader: BufReader::new(r),
+            writer: w,
+        }
+    }
+
+    fn read_line(&mut self) -> Result<String> {
+        let mut line = String::new();
+        self.reader.read_line(&mut line)?;
+        Ok(line)
+    }
+
+    fn write_line(&mut self, line: &str) -> Result<()> {
+        writeln!(self.writer, "{}", line)?;
+        self.writer.flush()?;
+        Ok(())
+    }
 }
 
 pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, esp_dir: &Path, verbose: Verbose) -> Result<()> {
@@ -203,19 +229,17 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, esp_dir: &Path, verbose: Verbose)
     cmd.stdout(Stdio::piped());
     let mut child = cmd.spawn()?;
 
-    let mut monitor_output = BufReader::new(File::open(monitor_output_path)?);
-    let mut monitor_input = OpenOptions::new().write(true).open(monitor_input_path)?;
+    let mut monitor_io = Io::new(
+        File::open(monitor_output_path)?,
+        OpenOptions::new().write(true).open(monitor_input_path)?,
+    );
 
     // Execute the QEMU monitor handshake, doing basic sanity checks.
-    let mut line = String::new();
-    monitor_output.read_line(&mut line)?;
-    assert!(line.starts_with(r#"{"QMP":"#));
+    assert!(monitor_io.read_line()?.starts_with(r#"{"QMP":"#));
 
-    writeln!(monitor_input, r#"{{"execute": "qmp_capabilities"}}"#)?;
+    monitor_io.write_line(r#"{"execute": "qmp_capabilities"}"#)?;
 
-    line.clear();
-    monitor_output.read_line(&mut line)?;
-    assert_eq!(line, "{\"return\": {}}\r\n");
+    assert_eq!(monitor_io.read_line()?, "{\"return\": {}}\r\n");
 
     child.wait()?;
 
