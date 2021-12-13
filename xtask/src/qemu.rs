@@ -260,6 +260,26 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, esp_dir: &Path, verbose: Verbose)
 
         // Print out the processed QEMU output for logging & inspection.
         println!("{}", stripped);
+
+        // If the app requests a screenshot, take it.
+        if let Some(reference_name) = stripped.strip_prefix("SCREENSHOT: ") {
+            // Ask QEMU to take a screenshot.
+            let monitor_command =
+                r#"{"execute": "screendump", "arguments": {"filename": "screenshot.ppm"}}"#;
+            monitor_io.write_line(monitor_command)?;
+
+            // Wait for QEMU's acknowledgement, ignoring events.
+            let mut reply = monitor_io.read_line()?;
+            while reply.contains("event") {
+                reply = monitor_io.read_line()?;
+            }
+            assert_eq!(reply.trim(), r#"{"return": {}}"#);
+
+            // Tell the VM that the screenshot was taken
+            child_io.write_line("OK")?;
+
+            // TODO: compare screenshot
+        }
     }
 
     child.wait()?;
