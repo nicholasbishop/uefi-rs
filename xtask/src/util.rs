@@ -6,16 +6,9 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Triple {
-    Default,
     AArch64UnknownUefi,
     X86_64UnknownUefi,
     // TODO
-}
-
-impl Default for Triple {
-    fn default() -> Self {
-        Self::X86_64UnknownUefi
-    }
 }
 
 impl FromStr for Triple {

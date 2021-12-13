@@ -80,7 +80,7 @@ pub struct Cargo {
     pub features: Features,
     pub nightly: bool,
     pub packages: Vec<Package>,
-    pub target: Triple,
+    pub target: Option<Triple>,
     pub warnings_as_errors: bool,
 }
 
@@ -130,15 +130,15 @@ impl Cargo {
             "-Zbuild-std-features=compiler-builtins-mem",
         ];
         match self.target {
-            Triple::Default => {}
-            Triple::AArch64UnknownUefi => {
+            Some(Triple::AArch64UnknownUefi) => {
                 cmd.args(&["--target", "aarch64-unknown-uefi"]);
                 cmd.args(build_std_args);
             }
-            Triple::X86_64UnknownUefi => {
+            Some(Triple::X86_64UnknownUefi) => {
                 cmd.args(&["--target", "x86_64-unknown-uefi"]);
                 cmd.args(build_std_args);
             }
+            None => {}
         }
 
         if self.packages.is_empty() {

@@ -42,7 +42,7 @@ fn build(opt: &Opt) -> Result<()> {
         features: Features::MoreCode,
         nightly: true,
         packages: Package::all_except_xtask(),
-        target: Triple::X86_64UnknownUefi,
+        target: Some(Triple::X86_64UnknownUefi),
         warnings_as_errors: opt.warnings_as_errors,
     };
     run_cmd(cargo.command(), opt.verbose)
@@ -55,7 +55,7 @@ fn clippy(opt: &Opt) -> Result<()> {
         features: Features::MoreCode,
         nightly: true,
         packages: Package::all_except_xtask(),
-        target: Triple::X86_64UnknownUefi,
+        target: Some(Triple::X86_64UnknownUefi),
         warnings_as_errors: opt.warnings_as_errors,
     };
     run_cmd(cargo.command(), opt.verbose)?;
@@ -66,7 +66,7 @@ fn clippy(opt: &Opt) -> Result<()> {
         features: Features::None,
         nightly: false,
         packages: vec![Package::Xtask],
-        target: Triple::Default,
+        target: None,
         warnings_as_errors: opt.warnings_as_errors,
     };
     run_cmd(cargo.command(), opt.verbose)
@@ -78,7 +78,7 @@ fn doc(opt: &Opt, open: bool) -> Result<()> {
         features: Features::MoreCode,
         nightly: true,
         packages: Package::published(),
-        target: Triple::X86_64UnknownUefi,
+        target: Some(Triple::X86_64UnknownUefi),
         warnings_as_errors: opt.warnings_as_errors,
     };
     run_cmd(cargo.command(), opt.verbose)
@@ -91,7 +91,7 @@ fn run(opt: &Opt) -> Result<()> {
         features: Features::Qemu,
         nightly: true,
         packages: vec![Package::UefiTestRunner],
-        target: Triple::X86_64UnknownUefi,
+        target: Some(Triple::X86_64UnknownUefi),
         warnings_as_errors: opt.warnings_as_errors,
     };
     run_cmd(cargo.command(), opt.verbose)?;
@@ -111,7 +111,8 @@ fn test(opt: &Opt) -> Result<()> {
         // as it has lang items that conflict with `std`. The xtask
         // currently doesn't have any tests.
         packages: vec![Package::Uefi, Package::UefiMacros],
-        target: Triple::Default,
+        // Use the host target so that tests can run without a VM.
+        target: None,
         // cargo test doesn't currently have a flag to treat warnings as
         // errors.
         warnings_as_errors: false,

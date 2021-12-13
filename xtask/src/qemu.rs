@@ -1,12 +1,10 @@
 use crate::util::{run_cmd, Result, Triple};
-use anyhow::bail;
 use std::process::Command;
 
 pub fn run_qemu(arch: Triple, verbose: bool) -> Result<()> {
     let qemu_exe = match arch {
         Triple::AArch64UnknownUefi => "qemu-system-aarch64",
         Triple::X86_64UnknownUefi => "qemu-system-x86_64",
-        Triple::Default => bail!("invalid arch for qemu"),
     };
     let mut cmd = Command::new(qemu_exe);
 
@@ -28,7 +26,6 @@ pub fn run_qemu(arch: Triple, verbose: bool) -> Result<()> {
             // Allocate some memory.
             cmd.args(&["-m", "256M"]);
         }
-        Triple::Default => {}
     }
 
     run_cmd(cmd, verbose)
