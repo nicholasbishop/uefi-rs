@@ -1,9 +1,12 @@
 use crate::util::{run_cmd, UefiArch, Verbose};
 use anyhow::{bail, Result};
 use clap::Parser;
+use nix::sys::stat::Mode;
+use nix::unistd::mkfifo;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use tempfile::TempDir;
 
 #[derive(Debug, Parser)]
 pub struct QemuOpt {
@@ -167,8 +170,6 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, esp_dir: &Path, verbose: Verbose)
     cmd.args(&["-serial", "stdio"]);
 
     let qemu_monitor_pipe = "qemu-monitor";
-    // Map the QEMU monitor to a pair of named pipes
-    cmd.args(&["-qmp", &format!("pipe:{}", qemu_monitor_pipe)]);
 
     // When running in headless mode we don't have video, but we can still have
     // QEMU emulate a display and take screenshots from it.
@@ -176,6 +177,21 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, esp_dir: &Path, verbose: Verbose)
     if opt.headless {
         cmd.args(&["-display", "none"]);
     }
+
+    let tmp_dir = TempDir::new()?;
+    let tmp_dir = tmp_dir.path();
+
+    // Map the QEMU monitor to a pair of named pipes
+    cmd.args(&[
+        "-qmp",
+        &format!("pipe:{}", tmp_dir.join(qemu_monitor_pipe).display()),
+    ]);
+
+    let monitor_input_path = tmp_dir.join(format!("{}.in", qemu_monitor_pipe));
+    let monitor_output_path = tmp_dir.join(format!("{}.out", qemu_monitor_pipe));
+    let fifo_mode = Mode::from_bits(0o666).unwrap();
+    mkfifo(&monitor_input_path, fifo_mode)?;
+    mkfifo(&monitor_output_path, fifo_mode)?;
 
     run_cmd(cmd, verbose)
 }
