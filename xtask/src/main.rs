@@ -9,7 +9,7 @@ use util::{run_cmd, Result, UefiArch};
 /// Developer utility for running various tasks in uefi-rs.
 #[derive(Debug, Parser)]
 struct Opt {
-    #[clap(long, default_value_t = UefiArch::X86_64UnknownUefi)]
+    #[clap(long, default_value_t)]
     target: UefiArch,
 
     /// Print commands before executing them.

@@ -21,6 +21,12 @@ impl UefiArch {
     }
 }
 
+impl Default for UefiArch {
+    fn default() -> Self {
+        Self::X86_64UnknownUefi
+    }
+}
+
 impl fmt::Display for UefiArch {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.as_triple())
