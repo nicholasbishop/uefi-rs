@@ -8,18 +8,42 @@ pub enum Triple {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum Packages {
-    /// All the published packages.
-    Published,
+pub enum Package {
+    Uefi,
+    UefiApp,
+    UefiMacros,
+    UefiServices,
+    UefiTestRunner,
+    Xtask,
+}
+
+impl Package {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Uefi => "uefi",
+            Self::UefiApp => "uefi_app",
+            Self::UefiMacros => "uefi-macros",
+            Self::UefiServices => "uefi-services",
+            Self::UefiTestRunner => "uefi-test-runner",
+            Self::Xtask => "xtask",
+        }
+    }
+
+    /// All published packages.
+    pub fn published() -> Vec<Package> {
+        vec![Self::Uefi, Self::UefiMacros, Self::UefiServices]
+    }
 
     /// All the packages except for xtask.
-    EverythingExceptXtask,
-
-    /// Just the xtask package.
-    Xtask,
-
-    /// Just the uefi and uefi-macros packages.
-    UefiAndUefiMacros,
+    pub fn all_except_xtask() -> Vec<Package> {
+        vec![
+            Self::Uefi,
+            Self::UefiApp,
+            Self::UefiMacros,
+            Self::UefiServices,
+            Self::UefiTestRunner,
+        ]
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -57,7 +81,7 @@ pub struct Cargo {
     pub action: CargoAction,
     pub features: Features,
     pub nightly: bool,
-    pub packages: Packages,
+    pub packages: Vec<Package>,
     pub target: Triple,
     pub warnings_as_errors: bool,
 }
@@ -115,19 +139,11 @@ impl Cargo {
             }
         }
 
-        match self.packages {
-            Packages::Published => {
-                cmd.args(&["--workspace", "--exclude", "uefi_app", "--exclude", "xtask"]);
-            }
-            Packages::EverythingExceptXtask => {
-                cmd.args(&["--workspace", "--exclude", "xtask"]);
-            }
-            Packages::Xtask => {
-                cmd.args(&["--package", "xtask"]);
-            }
-            Packages::UefiAndUefiMacros => {
-                cmd.args(&["--package", "uefi", "--package", "uefi-macros"]);
-            }
+        if self.packages.is_empty() {
+            panic!("packages cannot be empty");
+        }
+        for package in &self.packages {
+            cmd.args(&["--package", package.as_str()]);
         }
 
         if let Some(features) = self.features.as_comma_separated_str() {

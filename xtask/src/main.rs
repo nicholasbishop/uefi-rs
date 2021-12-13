@@ -1,7 +1,7 @@
 mod cargo;
 
 use anyhow::{bail, Error};
-use cargo::{Cargo, CargoAction, Features, Packages, Triple};
+use cargo::{Cargo, CargoAction, Features, Package, Triple};
 use clap::{Parser, Subcommand};
 use std::process::Command;
 
@@ -56,7 +56,7 @@ fn build(opt: &Opt) -> Result<()> {
         action: CargoAction::Build,
         features: Features::MoreCode,
         nightly: true,
-        packages: Packages::EverythingExceptXtask,
+        packages: Package::all_except_xtask(),
         target: Triple::X86_64UnknownUefi,
         warnings_as_errors: opt.warnings_as_errors,
     };
@@ -69,7 +69,7 @@ fn clippy(opt: &Opt) -> Result<()> {
         action: CargoAction::Clippy,
         features: Features::MoreCode,
         nightly: true,
-        packages: Packages::EverythingExceptXtask,
+        packages: Package::all_except_xtask(),
         target: Triple::X86_64UnknownUefi,
         warnings_as_errors: opt.warnings_as_errors,
     };
@@ -80,7 +80,7 @@ fn clippy(opt: &Opt) -> Result<()> {
         action: CargoAction::Clippy,
         features: Features::None,
         nightly: false,
-        packages: Packages::Xtask,
+        packages: vec![Package::Xtask],
         target: Triple::Default,
         warnings_as_errors: opt.warnings_as_errors,
     };
@@ -92,7 +92,7 @@ fn doc(opt: &Opt, open: bool) -> Result<()> {
         action: CargoAction::Doc { open },
         features: Features::MoreCode,
         nightly: true,
-        packages: Packages::Published,
+        packages: Package::published(),
         target: Triple::X86_64UnknownUefi,
         warnings_as_errors: opt.warnings_as_errors,
     };
@@ -109,8 +109,9 @@ fn test(opt: &Opt) -> Result<()> {
         features: Features::Exts,
         nightly: false,
         // Don't test uefi-services (or the packages that depend on it)
-        // as it has lang items that conflict with `std`.
-        packages: Packages::UefiAndUefiMacros,
+        // as it has lang items that conflict with `std`. The xtask
+        // currently doesn't have any tests.
+        packages: vec![Package::Uefi, Package::UefiMacros],
         target: Triple::Default,
         // cargo test doesn't currently have a flag to treat warnings as
         // errors.
