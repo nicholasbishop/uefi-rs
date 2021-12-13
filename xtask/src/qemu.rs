@@ -94,9 +94,9 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, verbose: Verbose) -> Result<()> {
         UefiArch::AArch64 => {
             // The OVMF implementation for AArch64 won't boot unless the
             // vars file is writeable.
+            ovmf_vars_readonly = false;
+
             // TODO
-            // ovmf_vars_readonly = false;
-            todo!()
         }
         UefiArch::X86_64 => {
             ovmf_vars_readonly = true;
