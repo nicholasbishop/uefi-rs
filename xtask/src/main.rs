@@ -42,7 +42,7 @@ enum Action {
     Test,
 }
 
-fn run_cmd(mut cmd: Command, verbose: bool) -> Result<()> {
+pub fn run_cmd(mut cmd: Command, verbose: bool) -> Result<()> {
     if verbose {
         print!("{}", cmd.get_program().to_string_lossy());
         for arg in cmd.get_args() {
@@ -121,6 +121,7 @@ fn run(opt: &Opt) -> Result<()> {
     qemu::run_qemu(
         // TODO
         Triple::X86_64UnknownUefi,
+        opt.verbose,
     )
 }
 
