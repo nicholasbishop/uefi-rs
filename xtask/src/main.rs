@@ -9,6 +9,9 @@ use util::{run_cmd, Result, Triple};
 /// Developer utility for running various tasks in uefi-rs.
 #[derive(Debug, Parser)]
 struct Opt {
+    #[clap(long)]
+    target: Option<Triple>,
+
     /// Print commands before executing them.
     #[clap(long)]
     verbose: bool,

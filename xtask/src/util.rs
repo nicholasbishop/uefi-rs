@@ -1,5 +1,6 @@
-use anyhow::{bail, Error};
+use anyhow::{anyhow, bail, Error};
 use std::process::Command;
+use std::str::FromStr;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -9,6 +10,24 @@ pub enum Triple {
     AArch64UnknownUefi,
     X86_64UnknownUefi,
     // TODO
+}
+
+impl Default for Triple {
+    fn default() -> Self {
+        Self::X86_64UnknownUefi
+    }
+}
+
+impl FromStr for Triple {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        match s {
+            "aarch64" => Ok(Self::AArch64UnknownUefi),
+            "x86_64" => Ok(Self::X86_64UnknownUefi),
+            _ => Err(anyhow!("invalid triple: {}", s)),
+        }
+    }
 }
 
 /// Run a `Command` and check that it completes successfully. Optionally
