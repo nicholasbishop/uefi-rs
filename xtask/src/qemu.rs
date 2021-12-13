@@ -4,7 +4,7 @@ use clap::Parser;
 use fs_err::{File, OpenOptions};
 use nix::sys::stat::Mode;
 use nix::unistd::mkfifo;
-use regex::Regex;
+use regex::bytes::Regex;
 use std::ffi::OsString;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
@@ -245,11 +245,13 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, esp_dir: &Path, verbose: Verbose)
 
     // This regex is used to detect and strip ANSI escape codes when
     // analyzing the output of the test runner.
-    let ansi_escape = Regex::new(r"(\x9B|\x1B\[)[0-?]*[ -/]*[@-~]")?;
+    let ansi_escape = Regex::new(r"(\x9b|\x1b\[)[0-?]*[ -/]*[@-~]")?;
 
     let mut child_io = Io::new(child.stdout.take().unwrap(), child.stdin.take().unwrap());
     while let Ok(line) = child_io.read_line() {
-        let stripped = ansi_escape.replace(line.trim(), "");
+        let line = line.trim();
+        let stripped = ansi_escape.replace_all(line.as_bytes(), &b""[..]);
+        let stripped = String::from_utf8(stripped.into())?;
 
         // Skip empty lines.
         if stripped.is_empty() {
