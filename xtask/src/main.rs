@@ -55,7 +55,7 @@ fn build(opt: &Opt) -> Result<()> {
         target: Some(opt.target),
         warnings_as_errors: opt.warnings_as_errors,
     };
-    run_cmd(cargo.command(), opt.verbose())
+    run_cmd(cargo.command()?, opt.verbose())
 }
 
 fn clippy(opt: &Opt) -> Result<()> {
@@ -68,7 +68,7 @@ fn clippy(opt: &Opt) -> Result<()> {
         target: Some(opt.target),
         warnings_as_errors: opt.warnings_as_errors,
     };
-    run_cmd(cargo.command(), opt.verbose())?;
+    run_cmd(cargo.command()?, opt.verbose())?;
 
     // Run clippy on xtask.
     let cargo = Cargo {
@@ -79,7 +79,7 @@ fn clippy(opt: &Opt) -> Result<()> {
         target: None,
         warnings_as_errors: opt.warnings_as_errors,
     };
-    run_cmd(cargo.command(), opt.verbose())
+    run_cmd(cargo.command()?, opt.verbose())
 }
 
 fn doc(opt: &Opt, open: bool) -> Result<()> {
@@ -91,7 +91,7 @@ fn doc(opt: &Opt, open: bool) -> Result<()> {
         target: Some(opt.target),
         warnings_as_errors: opt.warnings_as_errors,
     };
-    run_cmd(cargo.command(), opt.verbose())
+    run_cmd(cargo.command()?, opt.verbose())
 }
 
 fn run(opt: &Opt) -> Result<()> {
@@ -104,7 +104,7 @@ fn run(opt: &Opt) -> Result<()> {
         target: Some(opt.target),
         warnings_as_errors: opt.warnings_as_errors,
     };
-    run_cmd(cargo.command(), opt.verbose())?;
+    run_cmd(cargo.command()?, opt.verbose())?;
     qemu::run_qemu(
         // TODO
         opt.target,
@@ -127,7 +127,7 @@ fn test(opt: &Opt) -> Result<()> {
         // errors.
         warnings_as_errors: false,
     };
-    run_cmd(cargo.command(), opt.verbose())
+    run_cmd(cargo.command()?, opt.verbose())
 }
 
 fn main() -> Result<()> {

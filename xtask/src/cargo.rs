@@ -1,4 +1,5 @@
-use crate::util::UefiArch;
+use crate::util::{Result, UefiArch};
+use anyhow::bail;
 use std::process::Command;
 
 #[derive(Clone, Copy, Debug)]
@@ -85,7 +86,7 @@ pub struct Cargo {
 }
 
 impl Cargo {
-    pub fn command(&self) -> Command {
+    pub fn command(&self) -> Result<Command> {
         let mut cmd = Command::new("cargo");
         if self.nightly {
             cmd.arg("+nightly");
@@ -119,7 +120,7 @@ impl Cargo {
             CargoAction::Test => {
                 action = "test";
                 if self.warnings_as_errors {
-                    panic!("cargo test can't treat warnings as errors");
+                    bail!("cargo test can't treat warnings as errors");
                 }
             }
         };
@@ -135,7 +136,7 @@ impl Cargo {
         }
 
         if self.packages.is_empty() {
-            panic!("packages cannot be empty");
+            bail!("packages cannot be empty");
         }
         for package in &self.packages {
             cmd.args(&["--package", package.as_str()]);
@@ -152,6 +153,6 @@ impl Cargo {
             cmd.args(tool_args);
         }
 
-        cmd
+        Ok(cmd)
     }
 }
