@@ -1,11 +1,19 @@
 mod cargo;
+mod qemu;
 
 use anyhow::{bail, Error};
-use cargo::{Cargo, CargoAction, Features, Package, Triple};
+use cargo::{Cargo, CargoAction, Features, Package};
 use clap::{Parser, Subcommand};
 use std::process::Command;
 
-type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, Error>;
+
+#[derive(Clone, Copy, Debug)]
+pub enum Triple {
+    Default,
+    X86_64UnknownUefi,
+    // TODO
+}
 
 /// Developer utility for running various tasks in uefi-rs.
 #[derive(Debug, Parser)]
@@ -109,7 +117,11 @@ fn run(opt: &Opt) -> Result<()> {
         target: Triple::X86_64UnknownUefi,
         warnings_as_errors: opt.warnings_as_errors,
     };
-    run_cmd(cargo.command(), opt.verbose)
+    run_cmd(cargo.command(), opt.verbose)?;
+    qemu::run_qemu(
+        // TODO
+        Triple::X86_64UnknownUefi,
+    )
 }
 
 fn test(opt: &Opt) -> Result<()> {

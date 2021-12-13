@@ -1,11 +1,5 @@
+use crate::Triple;
 use std::process::Command;
-
-#[derive(Clone, Copy, Debug)]
-pub enum Triple {
-    Default,
-    X86_64UnknownUefi,
-    // TODO
-}
 
 #[derive(Clone, Copy, Debug)]
 pub enum Package {
