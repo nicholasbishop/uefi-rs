@@ -5,6 +5,12 @@ use std::str::FromStr;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Verbose {
+    No,
+    Yes,
+}
+
 #[derive(Clone, Copy, Debug)]
 pub enum UefiArch {
     AArch64,
@@ -54,8 +60,8 @@ impl FromStr for UefiArch {
 
 /// Run a `Command` and check that it completes successfully. Optionally
 /// print the command before running it.
-pub fn run_cmd(mut cmd: Command, verbose: bool) -> Result<()> {
-    if verbose {
+pub fn run_cmd(mut cmd: Command, verbose: Verbose) -> Result<()> {
+    if verbose == Verbose::Yes {
         print!("{}", cmd.get_program().to_string_lossy());
         for arg in cmd.get_args() {
             print!(" {}", arg.to_string_lossy());

@@ -1,7 +1,7 @@
-use crate::util::{run_cmd, Result, UefiArch};
+use crate::util::{run_cmd, Result, UefiArch, Verbose};
 use std::process::Command;
 
-pub fn run_qemu(arch: UefiArch, verbose: bool) -> Result<()> {
+pub fn run_qemu(arch: UefiArch, verbose: Verbose) -> Result<()> {
     let qemu_exe = match arch {
         UefiArch::AArch64 => "qemu-system-aarch64",
         UefiArch::X86_64 => "qemu-system-x86_64",
