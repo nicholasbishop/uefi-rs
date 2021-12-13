@@ -147,5 +147,9 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, esp_dir: &Path, verbose: Verbose)
     drive_arg.push(esp_dir);
     cmd.arg(drive_arg);
 
+    // Connect the serial port to the host. OVMF is kind enough to
+    // connect the UEFI stdout and stdin to that port too.
+    cmd.args(&["-serial", "stdio"]);
+
     run_cmd(cmd, verbose)
 }
