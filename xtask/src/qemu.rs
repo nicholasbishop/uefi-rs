@@ -1,4 +1,4 @@
-use crate::{run_cmd, Result, Triple};
+use crate::util::{run_cmd, Result, Triple};
 use anyhow::bail;
 use std::process::Command;
 

@@ -1,4 +1,4 @@
-use crate::Triple;
+use crate::util::Triple;
 use std::process::Command;
 
 #[derive(Clone, Copy, Debug)]

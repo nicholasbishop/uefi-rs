@@ -1,19 +1,10 @@
 mod cargo;
 mod qemu;
+mod util;
 
-use anyhow::{bail, Error};
 use cargo::{Cargo, CargoAction, Features, Package};
 use clap::{Parser, Subcommand};
-use std::process::Command;
-
-pub type Result<T> = std::result::Result<T, Error>;
-
-#[derive(Clone, Copy, Debug)]
-pub enum Triple {
-    Default,
-    X86_64UnknownUefi,
-    // TODO
-}
+use util::{run_cmd, Result, Triple};
 
 /// Developer utility for running various tasks in uefi-rs.
 #[derive(Debug, Parser)]
@@ -40,23 +31,6 @@ enum Action {
     },
     Run,
     Test,
-}
-
-pub fn run_cmd(mut cmd: Command, verbose: bool) -> Result<()> {
-    if verbose {
-        print!("{}", cmd.get_program().to_string_lossy());
-        for arg in cmd.get_args() {
-            print!(" {}", arg.to_string_lossy());
-        }
-        println!();
-    }
-
-    let status = cmd.status()?;
-    if status.success() {
-        Ok(())
-    } else {
-        bail!("command failed: {}", status);
-    }
 }
 
 fn build(opt: &Opt) -> Result<()> {
