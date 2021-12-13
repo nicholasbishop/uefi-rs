@@ -1,15 +1,8 @@
 use crate::util::{run_cmd, Result, UefiArch, Verbose};
 use std::process::Command;
 
-pub struct QemuOpts {
-    pub arch: UefiArch,
-    pub verbose: Verbose,
-    pub disable_kvm: bool,
-    pub ci: bool,
-}
-
-pub fn run_qemu(opts: QemuOpts) -> Result<()> {
-    let qemu_exe = match opts.arch {
+pub fn run_qemu(arch: UefiArch, verbose: Verbose) -> Result<()> {
+    let qemu_exe = match arch {
         UefiArch::AArch64 => "qemu-system-aarch64",
         UefiArch::X86_64 => "qemu-system-x86_64",
     };
@@ -19,7 +12,7 @@ pub fn run_qemu(opts: QemuOpts) -> Result<()> {
     // QEMU by defaults enables a ton of devices which slow down boot.
     cmd.arg("-nodefaults");
 
-    match opts.arch {
+    match arch {
         UefiArch::AArch64 => {
             todo!()
         }
@@ -35,5 +28,5 @@ pub fn run_qemu(opts: QemuOpts) -> Result<()> {
         }
     }
 
-    run_cmd(cmd, opts.verbose)
+    run_cmd(cmd, verbose)
 }
