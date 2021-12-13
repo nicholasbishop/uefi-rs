@@ -1,11 +1,13 @@
 use crate::util::{print_cmd, UefiArch, Verbose};
 use anyhow::{bail, Result};
 use clap::Parser;
+use fs_err::{File, OpenOptions};
 use nix::sys::stat::Mode;
 use nix::unistd::mkfifo;
 use std::ffi::OsString;
+use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use tempfile::TempDir;
 
 #[derive(Debug, Parser)]
@@ -197,7 +199,24 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, esp_dir: &Path, verbose: Verbose)
         print_cmd(&cmd);
     }
 
+    cmd.stdin(Stdio::piped());
+    cmd.stdout(Stdio::piped());
     let mut child = cmd.spawn()?;
+
+    let mut monitor_output = BufReader::new(File::open(monitor_output_path)?);
+    let mut monitor_input = OpenOptions::new().write(true).open(monitor_input_path)?;
+
+    // Execute the QEMU monitor handshake, doing basic sanity checks.
+    let mut line = String::new();
+    monitor_output.read_line(&mut line)?;
+    assert!(line.starts_with(r#"{"QMP":"#));
+
+    writeln!(monitor_input, r#"{{"execute": "qmp_capabilities"}}"#)?;
+
+    line.clear();
+    monitor_output.read_line(&mut line)?;
+    assert_eq!(line, "{\"return\": {}}\r\n");
+
     child.wait()?;
 
     Ok(())
