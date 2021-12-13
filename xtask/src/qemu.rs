@@ -4,6 +4,7 @@ use clap::Parser;
 use fs_err::{File, OpenOptions};
 use nix::sys::stat::Mode;
 use nix::unistd::mkfifo;
+use regex::Regex;
 use std::ffi::OsString;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
@@ -242,9 +243,21 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, esp_dir: &Path, verbose: Verbose)
     monitor_io.write_line(r#"{"execute": "qmp_capabilities"}"#)?;
     assert_eq!(monitor_io.read_line()?, "{\"return\": {}}\r\n");
 
+    // This regex is used to detect and strip ANSI escape codes when
+    // analyzing the output of the test runner.
+    let ansi_escape = Regex::new(r"(\x9B|\x1B\[)[0-?]*[ -/]*[@-~]")?;
+
     let mut child_io = Io::new(child.stdout.take().unwrap(), child.stdin.take().unwrap());
     while let Ok(line) = child_io.read_line() {
-        println!("{}", line);
+        let stripped = ansi_escape.replace(line.trim(), "");
+
+        // Skip empty lines.
+        if stripped.is_empty() {
+            continue;
+        }
+
+        // Print out the processed QEMU output for logging & inspection.
+        println!("{}", stripped);
     }
 
     child.wait()?;
