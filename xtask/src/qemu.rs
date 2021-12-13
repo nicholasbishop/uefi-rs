@@ -1,5 +1,5 @@
-use crate::util::{run_cmd, Result, UefiArch, Verbose};
-use anyhow::bail;
+use crate::util::{run_cmd, UefiArch, Verbose};
+use anyhow::{bail, Result};
 use clap::Parser;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};

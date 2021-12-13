@@ -1,9 +1,7 @@
-use anyhow::{anyhow, bail, Error};
+use anyhow::{anyhow, bail, Error, Result};
 use std::fmt;
 use std::process::Command;
 use std::str::FromStr;
-
-pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Verbose {

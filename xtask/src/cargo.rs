@@ -1,5 +1,5 @@
-use crate::util::{Result, UefiArch};
-use anyhow::bail;
+use crate::util::UefiArch;
+use anyhow::{bail, Result};
 use std::process::Command;
 
 #[derive(Clone, Copy, Debug)]

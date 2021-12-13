@@ -2,10 +2,11 @@ mod cargo;
 mod qemu;
 mod util;
 
+use anyhow::Result;
 use cargo::{Cargo, CargoAction, Features, Package};
 use clap::{Parser, Subcommand};
 use qemu::QemuOpt;
-use util::{run_cmd, Result, UefiArch, Verbose};
+use util::{run_cmd, UefiArch, Verbose};
 
 /// Developer utility for running various tasks in uefi-rs.
 #[derive(Debug, Parser)]
