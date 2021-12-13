@@ -99,6 +99,10 @@ fn doc(opt: &Opt, open: bool) -> Result<()> {
     run_cmd(cargo.command(), opt.verbose)
 }
 
+fn run(opt: &Opt) -> Result<()> {
+    todo!()
+}
+
 fn test(opt: &Opt) -> Result<()> {
     let cargo = Cargo {
         action: CargoAction::Test,
@@ -122,7 +126,7 @@ fn main() -> Result<()> {
         Action::Build => build(opt),
         Action::Clippy => clippy(opt),
         Action::Doc { open } => doc(opt, open),
+        Action::Run => run(opt),
         Action::Test => test(opt),
-        _ => todo!(),
     }
 }
