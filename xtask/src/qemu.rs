@@ -20,6 +20,7 @@ pub struct QemuOpt {
 struct OvmfPaths {
     code: PathBuf,
     vars: PathBuf,
+    vars_read_only: bool,
 }
 
 impl OvmfPaths {
@@ -28,10 +29,14 @@ impl OvmfPaths {
             UefiArch::AArch64 => Self {
                 code: dir.join("QEMU_EFI-pflash.raw"),
                 vars: dir.join("vars-template-pflash.raw"),
+                // The OVMF implementation for AArch64 won't boot unless
+                // the vars file is writeable.
+                vars_read_only: false,
             },
             UefiArch::X86_64 => Self {
                 code: dir.join("OVMF_CODE.fd"),
                 vars: dir.join("OVMF_VARS.fd"),
+                vars_read_only: true,
             },
         }
     }
@@ -89,18 +94,11 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, verbose: Verbose) -> Result<()> {
     // QEMU by defaults enables a ton of devices which slow down boot.
     cmd.arg("-nodefaults");
 
-    let ovmf_vars_readonly;
     match arch {
         UefiArch::AArch64 => {
-            // The OVMF implementation for AArch64 won't boot unless the
-            // vars file is writeable.
-            ovmf_vars_readonly = false;
-
             // TODO
         }
         UefiArch::X86_64 => {
-            ovmf_vars_readonly = true;
-
             // Use a modern machine.
             cmd.args(&["-machine", "q35"]);
 
@@ -124,7 +122,11 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, verbose: Verbose) -> Result<()> {
 
     // Set up OVMF.
     let ovmf_paths = OvmfPaths::find(opt, arch)?;
-    let ovmf_vars_readonly = if ovmf_vars_readonly { "on" } else { "off" };
+    let ovmf_vars_readonly = if ovmf_paths.vars_read_only {
+        "on"
+    } else {
+        "off"
+    };
 
     let mut ovmf_code_drive = OsString::from("if=pflash,format=raw,readonly=on,file=");
     ovmf_code_drive.push(ovmf_paths.code);
