@@ -8,10 +8,13 @@ use std::process::Command;
 #[derive(Debug, Parser)]
 pub struct QemuOpt {
     #[clap(long)]
+    ci: bool,
+
+    #[clap(long)]
     disable_kvm: bool,
 
     #[clap(long)]
-    ci: bool,
+    headless: bool,
 
     #[clap(long)]
     ovmf_dir: Option<PathBuf>,
@@ -166,6 +169,13 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, esp_dir: &Path, verbose: Verbose)
     let qemu_monitor_pipe = "qemu-monitor";
     // Map the QEMU monitor to a pair of named pipes
     cmd.args(&["-qmp", &format!("pipe:{}", qemu_monitor_pipe)]);
+
+    // When running in headless mode we don't have video, but we can still have
+    // QEMU emulate a display and take screenshots from it.
+    cmd.args(&["-vga", "std"]);
+    if opt.headless {
+        cmd.args(&["-display", "none"]);
+    }
 
     run_cmd(cmd, verbose)
 }
