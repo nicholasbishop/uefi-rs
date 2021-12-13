@@ -107,6 +107,10 @@ fn run(opt: &Opt, qemu_opt: &QemuOpt) -> Result<()> {
         warnings_as_errors: opt.warnings_as_errors,
     };
     run_cmd(cargo.command()?, opt.verbose())?;
+
+    // Create an EFI boot directory to pass into QEMU.
+    // TODO
+
     qemu::run_qemu(opt.target, qemu_opt, opt.verbose())
 }
 
