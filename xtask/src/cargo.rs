@@ -125,20 +125,13 @@ impl Cargo {
         };
         cmd.arg(action);
 
-        let build_std_args = &[
-            "-Zbuild-std=core,compiler_builtins,alloc",
-            "-Zbuild-std-features=compiler-builtins-mem",
-        ];
-        match self.target {
-            Some(UefiArch::AArch64) => {
-                cmd.args(&["--target", "aarch64-unknown-uefi"]);
-                cmd.args(build_std_args);
-            }
-            Some(UefiArch::X86_64) => {
-                cmd.args(&["--target", "x86_64-unknown-uefi"]);
-                cmd.args(build_std_args);
-            }
-            None => {}
+        if let Some(target) = self.target {
+            cmd.args(&[
+                "--target",
+                target.as_triple(),
+                "-Zbuild-std=core,compiler_builtins,alloc",
+                "-Zbuild-std-features=compiler-builtins-mem",
+            ]);
         }
 
         if self.packages.is_empty() {

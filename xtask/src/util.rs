@@ -13,7 +13,14 @@ pub enum UefiArch {
 }
 
 impl UefiArch {
-    fn as_triple(self) -> &'static str {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::AArch64 => "aarch64",
+            Self::X86_64 => "x86_64",
+        }
+    }
+
+    pub fn as_triple(self) -> &'static str {
         match self {
             Self::AArch64 => "aarch64-unknown-uefi",
             Self::X86_64 => "x86_64-unknown-uefi",
@@ -29,7 +36,7 @@ impl Default for UefiArch {
 
 impl fmt::Display for UefiArch {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.as_triple())
+        write!(f, "{}", self.as_str())
     }
 }
 
@@ -38,8 +45,8 @@ impl FromStr for UefiArch {
 
     fn from_str(s: &str) -> Result<Self> {
         match s {
-            "aarch64" | "aarch64-unknown-uefi" => Ok(Self::AArch64),
-            "x86_64" | "x86_64-unknown-uefi" => Ok(Self::X86_64),
+            "aarch64" => Ok(Self::AArch64),
+            "x86_64" => Ok(Self::X86_64),
             _ => Err(anyhow!("invalid triple: {}", s)),
         }
     }
