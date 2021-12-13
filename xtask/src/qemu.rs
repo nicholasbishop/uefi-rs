@@ -4,6 +4,7 @@ use std::process::Command;
 
 pub fn run_qemu(arch: Triple, verbose: bool) -> Result<()> {
     let qemu_exe = match arch {
+        Triple::AArch64UnknownUefi => "qemu-system-aarch64",
         Triple::X86_64UnknownUefi => "qemu-system-x86_64",
         Triple::Default => bail!("invalid arch for qemu"),
     };
@@ -14,6 +15,9 @@ pub fn run_qemu(arch: Triple, verbose: bool) -> Result<()> {
     cmd.arg("-nodefaults");
 
     match arch {
+        Triple::AArch64UnknownUefi => {
+            todo!()
+        }
         Triple::X86_64UnknownUefi => {
             // Use a modern machine.
             cmd.args(&["-machine", "q35"]);

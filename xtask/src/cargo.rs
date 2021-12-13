@@ -125,15 +125,19 @@ impl Cargo {
         };
         cmd.arg(action);
 
+        let build_std_args = &[
+            "-Zbuild-std=core,compiler_builtins,alloc",
+            "-Zbuild-std-features=compiler-builtins-mem",
+        ];
         match self.target {
             Triple::Default => {}
+            Triple::AArch64UnknownUefi => {
+                cmd.args(&["--target", "aarch64-unknown-uefi"]);
+                cmd.args(build_std_args);
+            }
             Triple::X86_64UnknownUefi => {
-                cmd.args(&[
-                    "--target",
-                    "x86_64-unknown-uefi",
-                    "-Zbuild-std=core,compiler_builtins,alloc",
-                    "-Zbuild-std-features=compiler-builtins-mem",
-                ]);
+                cmd.args(&["--target", "x86_64-unknown-uefi"]);
+                cmd.args(build_std_args);
             }
         }
 
