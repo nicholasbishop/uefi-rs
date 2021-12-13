@@ -59,6 +59,7 @@ pub struct Cargo {
     pub nightly: bool,
     pub packages: Packages,
     pub target: Triple,
+    pub warnings_as_errors: bool,
 }
 
 impl Cargo {
@@ -72,22 +73,32 @@ impl Cargo {
         let mut extra_args: Vec<&str> = Vec::new();
         let mut tool_args: Vec<&str> = Vec::new();
         match self.action {
-            CargoAction::Build => action = "build",
+            CargoAction::Build => {
+                action = "build";
+                if self.warnings_as_errors {
+                    extra_args.extend(&["-D", "warnings"]);
+                }
+            }
             CargoAction::Clippy => {
                 action = "clippy";
-                // Treat all warnings as errors.
-                tool_args.extend(&["-D", "warnings"]);
+                if self.warnings_as_errors {
+                    tool_args.extend(&["-D", "warnings"]);
+                }
             }
             CargoAction::Doc { open } => {
                 action = "doc";
-                // Treat all warnings as errors.
-                cmd.env("RUSTDOCFLAGS", "-Dwarnings");
+                if self.warnings_as_errors {
+                    cmd.env("RUSTDOCFLAGS", "-Dwarnings");
+                }
                 if open {
                     extra_args.push("--open");
                 }
             }
             CargoAction::Test => {
                 action = "test";
+                if self.warnings_as_errors {
+                    extra_args.extend(&["-D", "warnings"]);
+                }
             }
         };
         cmd.arg(action);

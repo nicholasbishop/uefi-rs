@@ -14,6 +14,10 @@ struct Opt {
     #[clap(long)]
     verbose: bool,
 
+    /// Treat warnings as errors.
+    #[clap(long)]
+    warnings_as_errors: bool,
+
     #[clap(subcommand)]
     action: Action,
 }
@@ -54,6 +58,7 @@ fn build(opt: &Opt) -> Result<()> {
         nightly: true,
         packages: Packages::EverythingExceptXtask,
         target: Triple::X86_64UnknownUefi,
+        warnings_as_errors: opt.warnings_as_errors,
     };
     run_cmd(cargo.command(), opt.verbose)
 }
@@ -66,6 +71,7 @@ fn clippy(opt: &Opt) -> Result<()> {
         nightly: true,
         packages: Packages::EverythingExceptXtask,
         target: Triple::X86_64UnknownUefi,
+        warnings_as_errors: opt.warnings_as_errors,
     };
     run_cmd(cargo.command(), opt.verbose)?;
 
@@ -76,6 +82,7 @@ fn clippy(opt: &Opt) -> Result<()> {
         nightly: false,
         packages: Packages::Xtask,
         target: Triple::Default,
+        warnings_as_errors: opt.warnings_as_errors,
     };
     run_cmd(cargo.command(), opt.verbose)
 }
@@ -87,6 +94,7 @@ fn doc(opt: &Opt, open: bool) -> Result<()> {
         nightly: true,
         packages: Packages::Published,
         target: Triple::X86_64UnknownUefi,
+        warnings_as_errors: opt.warnings_as_errors,
     };
     run_cmd(cargo.command(), opt.verbose)
 }
@@ -100,6 +108,7 @@ fn test(opt: &Opt) -> Result<()> {
         // as it has lang items that conflict with `std`.
         packages: Packages::UefiAndUefiMacros,
         target: Triple::Default,
+        warnings_as_errors: opt.warnings_as_errors,
     };
     run_cmd(cargo.command(), opt.verbose)
 }
