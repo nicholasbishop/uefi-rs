@@ -81,6 +81,7 @@ pub struct Cargo {
     pub features: Features,
     pub nightly: bool,
     pub packages: Vec<Package>,
+    pub release: bool,
     pub target: Option<UefiArch>,
     pub warnings_as_errors: bool,
 }
@@ -125,6 +126,10 @@ impl Cargo {
             }
         };
         cmd.arg(action);
+
+        if self.release {
+            cmd.arg("--release");
+        }
 
         if let Some(target) = self.target {
             cmd.args(&[

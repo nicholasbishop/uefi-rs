@@ -14,6 +14,10 @@ struct Opt {
     #[clap(long, default_value_t)]
     target: UefiArch,
 
+    /// Build in release mode.
+    #[clap(long)]
+    release: bool,
+
     /// Print commands before executing them.
     #[clap(long)]
     verbose: bool,
@@ -54,6 +58,7 @@ fn build(opt: &Opt) -> Result<()> {
         features: Features::MoreCode,
         nightly: true,
         packages: Package::all_except_xtask(),
+        release: opt.release,
         target: Some(opt.target),
         warnings_as_errors: opt.warnings_as_errors,
     };
@@ -67,6 +72,7 @@ fn clippy(opt: &Opt) -> Result<()> {
         features: Features::MoreCode,
         nightly: true,
         packages: Package::all_except_xtask(),
+        release: opt.release,
         target: Some(opt.target),
         warnings_as_errors: opt.warnings_as_errors,
     };
@@ -78,6 +84,7 @@ fn clippy(opt: &Opt) -> Result<()> {
         features: Features::None,
         nightly: false,
         packages: vec![Package::Xtask],
+        release: opt.release,
         target: None,
         warnings_as_errors: opt.warnings_as_errors,
     };
@@ -90,6 +97,7 @@ fn doc(opt: &Opt, open: bool) -> Result<()> {
         features: Features::MoreCode,
         nightly: true,
         packages: Package::published(),
+        release: opt.release,
         target: Some(opt.target),
         warnings_as_errors: opt.warnings_as_errors,
     };
@@ -103,6 +111,7 @@ fn run(opt: &Opt, qemu_opt: &QemuOpt) -> Result<()> {
         features: Features::Qemu,
         nightly: true,
         packages: vec![Package::UefiTestRunner],
+        release: opt.release,
         target: Some(opt.target),
         warnings_as_errors: opt.warnings_as_errors,
     };
@@ -123,6 +132,7 @@ fn test(opt: &Opt) -> Result<()> {
         // as it has lang items that conflict with `std`. The xtask
         // currently doesn't have any tests.
         packages: vec![Package::Uefi, Package::UefiMacros],
+        release: opt.release,
         // Use the host target so that tests can run without a VM.
         target: None,
         // cargo test doesn't currently have a flag to treat warnings as
