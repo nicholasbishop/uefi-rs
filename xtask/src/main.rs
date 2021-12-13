@@ -4,7 +4,7 @@ mod util;
 
 use cargo::{Cargo, CargoAction, Features, Package};
 use clap::{Parser, Subcommand};
-use qemu::Kvm;
+use qemu::QemuOpt;
 use util::{run_cmd, Result, UefiArch, Verbose};
 
 /// Developer utility for running various tasks in uefi-rs.
@@ -43,10 +43,7 @@ enum Action {
         #[clap(long)]
         open: bool,
     },
-    Run {
-        #[clap(long)]
-        disable_kvm: bool,
-    },
+    Run(QemuOpt),
     Test,
 }
 
@@ -98,7 +95,7 @@ fn doc(opt: &Opt, open: bool) -> Result<()> {
     run_cmd(cargo.command()?, opt.verbose())
 }
 
-fn run(opt: &Opt, kvm: Kvm) -> Result<()> {
+fn run(opt: &Opt, qemu_opt: &QemuOpt) -> Result<()> {
     // Build uefi-test-runner.
     let cargo = Cargo {
         action: CargoAction::Build,
@@ -109,7 +106,7 @@ fn run(opt: &Opt, kvm: Kvm) -> Result<()> {
         warnings_as_errors: opt.warnings_as_errors,
     };
     run_cmd(cargo.command()?, opt.verbose())?;
-    qemu::run_qemu(opt.target, kvm, opt.verbose())
+    qemu::run_qemu(opt.target, qemu_opt, opt.verbose())
 }
 
 fn test(opt: &Opt) -> Result<()> {
@@ -133,18 +130,11 @@ fn test(opt: &Opt) -> Result<()> {
 fn main() -> Result<()> {
     let opt = &Opt::parse();
 
-    match opt.action {
+    match &opt.action {
         Action::Build => build(opt),
         Action::Clippy => clippy(opt),
-        Action::Doc { open } => doc(opt, open),
-        Action::Run { disable_kvm } => run(
-            opt,
-            if disable_kvm {
-                Kvm::Disable
-            } else {
-                Kvm::Enable
-            },
-        ),
+        Action::Doc { open } => doc(opt, *open),
+        Action::Run(qemu_opt) => run(opt, qemu_opt),
         Action::Test => test(opt),
     }
 }
