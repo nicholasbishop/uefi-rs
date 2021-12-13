@@ -236,10 +236,13 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, esp_dir: &Path, verbose: Verbose)
 
     // Execute the QEMU monitor handshake, doing basic sanity checks.
     assert!(monitor_io.read_line()?.starts_with(r#"{"QMP":"#));
-
     monitor_io.write_line(r#"{"execute": "qmp_capabilities"}"#)?;
-
     assert_eq!(monitor_io.read_line()?, "{\"return\": {}}\r\n");
+
+    let mut child_io = Io::new(child.stdout.take().unwrap(), child.stdin.take().unwrap());
+    while let Ok(line) = child_io.read_line() {
+        println!("{}", line);
+    }
 
     child.wait()?;
 
