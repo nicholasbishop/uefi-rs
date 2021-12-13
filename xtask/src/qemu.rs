@@ -278,10 +278,17 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, esp_dir: &Path, verbose: Verbose)
             // Tell the VM that the screenshot was taken
             child_io.write_line("OK")?;
 
-            // TODO: compare screenshot
+            // Compare screenshot to the reference file specified by the user.
+            // TODO: Add an operating mode where the reference is created if it doesn't exist.
+            let reference_file =
+                Path::new("uefi-test-runner/screenshots").join(format!("{}.ppm", reference_name));
+            let expected = fs_err::read(reference_file)?;
+            let actual = fs_err::read("screenshot.ppm")?;
+            assert_eq!(expected, actual);
         }
     }
 
+    // TODO: are we sure child is killed on drop?
     child.wait()?;
 
     Ok(())
