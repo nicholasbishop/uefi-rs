@@ -97,7 +97,7 @@ impl Cargo {
             CargoAction::Test => {
                 action = "test";
                 if self.warnings_as_errors {
-                    extra_args.extend(&["-D", "warnings"]);
+                    panic!("cargo test can't treat warnings as errors");
                 }
             }
         };

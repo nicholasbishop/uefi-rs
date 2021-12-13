@@ -108,7 +108,9 @@ fn test(opt: &Opt) -> Result<()> {
         // as it has lang items that conflict with `std`.
         packages: Packages::UefiAndUefiMacros,
         target: Triple::Default,
-        warnings_as_errors: opt.warnings_as_errors,
+        // cargo test doesn't currently have a flag to treat warnings as
+        // errors.
+        warnings_as_errors: false,
     };
     run_cmd(cargo.command(), opt.verbose)
 }
