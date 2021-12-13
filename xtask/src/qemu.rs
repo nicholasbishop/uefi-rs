@@ -5,6 +5,7 @@ use fs_err::{File, OpenOptions};
 use nix::sys::stat::Mode;
 use nix::unistd::mkfifo;
 use regex::bytes::Regex;
+use serde_json::{json, Value};
 use std::ffi::OsString;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
@@ -125,10 +126,19 @@ impl<R: Read, W: Write> Io<R, W> {
         Ok(line)
     }
 
+    fn read_json(&mut self) -> Result<Value> {
+        let line = self.read_line()?;
+        Ok(serde_json::from_str(&line)?)
+    }
+
     fn write_line(&mut self, line: &str) -> Result<()> {
         writeln!(self.writer, "{}", line)?;
         self.writer.flush()?;
         Ok(())
+    }
+
+    fn write_json(&mut self, json: Value) -> Result<()> {
+        self.write_line(&json.to_string())
     }
 }
 
@@ -240,8 +250,8 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, esp_dir: &Path, verbose: Verbose)
 
     // Execute the QEMU monitor handshake, doing basic sanity checks.
     assert!(monitor_io.read_line()?.starts_with(r#"{"QMP":"#));
-    monitor_io.write_line(r#"{"execute": "qmp_capabilities"}"#)?;
-    assert_eq!(monitor_io.read_line()?, "{\"return\": {}}\r\n");
+    monitor_io.write_json(json!({"execute": "qmp_capabilities"}))?;
+    assert_eq!(monitor_io.read_json()?, json!({"return": {}}));
 
     // This regex is used to detect and strip ANSI escape codes when
     // analyzing the output of the test runner.
@@ -264,16 +274,17 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, esp_dir: &Path, verbose: Verbose)
         // If the app requests a screenshot, take it.
         if let Some(reference_name) = stripped.strip_prefix("SCREENSHOT: ") {
             // Ask QEMU to take a screenshot.
-            let monitor_command =
-                r#"{"execute": "screendump", "arguments": {"filename": "screenshot.ppm"}}"#;
-            monitor_io.write_line(monitor_command)?;
+            monitor_io.write_json(json!({
+                "execute": "screendump",
+                "arguments": {"filename": "screenshot.ppm"}}
+            ))?;
 
             // Wait for QEMU's acknowledgement, ignoring events.
-            let mut reply = monitor_io.read_line()?;
-            while reply.contains("event") {
-                reply = monitor_io.read_line()?;
+            let mut reply = monitor_io.read_json()?;
+            while reply.as_object().unwrap().contains_key("event") {
+                reply = monitor_io.read_json()?;
             }
-            assert_eq!(reply.trim(), r#"{"return": {}}"#);
+            assert_eq!(reply, json!({"return": {}}));
 
             // Tell the VM that the screenshot was taken
             child_io.write_line("OK")?;
