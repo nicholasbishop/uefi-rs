@@ -83,6 +83,17 @@ impl OvmfPaths {
     }
 }
 
+fn add_pflash_args(cmd: &mut Command, file: &Path, read_only: bool) {
+    // Build the argument as an OsString to avoid requiring a UTF-8 path.
+    let mut arg = OsString::from("if=pflash,format=raw,readonly=");
+    arg.push(if read_only { "on" } else { "off" });
+    arg.push(",file=");
+    arg.push(file);
+
+    cmd.arg("-drive");
+    cmd.arg(arg);
+}
+
 pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, verbose: Verbose) -> Result<()> {
     let qemu_exe = match arch {
         UefiArch::AArch64 => "qemu-system-aarch64",
@@ -122,24 +133,8 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, verbose: Verbose) -> Result<()> {
 
     // Set up OVMF.
     let ovmf_paths = OvmfPaths::find(opt, arch)?;
-    let ovmf_vars_readonly = if ovmf_paths.vars_read_only {
-        "on"
-    } else {
-        "off"
-    };
-
-    let mut ovmf_code_drive = OsString::from("if=pflash,format=raw,readonly=on,file=");
-    ovmf_code_drive.push(ovmf_paths.code);
-
-    let mut ovmf_vars_drive = OsString::from("if=pflash,format=raw,readonly=");
-    ovmf_vars_drive.push(ovmf_vars_readonly);
-    ovmf_vars_drive.push(",file=");
-    ovmf_vars_drive.push(ovmf_paths.vars);
-
-    cmd.arg("-drive");
-    cmd.arg(ovmf_code_drive);
-    cmd.arg("-drive");
-    cmd.arg(ovmf_vars_drive);
+    add_pflash_args(&mut cmd, &ovmf_paths.code, /*read_only=*/ true);
+    add_pflash_args(&mut cmd, &ovmf_paths.vars, ovmf_paths.vars_read_only);
 
     run_cmd(cmd, verbose)
 }
