@@ -130,11 +130,11 @@ impl Cargo {
             "-Zbuild-std-features=compiler-builtins-mem",
         ];
         match self.target {
-            Some(UefiArch::AArch64UnknownUefi) => {
+            Some(UefiArch::AArch64) => {
                 cmd.args(&["--target", "aarch64-unknown-uefi"]);
                 cmd.args(build_std_args);
             }
-            Some(UefiArch::X86_64UnknownUefi) => {
+            Some(UefiArch::X86_64) => {
                 cmd.args(&["--target", "x86_64-unknown-uefi"]);
                 cmd.args(build_std_args);
             }

@@ -3,8 +3,8 @@ use std::process::Command;
 
 pub fn run_qemu(arch: UefiArch, verbose: bool) -> Result<()> {
     let qemu_exe = match arch {
-        UefiArch::AArch64UnknownUefi => "qemu-system-aarch64",
-        UefiArch::X86_64UnknownUefi => "qemu-system-x86_64",
+        UefiArch::AArch64 => "qemu-system-aarch64",
+        UefiArch::X86_64 => "qemu-system-x86_64",
     };
     let mut cmd = Command::new(qemu_exe);
 
@@ -13,10 +13,10 @@ pub fn run_qemu(arch: UefiArch, verbose: bool) -> Result<()> {
     cmd.arg("-nodefaults");
 
     match arch {
-        UefiArch::AArch64UnknownUefi => {
+        UefiArch::AArch64 => {
             todo!()
         }
-        UefiArch::X86_64UnknownUefi => {
+        UefiArch::X86_64 => {
             // Use a modern machine.
             cmd.args(&["-machine", "q35"]);
 

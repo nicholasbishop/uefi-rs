@@ -7,23 +7,23 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Clone, Copy, Debug)]
 pub enum UefiArch {
-    AArch64UnknownUefi,
-    X86_64UnknownUefi,
+    AArch64,
+    X86_64,
     // TODO
 }
 
 impl UefiArch {
     fn as_triple(self) -> &'static str {
         match self {
-            Self::AArch64UnknownUefi => "aarch64-unknown-uefi",
-            Self::X86_64UnknownUefi => "x86_64-unknown-uefi",
+            Self::AArch64 => "aarch64-unknown-uefi",
+            Self::X86_64 => "x86_64-unknown-uefi",
         }
     }
 }
 
 impl Default for UefiArch {
     fn default() -> Self {
-        Self::X86_64UnknownUefi
+        Self::X86_64
     }
 }
 
@@ -38,8 +38,8 @@ impl FromStr for UefiArch {
 
     fn from_str(s: &str) -> Result<Self> {
         match s {
-            "aarch64" | "aarch64-unknown-uefi" => Ok(Self::AArch64UnknownUefi),
-            "x86_64" | "x86_64-unknown-uefi" => Ok(Self::X86_64UnknownUefi),
+            "aarch64" | "aarch64-unknown-uefi" => Ok(Self::AArch64),
+            "x86_64" | "x86_64-unknown-uefi" => Ok(Self::X86_64),
             _ => Err(anyhow!("invalid triple: {}", s)),
         }
     }
