@@ -133,6 +133,18 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, esp_dir: &Path, verbose: Verbose)
             if opt.ci {
                 cmd.arg("-no-reboot");
             }
+
+            // Map the QEMU exit signal to port f4.
+            cmd.args(&["-device", "isa-debug-exit,iobase=0xf4,iosize=0x04"]);
+
+            // OVMF debug builds can output information to a serial `debugcon`.
+            // Only enable when debugging UEFI boot.
+            // cmd.args(&[
+            //     "-debugcon",
+            //     "file:debug.log",
+            //     "-global",
+            //     "isa-debugcon.iobase=0x402",
+            // ]);
         }
     }
 
@@ -150,6 +162,10 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, esp_dir: &Path, verbose: Verbose)
     // Connect the serial port to the host. OVMF is kind enough to
     // connect the UEFI stdout and stdin to that port too.
     cmd.args(&["-serial", "stdio"]);
+
+    let qemu_monitor_pipe = "qemu-monitor";
+    // Map the QEMU monitor to a pair of named pipes
+    cmd.args(&["-qmp", &format!("pipe:{}", qemu_monitor_pipe)]);
 
     run_cmd(cmd, verbose)
 }
