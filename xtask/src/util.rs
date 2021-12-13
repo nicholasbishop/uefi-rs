@@ -1,4 +1,5 @@
 use anyhow::{anyhow, bail, Error};
+use std::fmt;
 use std::process::Command;
 use std::str::FromStr;
 
@@ -11,13 +12,28 @@ pub enum Arch {
     // TODO
 }
 
+impl Arch {
+    fn as_triple(self) -> &'static str {
+        match self {
+            Self::AArch64UnknownUefi => "aarch64-unknown-uefi",
+            Self::X86_64UnknownUefi => "x86_64-unknown-uefi",
+        }
+    }
+}
+
+impl fmt::Display for Arch {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.as_triple())
+    }
+}
+
 impl FromStr for Arch {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {
         match s {
-            "aarch64" => Ok(Self::AArch64UnknownUefi),
-            "x86_64" => Ok(Self::X86_64UnknownUefi),
+            "aarch64" | "aarch64-unknown-uefi" => Ok(Self::AArch64UnknownUefi),
+            "x86_64" | "x86_64-unknown-uefi" => Ok(Self::X86_64UnknownUefi),
             _ => Err(anyhow!("invalid triple: {}", s)),
         }
     }
