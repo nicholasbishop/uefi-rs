@@ -56,15 +56,20 @@ impl FromStr for UefiArch {
     }
 }
 
+/// Print a command.
+pub fn print_cmd(cmd: &Command) {
+    print!("{}", cmd.get_program().to_string_lossy());
+    for arg in cmd.get_args() {
+        print!(" {}", arg.to_string_lossy());
+    }
+    println!();
+}
+
 /// Run a `Command` and check that it completes successfully. Optionally
 /// print the command before running it.
 pub fn run_cmd(mut cmd: Command, verbose: Verbose) -> Result<()> {
     if verbose == Verbose::Yes {
-        print!("{}", cmd.get_program().to_string_lossy());
-        for arg in cmd.get_args() {
-            print!(" {}", arg.to_string_lossy());
-        }
-        println!();
+        print_cmd(&cmd);
     }
 
     let status = cmd.status()?;

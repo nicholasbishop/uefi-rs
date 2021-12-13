@@ -1,4 +1,4 @@
-use crate::util::{run_cmd, UefiArch, Verbose};
+use crate::util::{print_cmd, UefiArch, Verbose};
 use anyhow::{bail, Result};
 use clap::Parser;
 use nix::sys::stat::Mode;
@@ -193,5 +193,12 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, esp_dir: &Path, verbose: Verbose)
     mkfifo(&monitor_input_path, fifo_mode)?;
     mkfifo(&monitor_output_path, fifo_mode)?;
 
-    run_cmd(cmd, verbose)
+    if verbose == Verbose::Yes {
+        print_cmd(&cmd);
+    }
+
+    let mut child = cmd.spawn()?;
+    child.wait()?;
+
+    Ok(())
 }
