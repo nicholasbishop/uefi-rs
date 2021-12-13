@@ -94,7 +94,7 @@ fn add_pflash_args(cmd: &mut Command, file: &Path, read_only: bool) {
     cmd.arg(arg);
 }
 
-pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, verbose: Verbose) -> Result<()> {
+pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, esp_dir: &Path, verbose: Verbose) -> Result<()> {
     let qemu_exe = match arch {
         UefiArch::AArch64 => "qemu-system-aarch64",
         UefiArch::X86_64 => "qemu-system-x86_64",
@@ -140,6 +140,12 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, verbose: Verbose) -> Result<()> {
     let ovmf_paths = OvmfPaths::find(opt, arch)?;
     add_pflash_args(&mut cmd, &ovmf_paths.code, /*read_only=*/ true);
     add_pflash_args(&mut cmd, &ovmf_paths.vars, ovmf_paths.vars_read_only);
+
+    // Mount a local directory as a FAT partition.
+    cmd.arg("-drive");
+    let mut drive_arg = OsString::from("format=raw,file=fat:rw:");
+    drive_arg.push(esp_dir);
+    cmd.arg(drive_arg);
 
     run_cmd(cmd, verbose)
 }

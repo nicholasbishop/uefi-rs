@@ -6,6 +6,7 @@ use anyhow::Result;
 use cargo::{Cargo, CargoAction, Features, Package};
 use clap::{Parser, Subcommand};
 use qemu::QemuOpt;
+use std::path::Path;
 use util::{run_cmd, UefiArch, Verbose};
 
 /// Developer utility for running various tasks in uefi-rs.
@@ -118,9 +119,23 @@ fn run(opt: &Opt, qemu_opt: &QemuOpt) -> Result<()> {
     run_cmd(cargo.command()?, opt.verbose())?;
 
     // Create an EFI boot directory to pass into QEMU.
-    // TODO
+    let build_mode = if opt.release { "release" } else { "debug" };
+    let build_dir = Path::new("target")
+        .join(opt.target.as_triple())
+        .join(build_mode);
+    let esp_dir = build_dir.join("esp");
+    let boot_dir = esp_dir.join("EFI").join("Boot");
+    let built_file = build_dir.join("uefi-test-runner.efi");
+    let output_file = match opt.target {
+        UefiArch::AArch64 => "BootAA64.efi",
+        UefiArch::X86_64 => "BootX64.efi",
+    };
+    if !boot_dir.exists() {
+        fs_err::create_dir_all(&boot_dir)?;
+    }
+    fs_err::copy(built_file, boot_dir.join(output_file))?;
 
-    qemu::run_qemu(opt.target, qemu_opt, opt.verbose())
+    qemu::run_qemu(opt.target, qemu_opt, &esp_dir, opt.verbose())
 }
 
 fn test(opt: &Opt) -> Result<()> {

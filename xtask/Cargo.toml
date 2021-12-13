@@ -7,3 +7,4 @@ publish = false
 [dependencies]
 anyhow = "1.0.51"
 clap = { version = "3.0.0-rc.4", features = ["derive"] }
+fs-err = "2.6.0"
