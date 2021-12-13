@@ -5,13 +5,13 @@ use std::str::FromStr;
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Clone, Copy, Debug)]
-pub enum Triple {
+pub enum Arch {
     AArch64UnknownUefi,
     X86_64UnknownUefi,
     // TODO
 }
 
-impl FromStr for Triple {
+impl FromStr for Arch {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {

@@ -4,13 +4,13 @@ mod util;
 
 use cargo::{Cargo, CargoAction, Features, Package};
 use clap::{Parser, Subcommand};
-use util::{run_cmd, Result, Triple};
+use util::{run_cmd, Arch, Result};
 
 /// Developer utility for running various tasks in uefi-rs.
 #[derive(Debug, Parser)]
 struct Opt {
     #[clap(long)]
-    target: Option<Triple>,
+    target: Option<Arch>,
 
     /// Print commands before executing them.
     #[clap(long)]
@@ -42,7 +42,7 @@ fn build(opt: &Opt) -> Result<()> {
         features: Features::MoreCode,
         nightly: true,
         packages: Package::all_except_xtask(),
-        target: Some(Triple::X86_64UnknownUefi),
+        target: Some(Arch::X86_64UnknownUefi),
         warnings_as_errors: opt.warnings_as_errors,
     };
     run_cmd(cargo.command(), opt.verbose)
@@ -55,7 +55,7 @@ fn clippy(opt: &Opt) -> Result<()> {
         features: Features::MoreCode,
         nightly: true,
         packages: Package::all_except_xtask(),
-        target: Some(Triple::X86_64UnknownUefi),
+        target: Some(Arch::X86_64UnknownUefi),
         warnings_as_errors: opt.warnings_as_errors,
     };
     run_cmd(cargo.command(), opt.verbose)?;
@@ -78,7 +78,7 @@ fn doc(opt: &Opt, open: bool) -> Result<()> {
         features: Features::MoreCode,
         nightly: true,
         packages: Package::published(),
-        target: Some(Triple::X86_64UnknownUefi),
+        target: Some(Arch::X86_64UnknownUefi),
         warnings_as_errors: opt.warnings_as_errors,
     };
     run_cmd(cargo.command(), opt.verbose)
@@ -91,13 +91,13 @@ fn run(opt: &Opt) -> Result<()> {
         features: Features::Qemu,
         nightly: true,
         packages: vec![Package::UefiTestRunner],
-        target: Some(Triple::X86_64UnknownUefi),
+        target: Some(Arch::X86_64UnknownUefi),
         warnings_as_errors: opt.warnings_as_errors,
     };
     run_cmd(cargo.command(), opt.verbose)?;
     qemu::run_qemu(
         // TODO
-        Triple::X86_64UnknownUefi,
+        Arch::X86_64UnknownUefi,
         opt.verbose,
     )
 }
