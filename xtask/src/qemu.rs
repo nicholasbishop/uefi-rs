@@ -17,56 +17,65 @@ pub struct QemuOpt {
     ovmf_dir: Option<PathBuf>,
 }
 
-/// Returns the tuple of paths to the OVMF code and vars firmware files,
-/// given the directory.
-fn ovmf_files(dir: &Path, arch: UefiArch) -> (PathBuf, PathBuf) {
-    match arch {
-        UefiArch::AArch64 => (
-            dir.join("QEMU_EFI-pflash.raw"),
-            dir.join("vars-template-pflash.raw"),
-        ),
-        UefiArch::X86_64 => (dir.join("OVMF_CODE.fd"), dir.join("OVMF_VARS.fd")),
-    }
+struct OvmfPaths {
+    code: PathBuf,
+    vars: PathBuf,
 }
 
-/// Check whether the given directory contains necessary OVMF files.
-fn check_ovmf_dir(dir: &Path, arch: UefiArch) -> bool {
-    let (ovmf_code, ovmf_vars) = ovmf_files(dir, arch);
-    ovmf_code.is_file() && ovmf_vars.is_file()
-}
-
-/// Find path to OVMF files.
-fn find_ovmf(opt: &QemuOpt, arch: UefiArch) -> Result<PathBuf> {
-    // If the path is specified in the settings, use it.
-    if let Some(ovmf_dir) = &opt.ovmf_dir {
-        if check_ovmf_dir(ovmf_dir, arch) {
-            return Ok(ovmf_dir.into());
+impl OvmfPaths {
+    fn from_dir(dir: &Path, arch: UefiArch) -> Self {
+        match arch {
+            UefiArch::AArch64 => Self {
+                code: dir.join("QEMU_EFI-pflash.raw"),
+                vars: dir.join("vars-template-pflash.raw"),
+            },
+            UefiArch::X86_64 => Self {
+                code: dir.join("OVMF_CODE.fd"),
+                vars: dir.join("OVMF_VARS.fd"),
+            },
         }
-        bail!("OVMF files not found in {}", ovmf_dir.display());
     }
 
-    // Check whether the test runner directory contains the files.
-    let ovmf_dir = Path::new("uefi-test-runner");
-    if check_ovmf_dir(ovmf_dir, arch) {
-        return Ok(ovmf_dir.into());
+    fn exists(&self) -> bool {
+        self.code.exists() && self.vars.exists()
     }
 
-    #[cfg(target_os = "linux")]
-    {
-        let possible_paths = [
-            // Most distros, including CentOS, Fedora, Debian, and Ubuntu.
-            Path::new("/usr/share/OVMF"),
-            // Arch Linux.
-            Path::new("/usr/share/ovmf/x64"),
-        ];
-        for path in possible_paths {
-            if check_ovmf_dir(path, arch) {
-                return Ok(path.into());
+    /// Find path to OVMF files.
+    fn find(opt: &QemuOpt, arch: UefiArch) -> Result<Self> {
+        // If the path is specified in the settings, use it.
+        if let Some(ovmf_dir) = &opt.ovmf_dir {
+            let ovmf_paths = Self::from_dir(ovmf_dir, arch);
+            if ovmf_paths.exists() {
+                return Ok(ovmf_paths);
+            }
+            bail!("OVMF files not found in {}", ovmf_dir.display());
+        }
+
+        // Check whether the test runner directory contains the files.
+        let ovmf_dir = Path::new("uefi-test-runner");
+        let ovmf_paths = Self::from_dir(ovmf_dir, arch);
+        if ovmf_paths.exists() {
+            return Ok(ovmf_paths);
+        }
+
+        #[cfg(target_os = "linux")]
+        {
+            let possible_paths = [
+                // Most distros, including CentOS, Fedora, Debian, and Ubuntu.
+                Path::new("/usr/share/OVMF"),
+                // Arch Linux.
+                Path::new("/usr/share/ovmf/x64"),
+            ];
+            for path in possible_paths {
+                let ovmf_paths = Self::from_dir(path, arch);
+                if ovmf_paths.exists() {
+                    return Ok(ovmf_paths);
+                }
             }
         }
-    }
 
-    bail!("OVMF files not found anywhere");
+        bail!("OVMF files not found anywhere");
+    }
 }
 
 pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, verbose: Verbose) -> Result<()> {
@@ -114,16 +123,16 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, verbose: Verbose) -> Result<()> {
     }
 
     // Set up OVMF.
-    let (ovmf_code, ovmf_vars) = ovmf_files(&find_ovmf(opt, arch)?, arch);
+    let ovmf_paths = OvmfPaths::find(opt, arch)?;
     let ovmf_vars_readonly = if ovmf_vars_readonly { "on" } else { "off" };
 
     let mut ovmf_code_drive = OsString::from("if=pflash,format=raw,readonly=on,file=");
-    ovmf_code_drive.push(ovmf_code);
+    ovmf_code_drive.push(ovmf_paths.code);
 
     let mut ovmf_vars_drive = OsString::from("if=pflash,format=raw,readonly=");
     ovmf_vars_drive.push(ovmf_vars_readonly);
     ovmf_vars_drive.push(",file=");
-    ovmf_vars_drive.push(ovmf_vars);
+    ovmf_vars_drive.push(ovmf_paths.vars);
 
     cmd.arg("-drive");
     cmd.arg(ovmf_code_drive);
