@@ -117,7 +117,10 @@ impl<R: Read, W: Write> Io<R, W> {
 
     fn read_line(&mut self) -> Result<String> {
         let mut line = String::new();
-        self.reader.read_line(&mut line)?;
+        let num = self.reader.read_line(&mut line)?;
+        if num == 0 {
+            bail!("EOF reached");
+        }
         Ok(line)
     }
 
