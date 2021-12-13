@@ -4,13 +4,13 @@ mod util;
 
 use cargo::{Cargo, CargoAction, Features, Package};
 use clap::{Parser, Subcommand};
-use util::{run_cmd, Arch, Result};
+use util::{run_cmd, Result, UefiArch};
 
 /// Developer utility for running various tasks in uefi-rs.
 #[derive(Debug, Parser)]
 struct Opt {
-    #[clap(long, default_value_t = Arch::X86_64UnknownUefi)]
-    target: Arch,
+    #[clap(long, default_value_t = UefiArch::X86_64UnknownUefi)]
+    target: UefiArch,
 
     /// Print commands before executing them.
     #[clap(long)]

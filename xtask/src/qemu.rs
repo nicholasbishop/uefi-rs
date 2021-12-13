@@ -1,10 +1,10 @@
-use crate::util::{run_cmd, Arch, Result};
+use crate::util::{run_cmd, Result, UefiArch};
 use std::process::Command;
 
-pub fn run_qemu(arch: Arch, verbose: bool) -> Result<()> {
+pub fn run_qemu(arch: UefiArch, verbose: bool) -> Result<()> {
     let qemu_exe = match arch {
-        Arch::AArch64UnknownUefi => "qemu-system-aarch64",
-        Arch::X86_64UnknownUefi => "qemu-system-x86_64",
+        UefiArch::AArch64UnknownUefi => "qemu-system-aarch64",
+        UefiArch::X86_64UnknownUefi => "qemu-system-x86_64",
     };
     let mut cmd = Command::new(qemu_exe);
 
@@ -13,10 +13,10 @@ pub fn run_qemu(arch: Arch, verbose: bool) -> Result<()> {
     cmd.arg("-nodefaults");
 
     match arch {
-        Arch::AArch64UnknownUefi => {
+        UefiArch::AArch64UnknownUefi => {
             todo!()
         }
-        Arch::X86_64UnknownUefi => {
+        UefiArch::X86_64UnknownUefi => {
             // Use a modern machine.
             cmd.args(&["-machine", "q35"]);
 

@@ -1,4 +1,4 @@
-use crate::util::Arch;
+use crate::util::UefiArch;
 use std::process::Command;
 
 #[derive(Clone, Copy, Debug)]
@@ -80,7 +80,7 @@ pub struct Cargo {
     pub features: Features,
     pub nightly: bool,
     pub packages: Vec<Package>,
-    pub target: Option<Arch>,
+    pub target: Option<UefiArch>,
     pub warnings_as_errors: bool,
 }
 
@@ -130,11 +130,11 @@ impl Cargo {
             "-Zbuild-std-features=compiler-builtins-mem",
         ];
         match self.target {
-            Some(Arch::AArch64UnknownUefi) => {
+            Some(UefiArch::AArch64UnknownUefi) => {
                 cmd.args(&["--target", "aarch64-unknown-uefi"]);
                 cmd.args(build_std_args);
             }
-            Some(Arch::X86_64UnknownUefi) => {
+            Some(UefiArch::X86_64UnknownUefi) => {
                 cmd.args(&["--target", "x86_64-unknown-uefi"]);
                 cmd.args(build_std_args);
             }

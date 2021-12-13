@@ -6,13 +6,13 @@ use std::str::FromStr;
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Clone, Copy, Debug)]
-pub enum Arch {
+pub enum UefiArch {
     AArch64UnknownUefi,
     X86_64UnknownUefi,
     // TODO
 }
 
-impl Arch {
+impl UefiArch {
     fn as_triple(self) -> &'static str {
         match self {
             Self::AArch64UnknownUefi => "aarch64-unknown-uefi",
@@ -21,13 +21,13 @@ impl Arch {
     }
 }
 
-impl fmt::Display for Arch {
+impl fmt::Display for UefiArch {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.as_triple())
     }
 }
 
-impl FromStr for Arch {
+impl FromStr for UefiArch {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {
