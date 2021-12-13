@@ -100,7 +100,16 @@ fn doc(opt: &Opt, open: bool) -> Result<()> {
 }
 
 fn run(opt: &Opt) -> Result<()> {
-    todo!()
+    // Build uefi-test-runner.
+    let cargo = Cargo {
+        action: CargoAction::Build,
+        features: Features::Qemu,
+        nightly: true,
+        packages: vec![Package::UefiTestRunner],
+        target: Triple::X86_64UnknownUefi,
+        warnings_as_errors: opt.warnings_as_errors,
+    };
+    run_cmd(cargo.command(), opt.verbose)
 }
 
 fn test(opt: &Opt) -> Result<()> {

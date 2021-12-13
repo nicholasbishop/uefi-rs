@@ -56,6 +56,9 @@ pub enum Features {
 
     /// All the features in the uefi package that enable more code.
     MoreCode,
+
+    /// The `qemu` feature of uefi-test-runner.
+    Qemu,
 }
 
 impl Features {
@@ -64,6 +67,7 @@ impl Features {
             Self::None => None,
             Self::Exts => Some("exts"),
             Self::MoreCode => Some("alloc,exts,logger"),
+            Self::Qemu => Some("uefi-test-runner/qemu"),
         }
     }
 }
