@@ -4,6 +4,7 @@ mod util;
 
 use cargo::{Cargo, CargoAction, Features, Package};
 use clap::{Parser, Subcommand};
+use qemu::Kvm;
 use util::{run_cmd, Result, UefiArch, Verbose};
 
 /// Developer utility for running various tasks in uefi-rs.
@@ -42,7 +43,10 @@ enum Action {
         #[clap(long)]
         open: bool,
     },
-    Run,
+    Run {
+        #[clap(long)]
+        disable_kvm: bool,
+    },
     Test,
 }
 
@@ -94,7 +98,7 @@ fn doc(opt: &Opt, open: bool) -> Result<()> {
     run_cmd(cargo.command()?, opt.verbose())
 }
 
-fn run(opt: &Opt) -> Result<()> {
+fn run(opt: &Opt, kvm: Kvm) -> Result<()> {
     // Build uefi-test-runner.
     let cargo = Cargo {
         action: CargoAction::Build,
@@ -105,11 +109,7 @@ fn run(opt: &Opt) -> Result<()> {
         warnings_as_errors: opt.warnings_as_errors,
     };
     run_cmd(cargo.command()?, opt.verbose())?;
-    qemu::run_qemu(
-        // TODO
-        opt.target,
-        opt.verbose(),
-    )
+    qemu::run_qemu(opt.target, kvm, opt.verbose())
 }
 
 fn test(opt: &Opt) -> Result<()> {
@@ -137,7 +137,14 @@ fn main() -> Result<()> {
         Action::Build => build(opt),
         Action::Clippy => clippy(opt),
         Action::Doc { open } => doc(opt, open),
-        Action::Run => run(opt),
+        Action::Run { disable_kvm } => run(
+            opt,
+            if disable_kvm {
+                Kvm::Disable
+            } else {
+                Kvm::Enable
+            },
+        ),
         Action::Test => test(opt),
     }
 }

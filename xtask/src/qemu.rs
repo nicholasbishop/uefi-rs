@@ -1,7 +1,13 @@
 use crate::util::{run_cmd, Result, UefiArch, Verbose};
 use std::process::Command;
 
-pub fn run_qemu(arch: UefiArch, verbose: Verbose) -> Result<()> {
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Kvm {
+    Disable,
+    Enable,
+}
+
+pub fn run_qemu(arch: UefiArch, kvm: Kvm, verbose: Verbose) -> Result<()> {
     let qemu_exe = match arch {
         UefiArch::AArch64 => "qemu-system-aarch64",
         UefiArch::X86_64 => "qemu-system-x86_64",
@@ -25,6 +31,11 @@ pub fn run_qemu(arch: UefiArch, verbose: Verbose) -> Result<()> {
 
             // Allocate some memory.
             cmd.args(&["-m", "256M"]);
+
+            // Enable hardware-accelerated virtualization if possible.
+            if kvm == Kvm::Enable {
+                cmd.arg("--enable-kvm");
+            }
         }
     }
 
