@@ -107,7 +107,12 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, verbose: Verbose) -> Result<()> {
 
     match arch {
         UefiArch::AArch64 => {
-            // TODO
+            // Use a generic ARM environment. Sadly qemu can't emulate a
+            // RPi 4 like machine though.
+            cmd.args(&["-machine", "virt"]);
+
+            // A72 is a very generic 64-bit ARM CPU in the wild.
+            cmd.args(&["-cpu", "cortex-a72"]);
         }
         UefiArch::X86_64 => {
             // Use a modern machine.
