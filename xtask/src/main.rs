@@ -51,6 +51,7 @@ enum Action {
 
     /// Build the docs for the uefi packages.
     Doc {
+        /// Opens the docs in a browser.
         #[clap(long)]
         open: bool,
     },

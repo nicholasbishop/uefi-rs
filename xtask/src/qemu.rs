@@ -17,9 +17,11 @@ pub struct QemuOpt {
     #[clap(long)]
     ci: bool,
 
+    /// Disables hardware accelerated virtualization support in QEMU.
     #[clap(long)]
     disable_kvm: bool,
 
+    /// Run QEMU without a GUI.
     #[clap(long)]
     headless: bool,
 
