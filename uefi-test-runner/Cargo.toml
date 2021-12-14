@@ -14,7 +14,4 @@ log = { version = "0.4.11", default-features = false }
 qemu-exit = "2.0.0"
 
 [features]
-# This feature should only be enabled in our CI, it disables some tests
-# which currently fail in that environment (see #103 for discussion).
-ci = []
 qemu = ["uefi-services/qemu"]

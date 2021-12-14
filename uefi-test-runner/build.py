@@ -102,9 +102,6 @@ def build(*test_flags):
     if SETTINGS['config'] == 'release':
         build_args.append('--release')
 
-    if SETTINGS['ci']:
-        build_args.extend(['--features', 'ci'])
-
     run_build(*build_args)
 
     # Copy the built test runner file to the right directory for running tests.

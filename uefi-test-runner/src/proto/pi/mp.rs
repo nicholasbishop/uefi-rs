@@ -9,11 +9,6 @@ use uefi::Status;
 const NUM_CPUS: usize = 4;
 
 pub fn test(bt: &BootServices) {
-    // These tests break CI. See #103.
-    if cfg!(feature = "ci") {
-        return;
-    }
-
     info!("Running UEFI multi-processor services protocol test");
     if let Ok(mp_support) = bt.locate_protocol::<MpServices>() {
         let mp_support = mp_support
