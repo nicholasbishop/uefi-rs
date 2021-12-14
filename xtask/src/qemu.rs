@@ -273,10 +273,12 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, esp_dir: &Path, verbose: Verbose)
 
         // If the app requests a screenshot, take it.
         if let Some(reference_name) = stripped.strip_prefix("SCREENSHOT: ") {
+            let screenshot_path = tmp_dir.join("screenshot.ppm");
+
             // Ask QEMU to take a screenshot.
             monitor_io.write_json(json!({
                 "execute": "screendump",
-                "arguments": {"filename": "screenshot.ppm"}}
+                "arguments": {"filename": screenshot_path}}
             ))?;
 
             // Wait for QEMU's acknowledgement, ignoring events.
@@ -294,7 +296,7 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, esp_dir: &Path, verbose: Verbose)
             let reference_file =
                 Path::new("uefi-test-runner/screenshots").join(format!("{}.ppm", reference_name));
             let expected = fs_err::read(reference_file)?;
-            let actual = fs_err::read("screenshot.ppm")?;
+            let actual = fs_err::read(&screenshot_path)?;
             assert_eq!(expected, actual);
         }
     }
