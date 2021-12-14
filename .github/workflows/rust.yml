@@ -25,7 +25,7 @@ jobs:
       # TODO: cache Rust binaries
 
     - name: Build
-      run: cargo xtask --target aarch64 build
+      run: cargo xtask --verbose --target aarch64 build
 
   build_and_test:
     name: Build and run tests on x86_64
@@ -48,10 +48,10 @@ jobs:
       # TODO: cache Rust binaries
 
     - name: Build
-      run: cargo xtask build
+      run: cargo xtask --verbose build
 
     - name: Run VM tests
-      run: cargo xtask run --headless --ci
+      run: cargo xtask --verbose run --headless --ci
 
   test:
     name: Run tests and documentation tests
@@ -69,7 +69,7 @@ jobs:
             override: true
 
       - name: Run cargo test
-        run: cargo xtask test
+        run: cargo xtask --verbose test
 
   lints:
     name: Lints
@@ -93,10 +93,7 @@ jobs:
           args: --all -- --check
 
       - name: Run clippy
-        run: cargo xtask clippy
+        run: cargo xtask --verbose clippy
 
       - name: Run cargo doc
-        uses: actions-rs/cargo@v1
-        with:
-          command: xtask
-          args: doc
+        run: cargo xtask --verbose doc
