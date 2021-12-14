@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 use std::ffi::OsString;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
 use tempfile::TempDir;
 
 #[derive(Debug, Parser)]
@@ -142,6 +142,67 @@ impl<R: Read, W: Write> Io<R, W> {
     }
 }
 
+fn process_qemu_io<R: Read, W: Write>(
+    child: &mut Child,
+    mut monitor_io: Io<R, W>,
+    tmp_dir: &Path,
+) -> Result<()> {
+    // Execute the QEMU monitor handshake, doing basic sanity checks.
+    assert!(monitor_io.read_line()?.starts_with(r#"{"QMP":"#));
+    monitor_io.write_json(json!({"execute": "qmp_capabilities"}))?;
+    assert_eq!(monitor_io.read_json()?, json!({"return": {}}));
+
+    // This regex is used to detect and strip ANSI escape codes when
+    // analyzing the output of the test runner.
+    let ansi_escape = Regex::new(r"(\x9b|\x1b\[)[0-?]*[ -/]*[@-~]")?;
+
+    let mut child_io = Io::new(child.stdout.take().unwrap(), child.stdin.take().unwrap());
+    while let Ok(line) = child_io.read_line() {
+        let line = line.trim();
+        let stripped = ansi_escape.replace_all(line.as_bytes(), &b""[..]);
+        let stripped = String::from_utf8(stripped.into())?;
+
+        // Skip empty lines.
+        if stripped.is_empty() {
+            continue;
+        }
+
+        // Print out the processed QEMU output for logging & inspection.
+        println!("{}", stripped);
+
+        // If the app requests a screenshot, take it.
+        if let Some(reference_name) = stripped.strip_prefix("SCREENSHOT: ") {
+            let screenshot_path = tmp_dir.join("screenshot.ppm");
+
+            // Ask QEMU to take a screenshot.
+            monitor_io.write_json(json!({
+                "execute": "screendump",
+                "arguments": {"filename": screenshot_path}}
+            ))?;
+
+            // Wait for QEMU's acknowledgement, ignoring events.
+            let mut reply = monitor_io.read_json()?;
+            while reply.as_object().unwrap().contains_key("event") {
+                reply = monitor_io.read_json()?;
+            }
+            assert_eq!(reply, json!({"return": {}}));
+
+            // Tell the VM that the screenshot was taken
+            child_io.write_line("OK")?;
+
+            // Compare screenshot to the reference file specified by the user.
+            // TODO: Add an operating mode where the reference is created if it doesn't exist.
+            let reference_file =
+                Path::new("uefi-test-runner/screenshots").join(format!("{}.ppm", reference_name));
+            let expected = fs_err::read(reference_file)?;
+            let actual = fs_err::read(&screenshot_path)?;
+            assert_eq!(expected, actual);
+        }
+    }
+
+    Ok(())
+}
+
 pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, esp_dir: &Path, verbose: Verbose) -> Result<()> {
     let qemu_exe = match arch {
         UefiArch::AArch64 => "qemu-system-aarch64",
@@ -243,66 +304,17 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt, esp_dir: &Path, verbose: Verbose)
     cmd.stdout(Stdio::piped());
     let mut child = cmd.spawn()?;
 
-    let mut monitor_io = Io::new(
+    let monitor_io = Io::new(
         File::open(monitor_output_path)?,
         OpenOptions::new().write(true).open(monitor_input_path)?,
     );
 
-    // Execute the QEMU monitor handshake, doing basic sanity checks.
-    assert!(monitor_io.read_line()?.starts_with(r#"{"QMP":"#));
-    monitor_io.write_json(json!({"execute": "qmp_capabilities"}))?;
-    assert_eq!(monitor_io.read_json()?, json!({"return": {}}));
+    // TODO: timeout
 
-    // This regex is used to detect and strip ANSI escape codes when
-    // analyzing the output of the test runner.
-    let ansi_escape = Regex::new(r"(\x9b|\x1b\[)[0-?]*[ -/]*[@-~]")?;
-
-    let mut child_io = Io::new(child.stdout.take().unwrap(), child.stdin.take().unwrap());
-    while let Ok(line) = child_io.read_line() {
-        let line = line.trim();
-        let stripped = ansi_escape.replace_all(line.as_bytes(), &b""[..]);
-        let stripped = String::from_utf8(stripped.into())?;
-
-        // Skip empty lines.
-        if stripped.is_empty() {
-            continue;
-        }
-
-        // Print out the processed QEMU output for logging & inspection.
-        println!("{}", stripped);
-
-        // If the app requests a screenshot, take it.
-        if let Some(reference_name) = stripped.strip_prefix("SCREENSHOT: ") {
-            let screenshot_path = tmp_dir.join("screenshot.ppm");
-
-            // Ask QEMU to take a screenshot.
-            monitor_io.write_json(json!({
-                "execute": "screendump",
-                "arguments": {"filename": screenshot_path}}
-            ))?;
-
-            // Wait for QEMU's acknowledgement, ignoring events.
-            let mut reply = monitor_io.read_json()?;
-            while reply.as_object().unwrap().contains_key("event") {
-                reply = monitor_io.read_json()?;
-            }
-            assert_eq!(reply, json!({"return": {}}));
-
-            // Tell the VM that the screenshot was taken
-            child_io.write_line("OK")?;
-
-            // Compare screenshot to the reference file specified by the user.
-            // TODO: Add an operating mode where the reference is created if it doesn't exist.
-            let reference_file =
-                Path::new("uefi-test-runner/screenshots").join(format!("{}.ppm", reference_name));
-            let expected = fs_err::read(reference_file)?;
-            let actual = fs_err::read(&screenshot_path)?;
-            assert_eq!(expected, actual);
-        }
-    }
-
-    // TODO: are we sure child is killed on drop?
+    // Capture the result to return it, but first wait for the child to
+    // exit.
+    let ret = process_qemu_io(&mut child, monitor_io, tmp_dir);
     child.wait()?;
 
-    Ok(())
+    ret
 }
