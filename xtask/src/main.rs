@@ -43,13 +43,22 @@ impl Opt {
 
 #[derive(Debug, Subcommand)]
 enum Action {
+    /// Build all the uefi packages.
     Build,
+
+    /// Run clippy on all the packages.
     Clippy,
+
+    /// Build the docs for the uefi packages.
     Doc {
         #[clap(long)]
         open: bool,
     },
+
+    /// Build uefi-test-runner and run it in QEMU.
     Run(QemuOpt),
+
+    /// Run unit tests and doctests on the host.
     Test,
 }
 
@@ -92,6 +101,7 @@ fn clippy(opt: &Opt) -> Result<()> {
     run_cmd(cargo.command()?, opt.verbose())
 }
 
+/// Build docs.
 fn doc(opt: &Opt, open: bool) -> Result<()> {
     let cargo = Cargo {
         action: CargoAction::Doc { open },
@@ -105,7 +115,8 @@ fn doc(opt: &Opt, open: bool) -> Result<()> {
     run_cmd(cargo.command()?, opt.verbose())
 }
 
-fn run(opt: &Opt, qemu_opt: &QemuOpt) -> Result<()> {
+/// Build uefi-test-runner and run it in QEMU.
+fn run_vm_tests(opt: &Opt, qemu_opt: &QemuOpt) -> Result<()> {
     // Build uefi-test-runner.
     let cargo = Cargo {
         action: CargoAction::Build,
@@ -138,7 +149,10 @@ fn run(opt: &Opt, qemu_opt: &QemuOpt) -> Result<()> {
     qemu::run_qemu(opt.target, qemu_opt, &esp_dir, opt.verbose())
 }
 
-fn test(opt: &Opt) -> Result<()> {
+/// Run unit tests and doctests on the host. Most of uefi-rs is tested
+/// with VM tests, but a few things like macros and data types can be
+/// tested with regular tests.
+fn run_host_tests(opt: &Opt) -> Result<()> {
     let cargo = Cargo {
         action: CargoAction::Test,
         features: Features::Exts,
@@ -164,7 +178,7 @@ fn main() -> Result<()> {
         Action::Build => build(opt),
         Action::Clippy => clippy(opt),
         Action::Doc { open } => doc(opt, *open),
-        Action::Run(qemu_opt) => run(opt, qemu_opt),
-        Action::Test => test(opt),
+        Action::Run(qemu_opt) => run_vm_tests(opt, qemu_opt),
+        Action::Test => run_host_tests(opt),
     }
 }
