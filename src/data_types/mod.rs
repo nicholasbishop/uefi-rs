@@ -90,3 +90,6 @@ pub use self::strs::{CStr16, CStr8, FromSliceWithNulError, FromStrWithBufError};
 mod owned_strs;
 #[cfg(feature = "exts")]
 pub use self::owned_strs::{CString16, FromStrError};
+
+mod buffer;
+pub use buffer::Buffer;

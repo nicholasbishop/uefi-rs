@@ -1,4 +1,5 @@
 use super::{File, FileHandle, FileInternal};
+use crate::data_types::Buffer;
 use crate::{Result, Status};
 
 /// A `FileHandle` that is also a regular (data) file.
@@ -36,7 +37,7 @@ impl RegularFile {
     /// * `uefi::Status::VOLUME_CORRUPTED`   The filesystem structures are corrupted
     /// * `uefi::Status::BUFFER_TOO_SMALL`   The buffer is too small to hold a directory entry,
     ///                                      and the required buffer size is provided as output.
-    pub fn read(&mut self, buffer: &mut [u8]) -> Result<usize, Option<usize>> {
+    pub fn read<B: Buffer<u8>>(&mut self, buffer: &mut B) -> Result<usize, Option<usize>> {
         let mut buffer_size = buffer.len();
         unsafe { (self.imp().read)(self.imp(), &mut buffer_size, buffer.as_mut_ptr()) }.into_with(
             || buffer_size,

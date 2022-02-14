@@ -1,5 +1,6 @@
 use super::{File, FileHandle, FileInfo, FromUefi, RegularFile};
 use crate::data_types::Align;
+use crate::data_types::Buffer;
 use crate::Result;
 use core::ffi::c_void;
 
@@ -39,14 +40,13 @@ impl Directory {
     /// * `uefi::Status::VOLUME_CORRUPTED`   The filesystem structures are corrupted
     /// * `uefi::Status::BUFFER_TOO_SMALL`   The buffer is too small to hold a directory entry,
     ///                                      the required buffer size is provided into the error.
-    pub fn read_entry<'buf>(
+    pub fn read_entry<'buf, B: Buffer<u8>>(
         &mut self,
-        buffer: &'buf mut [u8],
+        buffer: &'buf mut B,
     ) -> Result<Option<&'buf mut FileInfo>, Option<usize>> {
         // Make sure that the storage is properly aligned
-        FileInfo::assert_aligned(buffer);
+        FileInfo::assert_aligned(buffer.as_mut_slice());
 
-        // Read the directory entry into the aligned storage
         self.0.read(buffer).map(|size| {
             if size != 0 {
                 unsafe { Some(FileInfo::from_uefi(buffer.as_mut_ptr() as *mut c_void)) }
