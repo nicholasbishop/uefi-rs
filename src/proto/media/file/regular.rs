@@ -38,17 +38,11 @@ impl RegularFile {
     /// * `uefi::Status::BUFFER_TOO_SMALL`   The buffer is too small to hold a directory entry,
     ///                                      and the required buffer size is provided as output.
     pub fn read<B: Buffer<u8>>(&mut self, buffer: &mut B) -> Result<usize, Option<usize>> {
-        let mut buffer_size = buffer.len();
-        unsafe { (self.imp().read)(self.imp(), &mut buffer_size, buffer.as_mut_ptr()) }.into_with(
-            || buffer_size,
-            |s| {
-                if s == Status::BUFFER_TOO_SMALL {
-                    Some(buffer_size)
-                } else {
-                    None
-                }
-            },
-        )
+        buffer
+            .load(|buffer, buffer_size| -> Status {
+                unsafe { (self.imp().read)(self.imp(), buffer_size, buffer) }
+            })
+            .map(|buf| buf.len())
     }
 
     /// Write data to file
