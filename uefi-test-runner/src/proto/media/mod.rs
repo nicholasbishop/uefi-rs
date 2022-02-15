@@ -1,3 +1,4 @@
+use alloc::vec::Vec;
 use uefi::prelude::*;
 use uefi::proto::media::fs::SimpleFileSystem;
 use uefi::proto::media::partition::PartitionInfo;
@@ -9,23 +10,14 @@ pub fn test(image: Handle, bt: &BootServices) {
     if let Ok(sfs) = bt.locate_protocol::<SimpleFileSystem>() {
         let sfs = unsafe { &mut *sfs.get() };
         let mut directory = sfs.open_volume().unwrap();
-        let mut buffer = vec![0; 128];
+        let mut buffer = Vec::new();
         loop {
-            let file_info = match directory.read_entry(&mut buffer) {
-                Ok(info) => {
-                    if let Some(info) = info {
-                        info
-                    } else {
-                        // We've reached the end of the directory
-                        break;
-                    }
-                }
-                Err(error) => {
-                    // Buffer is not big enough, allocate a bigger one and try again.
-                    let min_size = error.data().unwrap();
-                    buffer.resize(min_size, 0);
-                    continue;
-                }
+            let file_info = directory.read_entry(&mut buffer).unwrap();
+            let file_info = if let Some(info) = file_info {
+                info
+            } else {
+                // We've reached the end of the directory
+                break;
             };
             info!("Root directory entry: {:?}", file_info);
         }
