@@ -75,3 +75,26 @@ impl<T: Clone + Default> Buffer<T> for Vec<T> {
         self.resize(new_len, Default::default());
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    // TODO
+    fn test_buffer() {
+        let mut vbuf: Vec<u8> = Vec::new();
+        vbuf.load(|buf, buf_size| unsafe {
+            if *buf_size < 2 {
+                *buf_size = 2;
+                Status::BUFFER_TOO_SMALL
+            } else {
+                *buf_size = 2;
+                buf.write_bytes(0xab, 2);
+                Status::SUCCESS
+            }
+        })
+        .unwrap();
+        assert_eq!(vbuf, [0xab, 0xab]);
+    }
+}
