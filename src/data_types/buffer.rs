@@ -6,7 +6,6 @@ use crate::alloc_api::vec::Vec;
 use crate::{Result, Status};
 use core::borrow::BorrowMut;
 
-/// TODO
 pub trait Buffer<T>: BorrowMut<[T]> {
     fn is_resizable() -> bool;
     fn resize(&mut self, new_len: usize);
@@ -80,11 +79,8 @@ impl<T: Clone + Default> Buffer<T> for Vec<T> {
 mod tests {
     use super::*;
 
-    #[test]
-    // TODO
-    fn test_buffer() {
-        let mut vbuf: Vec<u8> = Vec::new();
-        vbuf.load(|buf, buf_size| unsafe {
+    fn load_two(buf: *mut u8, buf_size: &mut usize) -> Status {
+        unsafe {
             if *buf_size < 2 {
                 *buf_size = 2;
                 Status::BUFFER_TOO_SMALL
@@ -93,8 +89,43 @@ mod tests {
                 buf.write_bytes(0xab, 2);
                 Status::SUCCESS
             }
-        })
-        .unwrap();
-        assert_eq!(vbuf, [0xab, 0xab]);
+        }
+    }
+
+    #[test]
+    fn test_vec() {
+        // Start out empty, should be resized to fit two.
+        let mut buf: Vec<u8> = Vec::new();
+        buf.load(load_two).unwrap();
+        assert_eq!(buf, [0xab, 0xab]);
+    }
+
+    #[test]
+    fn test_array() {
+        // Too small.
+        let mut buf = [0u8; 1];
+        let err = buf.load(load_two).unwrap_err();
+        assert_eq!(err.status(), Status::BUFFER_TOO_SMALL);
+
+        // Big enough.
+        let mut buf = [0u8; 2];
+        buf.load(load_two).unwrap();
+        assert_eq!(buf, [0xab, 0xab]);
+    }
+
+    #[test]
+    fn test_slice() {
+        // Backing storage for the slice.
+        let mut array = [0u8; 2];
+
+        // Too small.
+        let buf: &mut [u8] = &mut array[0..1];
+        let err = buf.load(load_two).unwrap_err();
+        assert_eq!(err.status(), Status::BUFFER_TOO_SMALL);
+
+        // Big enough.
+        let buf: &mut [u8] = &mut array[0..2];
+        buf.load(load_two).unwrap();
+        assert_eq!(buf, [0xab, 0xab]);
     }
 }
