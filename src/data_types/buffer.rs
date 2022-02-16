@@ -13,6 +13,8 @@ use {crate::alloc_api::vec::Vec, core::mem::MaybeUninit};
 // * Uninitialized slice: `&mut [MaybeUninit<T>]`
 //
 // * Vec: `Vec<T>`. This will internally use uninitialized slices too.
+//
+// * Limited-size Vec. Something that prevents unlimited growth.
 
 pub trait Buffer<T>: BorrowMut<[T]> {
     fn load<F>(&mut self, mut f: F) -> Result<&mut [T], Option<usize>>
