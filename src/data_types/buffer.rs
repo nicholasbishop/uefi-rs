@@ -16,6 +16,9 @@ use {crate::alloc_api::vec::Vec, core::mem::MaybeUninit};
 //
 // * Limited-size Vec. Something that prevents unlimited growth.
 
+// An alternative approach to returning `&mut [T]` from load:
+// Have Buffer be an enum of interesting types, keep track of size too
+
 pub trait Buffer<T>: BorrowMut<[T]> {
     fn load<F>(&mut self, mut f: F) -> Result<&mut [T], Option<usize>>
     where
