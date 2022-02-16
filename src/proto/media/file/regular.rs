@@ -37,12 +37,13 @@ impl RegularFile {
     /// * `uefi::Status::VOLUME_CORRUPTED`   The filesystem structures are corrupted
     /// * `uefi::Status::BUFFER_TOO_SMALL`   The buffer is too small to hold a directory entry,
     ///                                      and the required buffer size is provided as output.
-    pub fn read<B: Buffer<u8>>(&mut self, buffer: &mut B) -> Result<usize, Option<usize>> {
-        buffer
-            .load(|buffer, buffer_size| -> Status {
-                unsafe { (self.imp().read)(self.imp(), buffer_size, buffer) }
-            })
-            .map(|buf| buf.len())
+    pub fn read<'buf, B: Buffer<u8>>(
+        &mut self,
+        buffer: &'buf mut B,
+    ) -> Result<&'buf mut [u8], Option<usize>> {
+        buffer.load(|buffer, buffer_size| -> Status {
+            unsafe { (self.imp().read)(self.imp(), buffer_size, buffer) }
+        })
     }
 
     /// Write data to file

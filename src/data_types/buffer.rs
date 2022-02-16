@@ -1,45 +1,75 @@
 // TODO
 #![allow(missing_docs)]
 
-#[cfg(feature = "exts")]
-use crate::alloc_api::vec::Vec;
 use crate::{Result, Status};
 use core::borrow::BorrowMut;
+#[cfg(feature = "exts")]
+use {crate::alloc_api::vec::Vec, core::mem::MaybeUninit};
+
+// Use cases we care about:
+//
+// * Initialized slice: `&mut [T]`
+//
+// * Uninitialized slice: `&mut [MaybeUninit<T>]`
+//
+// * Vec: `Vec<T>`. This will internally use uninitialized slices too.
 
 pub trait Buffer<T>: BorrowMut<[T]> {
-    fn is_resizable() -> bool;
-    fn resize(&mut self, new_len: usize);
+    fn load<F>(&mut self, mut f: F) -> Result<&mut [T], Option<usize>>
+    where
+        F: FnMut(*mut T, &mut usize) -> Status,
+    {
+        // TODO: fix for non-u8, add tests for that too
+        let mut buf_size = self.borrow().len();
 
-    fn is_empty(&self) -> bool {
-        self.borrow().is_empty()
+        let status = f(self.borrow_mut().as_mut_ptr(), &mut buf_size);
+        status.into_with(
+            move || &mut self.borrow_mut()[..buf_size],
+            |status| {
+                if status == Status::BUFFER_TOO_SMALL {
+                    Some(buf_size)
+                } else {
+                    None
+                }
+            },
+        )
     }
+}
 
-    fn len(&self) -> usize {
-        self.borrow().len()
-    }
+impl<T> Buffer<T> for [T] {}
 
-    fn as_slice(&self) -> &[T] {
-        self.borrow().as_slice()
-    }
-
-    fn as_mut_slice(&mut self) -> &mut [T] {
-        self.borrow_mut()
-    }
-
-    fn as_mut_ptr(&mut self) -> *mut T {
-        self.borrow_mut().as_mut_ptr()
-    }
-
+#[cfg(feature = "exts")]
+impl<T> Buffer<T> for Vec<T> {
     fn load<F>(&mut self, mut f: F) -> Result<&mut [T], Option<usize>>
     where
         F: FnMut(*mut T, &mut usize) -> Status,
     {
         let mut buffer_size = self.len();
         let mut status = f(self.as_mut_ptr(), &mut buffer_size);
-        if status == Status::BUFFER_TOO_SMALL && Self::is_resizable() {
-            self.resize(buffer_size);
-            status = f(self.as_mut_ptr(), &mut buffer_size);
+
+        if status == Status::BUFFER_TOO_SMALL {
+            // Drop all current elements. This sets the length to zero but
+            // does not affect the current allocation.
+            self.truncate(0);
+
+            // Reserve the nececessary number of elements. The input length
+            // is relative to the vec's `len()`, which we know is zero.
+            self.reserve_exact(buffer_size);
+
+            // Get the uninitialized spare capacity (which is the whole
+            // capacity in this case).
+            let buf: &mut [MaybeUninit<T>] = self.spare_capacity_mut();
+
+            status = f(MaybeUninit::slice_as_mut_ptr(buf), &mut buffer_size);
+
+            if status == Status::SUCCESS {
+                // Mark the returned number of elements as initialized.
+                unsafe {
+                    self.set_len(buffer_size);
+                }
+            }
         }
+
         status.into_with(
             move || &mut self.as_mut_slice()[..buffer_size],
             |status| {
@@ -50,28 +80,6 @@ pub trait Buffer<T>: BorrowMut<[T]> {
                 }
             },
         )
-    }
-}
-
-impl<T> Buffer<T> for [T] {
-    fn is_resizable() -> bool {
-        false
-    }
-
-    fn resize(&mut self, _new_len: usize) {
-        panic!("cannot resize array");
-    }
-}
-
-// TODO: uninitialized buffer?
-#[cfg(feature = "exts")]
-impl<T: Clone + Default> Buffer<T> for Vec<T> {
-    fn is_resizable() -> bool {
-        true
-    }
-
-    fn resize(&mut self, new_len: usize) {
-        self.resize(new_len, Default::default());
     }
 }
 

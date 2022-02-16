@@ -45,10 +45,10 @@ impl Directory {
         buffer: &'buf mut B,
     ) -> Result<Option<&'buf mut FileInfo>, Option<usize>> {
         // Make sure that the storage is properly aligned
-        FileInfo::assert_aligned(buffer.as_mut_slice());
+        FileInfo::assert_aligned(buffer.borrow_mut());
 
-        self.0.read(buffer).map(|size| {
-            if size != 0 {
+        self.0.read(buffer).map(|buffer| {
+            if !buffer.is_empty() {
                 unsafe { Some(FileInfo::from_uefi(buffer.as_mut_ptr() as *mut c_void)) }
             } else {
                 None
