@@ -298,9 +298,9 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt) -> Result<()> {
             cmd.args(&["-m", "256M"]);
 
             // Enable hardware-accelerated virtualization if possible.
-            if !opt.disable_kvm && !opt.ci {
-                cmd.arg("--enable-kvm");
-            }
+            //if !opt.disable_kvm && !opt.ci {
+            cmd.arg("--enable-kvm");
+            //}
 
             // Exit instead of rebooting in the CI.
             if opt.ci {
