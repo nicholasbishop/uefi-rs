@@ -51,6 +51,9 @@ jobs:
 
     - name: Install qemu and OVMF
       run: |
+        # Add a PPA to provide a more recent version of qemu that fixes
+        # some crashes.
+        sudo add-apt-repository ppa:canonical-server/server-backports
         sudo apt-get update
         sudo apt-get install qemu-system-x86 ovmf -y
 
