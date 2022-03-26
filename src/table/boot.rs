@@ -3,12 +3,8 @@
 use super::{Header, Revision};
 use crate::data_types::Align;
 use crate::proto::device_path::{DevicePath, FfiDevicePath};
-#[cfg(feature = "exts")]
-use crate::proto::{loaded_image::LoadedImage, media::fs::SimpleFileSystem};
 use crate::proto::{Protocol, ProtocolPointer};
-use crate::{Char16, Event, Guid, Handle, Result, Status};
-#[cfg(feature = "exts")]
-use alloc_api::vec::Vec;
+use crate::{Buffer, Char16, Event, Guid, Handle, Result, Status};
 use bitflags::bitflags;
 use core::cell::UnsafeCell;
 use core::ffi::c_void;
@@ -17,6 +13,12 @@ use core::mem::{self, MaybeUninit};
 use core::ops::{Deref, DerefMut};
 use core::ptr::NonNull;
 use core::{ptr, slice};
+#[cfg(feature = "exts")]
+use {
+    crate::proto::{loaded_image::LoadedImage, media::fs::SimpleFileSystem},
+    crate::ResultExt,
+    alloc_api::vec::Vec,
+};
 
 /// Contains pointers to all of the boot services.
 ///
@@ -125,7 +127,7 @@ pub struct BootServices {
         proto: *const Guid,
         key: *mut c_void,
         buf_sz: &mut usize,
-        buf: *mut MaybeUninit<Handle>,
+        buf: *mut Handle,
     ) -> Status,
     locate_device_path: unsafe extern "efiapi" fn(
         proto: &Guid,
@@ -595,34 +597,21 @@ impl BootServices {
     /// in order to retrieve the length of the buffer you need to allocate.
     ///
     /// The next call will fill the buffer with the requested data.
-    pub fn locate_handle(
+    pub fn locate_handle<B: Buffer<Handle>>(
         &self,
         search_ty: SearchType,
-        output: Option<&mut [MaybeUninit<Handle>]>,
-    ) -> Result<usize> {
-        let handle_size = mem::size_of::<Handle>();
-
-        const NULL_BUFFER: *mut MaybeUninit<Handle> = ptr::null_mut();
-
-        let (mut buffer_size, buffer) = match output {
-            Some(buffer) => (buffer.len() * handle_size, buffer.as_mut_ptr()),
-            None => (0, NULL_BUFFER),
-        };
-
+        buf: &mut B,
+    ) -> Result<(), Option<usize>> {
         // Obtain the needed data from the parameters.
         let (ty, guid, key) = match search_ty {
             SearchType::AllHandles => (0, ptr::null(), ptr::null_mut()),
             SearchType::ByProtocol(guid) => (2, guid as *const _, ptr::null_mut()),
         };
 
-        let status = unsafe { (self.locate_handle)(ty, guid, key, &mut buffer_size, buffer) };
-
-        // Must convert the returned size (in bytes) to length (number of elements).
-        let buffer_len = buffer_size / handle_size;
-
-        match (buffer, status) {
-            (NULL_BUFFER, Status::BUFFER_TOO_SMALL) => Ok(buffer_len),
-            (_, other_status) => other_status.into_with_val(|| buffer_len),
+        unsafe {
+            buf.write(|data, size_in_bytes| {
+                (self.locate_handle)(ty, guid, key, size_in_bytes, data)
+            })
         }
     }
 
@@ -997,23 +986,10 @@ impl BootServices {
         // Search by protocol.
         let search_type = SearchType::from_proto::<P>();
 
-        // Determine how much we need to allocate.
-        let buffer_size = self.locate_handle(search_type, None)?;
-
-        // Allocate a large enough buffer without pointless initialization.
-        let mut handles = Vec::with_capacity(buffer_size);
-        let buffer = handles.spare_capacity_mut();
-
-        // Perform the search.
-        let buffer_size = self.locate_handle(search_type, Some(buffer))?;
-
-        // Mark the returned number of elements as initialized.
-        unsafe {
-            handles.set_len(buffer_size);
-        }
-
-        // Emit output, with warnings
-        Ok(handles)
+        let mut buf = Vec::new();
+        self.locate_handle(search_type, &mut buf)
+            .discard_errdata()?;
+        Ok(buf)
     }
 
     /// Retrieves the `SimpleFileSystem` protocol associated with

@@ -49,6 +49,11 @@ pub use self::data_types::CString16;
 pub use self::data_types::{unsafe_guid, Identify};
 pub use self::data_types::{CStr16, CStr8, Char16, Char8, Event, Guid, Handle};
 
+mod buffer;
+#[cfg(feature = "exts")]
+pub use buffer::VecWithMaxLen;
+pub use buffer::{ArrayBuffer, Buffer, EmptyBuffer, SliceBuffer};
+
 mod result;
 pub use self::result::{Error, Result, ResultExt, Status};
 

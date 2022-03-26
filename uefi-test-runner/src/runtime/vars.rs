@@ -1,7 +1,7 @@
 use log::info;
 use uefi::prelude::*;
 use uefi::table::runtime::{VariableAttributes, VariableVendor};
-use uefi::Guid;
+use uefi::{ArrayBuffer, Guid};
 
 fn test_variables(rt: &RuntimeServices) {
     let name = cstr16!("UefiRsTestVar");
@@ -28,11 +28,11 @@ fn test_variables(rt: &RuntimeServices) {
     assert_eq!(size, test_value.len());
 
     info!("Testing get_variable");
-    let mut buf = [0u8; 9];
-    let (data, attrs) = rt
+    let mut buf = ArrayBuffer::<_, 9>::new();
+    let attrs = rt
         .get_variable(name, &vendor, &mut buf)
         .expect("failed to get variable");
-    assert_eq!(data, test_value);
+    assert_eq!(*buf, *test_value);
     assert_eq!(attrs, test_attrs);
 
     info!("Testing variable_keys");
