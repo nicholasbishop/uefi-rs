@@ -5,7 +5,7 @@ use super::{Header, Revision};
 use crate::data_types::FromSliceWithNulError;
 use crate::result::Error;
 use crate::table::boot::MemoryDescriptor;
-use crate::{guid, CStr16, Char16, Guid, Result, Status};
+use crate::{guid, Buffer, CStr16, Char16, Guid, Result, Status};
 #[cfg(feature = "alloc")]
 use alloc::{vec, vec::Vec};
 use bitflags::bitflags;
@@ -130,29 +130,23 @@ impl RuntimeServices {
         }
     }
 
-    /// Get the contents and attributes of a variable. The size of `buf` must
-    /// be at least as big as the variable's size, although it can be
-    /// larger. If it is too small, `BUFFER_TOO_SMALL` is returned.
+    /// Get the contents and attributes of a variable.
     ///
     /// On success, a tuple containing the variable's value (a slice of `buf`)
     /// and the variable's attributes is returned.
-    pub fn get_variable<'a>(
+    pub fn get_variable<'a, B: Buffer<u8>>(
         &self,
         name: &CStr16,
         vendor: &VariableVendor,
-        buf: &'a mut [u8],
-    ) -> Result<(&'a [u8], VariableAttributes)> {
+        buf: &'a mut B,
+    ) -> Result<VariableAttributes, Option<usize>> {
         let mut attributes = VariableAttributes::empty();
-        let mut data_size = buf.len();
+
         unsafe {
-            (self.get_variable)(
-                name.as_ptr(),
-                &vendor.0,
-                &mut attributes,
-                &mut data_size,
-                buf.as_mut_ptr(),
-            )
-            .into_with_val(move || (&buf[..data_size], attributes))
+            buf.write(|data, data_len| {
+                (self.get_variable)(name.as_ptr(), &vendor.0, &mut attributes, data_len, data)
+            })
+            .map(|_| attributes)
         }
     }
 
