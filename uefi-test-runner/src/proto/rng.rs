@@ -1,5 +1,6 @@
 use uefi::proto::rng::{Rng, RngAlgorithmType};
 use uefi::table::boot::BootServices;
+use uefi::ArrayBuffer;
 
 pub fn test(bt: &BootServices) {
     info!("Running rng protocol test");
@@ -10,9 +11,9 @@ pub fn test(bt: &BootServices) {
         .open_protocol_exclusive::<Rng>(handle)
         .expect("Failed to open Rng protocol");
 
-    let mut list = [RngAlgorithmType::EMPTY_ALGORITHM; 4];
+    let mut list = ArrayBuffer::<_, 4>::new();
 
-    let list = rng.get_info(&mut list).unwrap();
+    rng.get_info(&mut list).unwrap();
     info!("Supported rng algorithms : {:?}", list);
 
     let mut buf = [0u8; 4];

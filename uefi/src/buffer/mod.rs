@@ -303,7 +303,7 @@ mod vec_buffer;
 mod tests {
     use super::*;
     use crate::ResultExt;
-    use alloc_api::format;
+    use alloc::format;
 
     #[cfg(feature = "exts")]
     use alloc_api::vec::Vec;
