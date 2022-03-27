@@ -1,7 +1,7 @@
 //! `Rng` protocol.
 
-use crate::{data_types::Guid, proto::Protocol, unsafe_guid, Result, Status};
-use core::{mem, ptr};
+use crate::{data_types::Guid, proto::Protocol, unsafe_guid, Buffer, Result, Status};
+use core::ptr;
 
 newtype_enum! {
     /// The algorithms listed are optional, not meant to be exhaustive
@@ -95,26 +95,12 @@ pub struct Rng {
 
 impl Rng {
     /// Returns information about the random number generation implementation.
-    pub fn get_info<'buf>(
+    pub fn get_info<B: Buffer<RngAlgorithmType>>(
         &mut self,
-        algorithm_list: &'buf mut [RngAlgorithmType],
-    ) -> Result<&'buf [RngAlgorithmType], Option<usize>> {
-        let mut algorithm_list_size = algorithm_list.len() * mem::size_of::<RngAlgorithmType>();
-
+        algorithm_list: &mut B,
+    ) -> Result<(), Option<usize>> {
         unsafe {
-            (self.get_info)(self, &mut algorithm_list_size, algorithm_list.as_mut_ptr()).into_with(
-                || {
-                    let len = algorithm_list_size / mem::size_of::<RngAlgorithmType>();
-                    &algorithm_list[..len]
-                },
-                |status| {
-                    if status == Status::BUFFER_TOO_SMALL {
-                        Some(algorithm_list_size)
-                    } else {
-                        None
-                    }
-                },
-            )
+            algorithm_list.write(|data, size_in_bytes| (self.get_info)(self, size_in_bytes, data))
         }
     }
 
