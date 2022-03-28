@@ -104,16 +104,17 @@ pub trait File: Sized {
     /// * `uefi::Status::BUFFER_TOO_SMALL`   The buffer is too small for the requested
     fn get_info<'buf, Info: FileProtocolInfo + ?Sized>(
         &mut self,
-        buffer: &'buf mut [u8],
+        buffer: &'buf mut [Info::AlignedNum],
     ) -> Result<&'buf mut Info, Option<usize>> {
         let mut buffer_size = buffer.len();
-        Info::assert_aligned(buffer);
+        // TODO: still want to assert it here?
+        //Info::assert_aligned(buffer);
         unsafe {
             (self.imp().get_info)(
                 self.imp(),
                 &Info::GUID,
                 &mut buffer_size,
-                buffer.as_mut_ptr(),
+                buffer.as_mut_ptr() as *mut u8,
             )
         }
         .into_with(
@@ -196,7 +197,12 @@ pub trait File: Sized {
 
         // Get the file info using the allocated buffer for storage.
         let info = {
-            let buffer = unsafe { slice::from_raw_parts_mut(data, layout.size()) };
+            let buffer = unsafe {
+                slice::from_raw_parts_mut(
+                    data.cast::<Info::AlignedNum>(),
+                    layout.size() / mem::size_of::<Info::AlignedNum>(),
+                )
+            };
             self.get_info::<Info>(buffer).discard_errdata()
         };
 

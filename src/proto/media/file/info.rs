@@ -9,7 +9,11 @@ use core::{mem, ptr};
 /// `File::set_info()` or `File::get_info()`.
 ///
 /// The long-winded name is needed because "FileInfo" is already taken by UEFI.
-pub trait FileProtocolInfo: Align + Identify + FromUefi {}
+pub trait FileProtocolInfo: Align + Identify + FromUefi {
+    /// TODO: naming.
+    /// TODO: is it OK for this to be part of the public interace?
+    type AlignedNum;
+}
 
 /// Trait for going from an UEFI-originated pointer to a Rust reference
 ///
@@ -236,7 +240,9 @@ impl InfoInternal for FileInfo {
     }
 }
 
-impl FileProtocolInfo for FileInfo {}
+impl FileProtocolInfo for FileInfo {
+    type AlignedNum = u64;
+}
 
 /// System volume information
 ///
@@ -323,7 +329,9 @@ impl InfoInternal for FileSystemInfo {
     }
 }
 
-impl FileProtocolInfo for FileSystemInfo {}
+impl FileProtocolInfo for FileSystemInfo {
+    type AlignedNum = u64;
+}
 
 /// System volume label
 ///
@@ -370,7 +378,9 @@ impl InfoInternal for FileSystemVolumeLabel {
     }
 }
 
-impl FileProtocolInfo for FileSystemVolumeLabel {}
+impl FileProtocolInfo for FileSystemVolumeLabel {
+    type AlignedNum = u16;
+}
 
 #[cfg(test)]
 mod tests {
@@ -380,7 +390,9 @@ mod tests {
     use crate::table::runtime::{Daylight, Time};
     use crate::CString16;
 
-    fn validate_layout<T: InfoInternal + ?Sized>(info: &T, name: &[Char16]) {
+    fn validate_layout<T: FileProtocolInfo + InfoInternal + ?Sized>(info: &T, name: &[Char16]) {
+        assert_eq!(T::alignment(), mem::align_of::<T::AlignedNum>());
+
         // Check the hardcoded struct alignment.
         assert_eq!(mem::align_of_val(info), T::alignment());
         // Check the hardcoded name slice offset.
