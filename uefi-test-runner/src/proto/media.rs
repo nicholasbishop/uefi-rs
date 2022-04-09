@@ -1,4 +1,3 @@
-use alloc::string::ToString;
 use core::cell::RefCell;
 use core::ptr::NonNull;
 use uefi::data_types::Align;
@@ -14,6 +13,9 @@ use uefi::table::boot::{
     EventType, OpenProtocolAttributes, OpenProtocolParams, ScopedProtocol, Tpl,
 };
 use uefi::table::runtime::{Daylight, Time, TimeParams};
+
+#[cfg(not(feature = "native"))]
+use alloc::string::ToString;
 
 /// Test directory entry iteration.
 fn test_existing_dir(directory: &mut Directory) {

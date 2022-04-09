@@ -1,9 +1,10 @@
-use alloc::string::ToString;
-use alloc::vec::Vec;
 use uefi::prelude::*;
 use uefi::proto::device_path::text::*;
 use uefi::proto::device_path::{DevicePath, LoadedImageDevicePath};
 use uefi::proto::loaded_image::LoadedImage;
+
+#[cfg(not(feature = "native"))]
+use {alloc::string::ToString, alloc::vec::Vec};
 
 pub fn test(image: Handle, bt: &BootServices) {
     info!("Running device path protocol test");

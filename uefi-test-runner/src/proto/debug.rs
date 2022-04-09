@@ -1,7 +1,9 @@
-use alloc::vec::Vec;
 use core::ffi::c_void;
 use uefi::proto::debug::{DebugPort, DebugSupport, ExceptionType, ProcessorArch, SystemContext};
 use uefi::table::boot::BootServices;
+
+#[cfg(not(feature = "native"))]
+use alloc::vec::Vec;
 
 pub fn test(bt: &BootServices) {
     test_debug_support(bt);

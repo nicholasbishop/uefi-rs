@@ -1,8 +1,8 @@
 use uefi::proto::shell_params::ShellParameters;
 use uefi::table::boot::BootServices;
 
-use alloc::string::ToString;
-use alloc::vec::Vec;
+#[cfg(not(feature = "native"))]
+use {alloc::string::ToString, alloc::vec::Vec};
 
 pub fn test(bt: &BootServices) {
     info!("Running loaded image protocol test");

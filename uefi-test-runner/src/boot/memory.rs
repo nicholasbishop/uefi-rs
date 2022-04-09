@@ -1,5 +1,6 @@
 use uefi::table::boot::{AllocateType, BootServices, MemoryType};
 
+#[cfg(not(feature = "native"))]
 use alloc::vec::Vec;
 
 pub fn test(bt: &BootServices) {

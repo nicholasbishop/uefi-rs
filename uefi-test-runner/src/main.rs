@@ -1,25 +1,41 @@
-#![no_std]
-#![no_main]
+#![cfg_attr(not(feature = "native"), no_std)]
+#![cfg_attr(not(feature = "native"), no_main)]
 
 #[macro_use]
 extern crate log;
 #[macro_use]
 extern crate alloc;
 
-use alloc::string::ToString;
-use alloc::vec::Vec;
 use uefi::prelude::*;
 use uefi::proto::console::serial::Serial;
 use uefi::proto::device_path::build::{self, DevicePathBuilder};
 use uefi::proto::device_path::messaging::Vendor;
 use uefi::table::boot::MemoryType;
 use uefi::Result;
-use uefi::{print, println};
+#[cfg(not(feature = "native"))]
+use {
+    alloc::string::ToString,
+    alloc::vec::Vec,
+    uefi::{print, println},
+};
 
 mod boot;
 mod fs;
 mod proto;
 mod runtime;
+
+#[cfg(feature = "native")]
+mod uefi_stub;
+
+#[cfg(feature = "native")]
+fn main() {
+    // TODO
+    use core::mem;
+    let image: Handle = unsafe { mem::transmute(1u64) };
+    let st: SystemTable<Boot> = unsafe { mem::transmute(uefi_stub::create_system_table()) };
+    let status = efi_main(image, st);
+    assert_eq!(status, Status::SUCCESS);
+}
 
 #[entry]
 fn efi_main(image: Handle, mut st: SystemTable<Boot>) -> Status {

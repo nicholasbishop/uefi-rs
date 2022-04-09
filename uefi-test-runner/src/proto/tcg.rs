@@ -1,7 +1,9 @@
-use alloc::vec::Vec;
 use core::mem::MaybeUninit;
 use uefi::proto::tcg::{v1, v2, AlgorithmId, EventType, HashAlgorithm, PcrIndex};
 use uefi::table::boot::BootServices;
+
+#[cfg(not(feature = "native"))]
+use alloc::vec::Vec;
 
 // Environmental note:
 //
