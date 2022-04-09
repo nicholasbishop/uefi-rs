@@ -7,14 +7,20 @@ edition = "2021"
 
 [dependencies]
 uefi = { path = "..", features = ['exts'] }
-uefi-services = { path = "../uefi-services" }
+uefi-services = { path = "../uefi-services", optional = true }
 
 log = { version = "0.4.11", default-features = false }
 
 qemu-exit = "3.0.0"
 
 [features]
+# Build for the host with a stub UEFI implementation instead of a real
+# UEFI target.
+native = []
+
 # This feature should only be enabled in our CI, it disables some tests
 # which currently fail in that environment (see #103 for discussion).
 ci = []
-qemu = ["uefi-services/qemu"]
+qemu = ["uefi-services?/qemu"]
+
+default = ["dep:uefi-services"]
