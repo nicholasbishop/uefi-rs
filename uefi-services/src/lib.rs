@@ -38,6 +38,7 @@ use core::ffi::c_void;
 use core::fmt::Write;
 use core::ptr::NonNull;
 
+#[cfg(feature = "panic_handler")]
 use cfg_if::cfg_if;
 
 use uefi::prelude::*;

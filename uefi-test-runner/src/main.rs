@@ -1,5 +1,5 @@
-#![no_std]
-#![no_main]
+#![cfg_attr(not(feature = "native"), no_std)]
+#![cfg_attr(not(feature = "native"), no_main)]
 
 #[macro_use]
 extern crate log;
@@ -10,12 +10,29 @@ use alloc::string::ToString;
 use uefi::prelude::*;
 use uefi::proto::console::serial::Serial;
 use uefi::Result;
+#[cfg(not(feature = "native"))]
 use uefi_services::{print, println};
 
 mod boot;
 mod fs;
 mod proto;
 mod runtime;
+
+#[cfg(feature = "native")]
+mod uefi_stub;
+
+#[cfg(feature = "native")]
+use uefi_stub::uefi_services;
+
+#[cfg(feature = "native")]
+fn main() {
+    // TODO
+    use core::mem;
+    let image: Handle = unsafe { mem::transmute(1u64) };
+    let st: SystemTable<Boot> = unsafe { mem::transmute(uefi_stub::create_system_table()) };
+    let status = efi_main(image, st);
+    assert_eq!(status, Status::SUCCESS);
+}
 
 #[entry]
 fn efi_main(image: Handle, mut st: SystemTable<Boot>) -> Status {
