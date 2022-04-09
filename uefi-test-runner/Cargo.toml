@@ -7,11 +7,14 @@ edition = "2021"
 
 [dependencies]
 uefi = { path = "../uefi", features = ["alloc"] }
-uefi-services = { path = "../uefi-services" }
 
 log.workspace = true
 
 qemu-exit = "3.0.0"
+
+# TODO
+[target.'cfg(target_os = "uefi")'.dependencies]
+uefi-services = { path = "../uefi-services" }
 
 [features]
 # Enable the debug support protocol test.
@@ -19,6 +22,10 @@ debug_support = []
 
 # Enable the multiprocessor test. This only works if KVM is enabled.
 multi_processor = []
+
+# Build for the host with a stub UEFI implementation instead of a real
+# UEFI target.
+native = []
 
 # Enable the PXE test.
 pxe = []

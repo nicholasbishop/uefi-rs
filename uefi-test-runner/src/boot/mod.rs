@@ -1,4 +1,3 @@
-use alloc::string::ToString;
 use uefi::fs::FileSystem;
 use uefi::proto::console::text::Output;
 use uefi::proto::device_path::media::FilePath;
@@ -6,6 +5,9 @@ use uefi::proto::device_path::{DevicePath, LoadedImageDevicePath};
 use uefi::table::boot::{BootServices, LoadImageSource, SearchType};
 use uefi::table::{Boot, SystemTable};
 use uefi::{CString16, Identify};
+
+#[cfg(not(feature = "native"))]
+use alloc::string::ToString;
 
 mod memory;
 mod misc;

@@ -1,11 +1,15 @@
 //! Tests functionality from the `uefi::fs` module. See function [`test`].
 
-use alloc::string::{String, ToString};
-use alloc::vec::Vec;
 use uefi::fs::{FileSystem, IoError, IoErrorContext, PathBuf};
 use uefi::proto::media::fs::SimpleFileSystem;
 use uefi::table::boot::ScopedProtocol;
 use uefi::{cstr16, fs, Status};
+
+#[cfg(not(feature = "native"))]
+use {
+    alloc::string::{String, ToString},
+    alloc::vec::Vec,
+};
 
 /// Tests functionality from the `uefi::fs` module. This test relies on a
 /// working File System Protocol, which is tested at a dedicated place.
