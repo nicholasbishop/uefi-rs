@@ -8,14 +8,20 @@ edition = "2021"
 [dependencies]
 # TODO we should let the uefi-test-runner run with and without unstable.
 uefi = { path = "../uefi", features = ["alloc", "unstable"] }
-uefi-services = { path = "../uefi-services" }
 
 log = { version = "0.4.17", default-features = false }
 
 qemu-exit = "3.0.0"
 
+# TODO
+[target.'cfg(target_os = "uefi")'.dependencies]
+uefi-services = { path = "../uefi-services" }
+
 [features]
+# Build for the host with a stub UEFI implementation instead of a real
+# UEFI target.
+native = []
+
 # This feature should only be enabled in our CI, it disables some tests
 # which currently fail in that environment (see #103 for discussion).
 ci = []
-

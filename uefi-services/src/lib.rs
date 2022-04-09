@@ -39,6 +39,7 @@ use core::ffi::c_void;
 use core::fmt::Write;
 use core::ptr::NonNull;
 
+#[cfg(feature = "panic_handler")]
 use cfg_if::cfg_if;
 
 use uefi::prelude::*;
@@ -257,6 +258,7 @@ fn panic_handler(info: &core::panic::PanicInfo) -> ! {
     }
 }
 
+#[cfg(target_os = "uefi")]
 #[alloc_error_handler]
 fn out_of_memory(layout: ::core::alloc::Layout) -> ! {
     panic!(
