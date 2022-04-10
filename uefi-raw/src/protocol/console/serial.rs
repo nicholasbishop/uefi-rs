@@ -55,7 +55,7 @@ bitflags! {
 /// - 1 stop bit
 ///
 /// The software is responsible for flow control.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Ord, PartialOrd)]
 #[repr(C)]
 pub struct SerialIoMode {
     /// Bitmask of the control bits that this device supports.
@@ -104,6 +104,7 @@ impl SerialIoProtocol {
 
 newtype_enum! {
     /// The parity of the device.
+    #[derive(Default)]
     pub enum Parity: u32 => {
         /// Device default
         DEFAULT = 0,
@@ -122,6 +123,7 @@ newtype_enum! {
 
 newtype_enum! {
     /// Number of stop bits per character.
+    #[derive(Default)]
     pub enum StopBits: u32 => {
         /// Device default
         DEFAULT = 0,

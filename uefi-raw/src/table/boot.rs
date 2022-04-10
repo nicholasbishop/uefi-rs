@@ -197,8 +197,7 @@ pub struct BootServices {
     /// Support for C-variadics with `efiapi` requires the unstable
     /// [`extended_varargs_abi_support`](https://github.com/rust-lang/rust/issues/100189)
     /// feature.
-    pub install_multiple_protocol_interfaces:
-        unsafe extern "C" fn(handle: *mut Handle, ...) -> Status,
+    pub install_multiple_protocol_interfaces: usize,
 
     /// Warning: this function pointer is declared as `extern "C"` rather than
     /// `extern "efiapi". That means it will work correctly when called from a
@@ -209,7 +208,7 @@ pub struct BootServices {
     /// Support for C-variadics with `efiapi` requires the unstable
     /// [`extended_varargs_abi_support`](https://github.com/rust-lang/rust/issues/100189)
     /// feature.
-    pub uninstall_multiple_protocol_interfaces: unsafe extern "C" fn(handle: Handle, ...) -> Status,
+    pub uninstall_multiple_protocol_interfaces: usize,
 
     // CRC services
     pub calculate_crc32:

@@ -153,13 +153,15 @@ impl BootServices {
         ty: AllocateType,
         mem_ty: MemoryType,
         count: usize,
-    ) -> Result<PhysicalAddress> {
-        let (ty, mut addr) = match ty {
-            AllocateType::AnyPages => (0, 0),
+    ) -> Result<*mut u8> {
+        let (ty, addr) = match ty {
+            AllocateType::AnyPages => (0, ptr::null_mut()),
             AllocateType::MaxAddress(addr) => (1, addr),
             AllocateType::Address(addr) => (2, addr),
         };
-        unsafe { (self.0.allocate_pages)(ty, mem_ty, count, &mut addr) }.to_result_with_val(|| addr)
+        let mut addr = addr as PhysicalAddress;
+        unsafe { (self.0.allocate_pages)(ty, mem_ty, count, &mut addr) }
+            .to_result_with_val(|| addr as *mut u8)
     }
 
     /// Frees memory pages allocated by UEFI.
@@ -1586,9 +1588,9 @@ pub enum AllocateType {
     /// Allocate any possible pages.
     AnyPages,
     /// Allocate pages at any address below the given address.
-    MaxAddress(PhysicalAddress),
+    MaxAddress(*mut u8),
     /// Allocate pages at the specified address.
-    Address(PhysicalAddress),
+    Address(*mut u8),
 }
 
 impl Align for MemoryDescriptor {

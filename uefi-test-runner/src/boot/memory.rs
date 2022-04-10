@@ -22,7 +22,7 @@ fn allocate_pages(bt: &BootServices) {
         .allocate_pages(ty, mem_ty, 1)
         .expect("Failed to allocate a page of memory");
 
-    assert_eq!(pgs % 4096, 0, "Page pointer is not page-aligned");
+    assert_eq!((pgs as usize) % 4096, 0, "Page pointer is not page-aligned");
 
     // Reinterpret the page as an array of bytes
     let buf = unsafe { &mut *(pgs as *mut [u8; 4096]) };
@@ -32,7 +32,7 @@ fn allocate_pages(bt: &BootServices) {
     buf[4095] = 0x23;
 
     // Clean up to avoid memory leaks.
-    unsafe { bt.free_pages(pgs, 1) }.unwrap();
+    unsafe { bt.free_pages(pgs as u64, 1) }.unwrap();
 }
 
 // Simple test to ensure our custom allocator works with the `alloc` crate.
