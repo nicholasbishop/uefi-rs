@@ -1,9 +1,51 @@
 use core::ffi::c_void;
 use core::mem::MaybeUninit;
 use core::ptr::NonNull;
+use once_cell::sync::OnceCell;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use uefi::proto::device_path::DevicePath;
 use uefi::table::boot::{EventType, MemoryDescriptor, MemoryMapKey, MemoryType, Tpl};
 use uefi::{Char16, Event, Guid, Handle, Status};
+
+#[derive(Default)]
+struct HandleProtocol {
+    in_use: bool,
+}
+
+// TODO: maybe ProtocolGroup?
+#[derive(Default)]
+struct HandleImpl {
+    protocols: HashMap<Guid, HandleProtocol>,
+}
+
+impl HandleImpl {
+    fn as_handle(&mut self) -> Handle {
+        unsafe { Handle::from_ptr((self as *mut HandleImpl).cast()).unwrap() }
+    }
+}
+
+impl PartialEq<Handle> for HandleImpl {
+    fn eq(&self, other: &Handle) -> bool {
+        let other = other.as_ptr() as *const HandleImpl;
+        let this = self as *const HandleImpl;
+        this == other
+    }
+}
+
+fn get_handles() -> Arc<Mutex<Vec<HandleImpl>>> {
+    static HANDLES: OnceCell<Arc<Mutex<Vec<HandleImpl>>>> = OnceCell::new();
+    HANDLES
+        .get_or_init(|| Arc::new(Mutex::new(Vec::new())))
+        .clone()
+}
+
+pub fn new_handle() -> Handle {
+    let handles = get_handles();
+    let mut handles = handles.lock().unwrap();
+    handles.push(HandleImpl::default());
+    handles.last_mut().unwrap().as_handle()
+}
 
 // TODO: copied from boot.rs
 type EventNotifyFn = unsafe extern "efiapi" fn(event: Event, context: Option<NonNull<c_void>>);
@@ -188,7 +230,22 @@ pub extern "efiapi" fn open_protocol(
     controller_handle: Option<Handle>,
     attributes: u32,
 ) -> Status {
-    Status::UNSUPPORTED
+    let handles = get_handles();
+    let mut handles = handles.lock().unwrap();
+
+    for h in handles.iter_mut() {
+        if *h == handle {
+            if let Some(hp) = h.protocols.get_mut(protocol) {
+                hp.in_use = true;
+                // TODO
+                return Status::SUCCESS;
+            } else {
+                return Status::UNSUPPORTED;
+            }
+        }
+    }
+
+    panic!("invalid handle: {handle:?}")
 }
 
 pub extern "efiapi" fn close_protocol(

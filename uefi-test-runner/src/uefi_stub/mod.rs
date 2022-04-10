@@ -7,6 +7,7 @@ mod boot;
 mod runtime;
 mod text;
 
+use boot::new_handle;
 use core::{mem, ptr};
 use uefi::proto::console::text::{Output, OutputData};
 use uefi::table::boot::BootServices;
@@ -20,6 +21,8 @@ where
 {
     // TODO
     let bad_handle: Handle = unsafe { mem::transmute(0xbad_badu64) };
+
+    let image = new_handle();
 
     let runtime_services = {
         use runtime::*;
@@ -160,5 +163,5 @@ where
         SystemTable::from_ptr((&mut system_table_impl as *mut SystemTableImpl).cast()).unwrap()
     };
 
-    entry(bad_handle, st)
+    entry(image, st)
 }
