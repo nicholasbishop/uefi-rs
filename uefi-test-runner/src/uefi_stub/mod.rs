@@ -19,30 +19,32 @@ where
     E: Fn(Handle, SystemTable<Boot>) -> Status,
 {
     // TODO
-    use runtime::*;
     let bad_handle: Handle = unsafe { mem::transmute(0xbad_badu64) };
 
-    let runtime_services = RuntimeServices {
-        header: Header {
-            signature: 0x1234_5678,
-            revision: Revision::new(0, 1),
-            size: 0,
-            crc: 0,
-            _reserved: 0,
-        },
-        get_time,
-        set_time,
-        _pad: [0; 2],
-        set_virtual_address_map,
-        _pad2: 0,
-        get_variable,
-        get_next_variable_name,
-        set_variable,
-        _pad3: 0,
-        reset,
-        update_capsule: 0,
-        query_capsule_capabilities: 0,
-        query_variable_info,
+    let runtime_services = {
+        use runtime::*;
+        RuntimeServices {
+            header: Header {
+                signature: 0x1234_5678,
+                revision: Revision::new(0, 1),
+                size: 0,
+                crc: 0,
+                _reserved: 0,
+            },
+            get_time,
+            set_time,
+            _pad: [0; 2],
+            set_virtual_address_map,
+            _pad2: 0,
+            get_variable,
+            get_next_variable_name,
+            set_variable,
+            _pad3: 0,
+            reset,
+            update_capsule: 0,
+            query_capsule_capabilities: 0,
+            query_variable_info,
+        }
     };
 
     let boot_services = {
@@ -113,18 +115,21 @@ where
         cursor_visible: false,
     };
 
-    let mut stdout = Output {
-        reset: text::reset,
-        output_string: text::output_string,
-        test_string: text::test_string,
-        query_mode: text::query_mode,
-        set_mode: text::set_mode,
-        set_attribute: text::set_attribute,
-        clear_screen: text::clear_screen,
-        set_cursor_position: text::set_cursor_position,
-        enable_cursor: text::enable_cursor,
-        // TODO
-        data: unsafe { &*(&output_data as *const OutputData) },
+    let mut stdout = {
+        use text::*;
+        Output {
+            reset,
+            output_string,
+            test_string,
+            query_mode,
+            set_mode,
+            set_attribute,
+            clear_screen,
+            set_cursor_position,
+            enable_cursor,
+            // TODO
+            data: unsafe { &*(&output_data as *const OutputData) },
+        }
     };
 
     let mut system_table_impl = SystemTableImpl {
