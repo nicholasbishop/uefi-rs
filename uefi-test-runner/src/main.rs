@@ -27,11 +27,9 @@ use uefi_stub::uefi_services;
 
 #[cfg(feature = "native")]
 fn main() {
-    // TODO
-    use core::mem;
-    let image: Handle = unsafe { mem::transmute(1u64) };
-    let st: SystemTable<Boot> = unsafe { mem::transmute(uefi_stub::create_system_table()) };
-    let status = efi_main(image, st);
+    env_logger::init();
+
+    let status = uefi_stub::launch(|image, st| efi_main(image, st));
     assert_eq!(status, Status::SUCCESS);
 }
 
@@ -44,7 +42,12 @@ fn efi_main(image: Handle, mut st: SystemTable<Boot>) -> Status {
 
     let firmware_vendor = st.firmware_vendor();
     info!("Firmware Vendor: {}", firmware_vendor);
-    assert_eq!(firmware_vendor.to_string(), "EDK II");
+    let expected_vendor = if cfg!(feature = "native") {
+        "uefi_stub"
+    } else {
+        "EDK II"
+    };
+    assert_eq!(firmware_vendor.to_string(), expected_vendor);
 
     // Test print! and println! macros.
     let (print, println) = ("print!", "println!"); // necessary for clippy to ignore
