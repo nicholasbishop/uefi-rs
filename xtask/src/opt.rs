@@ -65,6 +65,7 @@ pub enum Action {
     Doc(DocOpt),
     Miri(MiriOpt),
     Run(QemuOpt),
+    RunNative(RunNativeOpt),
     Test(TestOpt),
     TestLatestRelease(TestLatestReleaseOpt),
 }
@@ -143,6 +144,16 @@ pub struct QemuOpt {
     /// Directory in which to look for OVMF files.
     #[clap(long)]
     pub ovmf_dir: Option<PathBuf>,
+}
+
+/// Build uefi-test-runner and run it on the host.
+#[derive(Debug, Parser)]
+pub struct RunNativeOpt {
+    // TODO: maybe a better way to structure this would be to run it as
+    // part of the "test" action, and also move the miri action to being
+    // an `--miri` flag under the "test" action.
+    #[clap(flatten)]
+    pub build_mode: BuildModeOpt,
 }
 
 /// Build uefi-test-runner and run it in QEMU.

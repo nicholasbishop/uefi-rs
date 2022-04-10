@@ -8,7 +8,7 @@ mod util;
 use anyhow::Result;
 use cargo::{Cargo, CargoAction, Feature, Package};
 use clap::Parser;
-use opt::{Action, BuildOpt, ClippyOpt, DocOpt, MiriOpt, Opt, QemuOpt};
+use opt::{Action, BuildOpt, ClippyOpt, DocOpt, MiriOpt, Opt, QemuOpt, RunNativeOpt};
 use std::process::Command;
 use tempfile::TempDir;
 use util::{command_to_string, run_cmd};
@@ -24,6 +24,7 @@ fn build(opt: &BuildOpt) -> Result<()> {
         release: opt.build_mode.release,
         target: Some(*opt.target),
         warnings_as_errors: false,
+        default_features: true,
     };
     run_cmd(cargo.command()?)
 }
@@ -38,6 +39,7 @@ fn clippy(opt: &ClippyOpt) -> Result<()> {
         release: false,
         target: Some(*opt.target),
         warnings_as_errors: opt.warning.warnings_as_errors,
+        default_features: true,
     };
     run_cmd(cargo.command()?)?;
 
@@ -50,6 +52,7 @@ fn clippy(opt: &ClippyOpt) -> Result<()> {
         release: false,
         target: None,
         warnings_as_errors: opt.warning.warnings_as_errors,
+        default_features: true,
     };
     run_cmd(cargo.command()?)
 }
@@ -64,6 +67,7 @@ fn doc(opt: &DocOpt) -> Result<()> {
         release: false,
         target: None,
         warnings_as_errors: opt.warning.warnings_as_errors,
+        default_features: true,
     };
     run_cmd(cargo.command()?)
 }
@@ -78,6 +82,21 @@ fn run_miri(opt: &MiriOpt) -> Result<()> {
         release: false,
         target: None,
         warnings_as_errors: false,
+        default_features: true,
+    };
+    run_cmd(cargo.command()?)
+}
+
+fn run_native(opt: &RunNativeOpt) -> Result<()> {
+    let cargo = Cargo {
+        action: CargoAction::Run,
+        features: vec![Feature::Native],
+        toolchain: Some(NIGHTLY.into()),
+        packages: vec![Package::UefiTestRunner],
+        release: opt.build_mode.release,
+        target: None,
+        warnings_as_errors: false,
+        default_features: false,
     };
     run_cmd(cargo.command()?)
 }
@@ -98,6 +117,7 @@ fn run_vm_tests(opt: &QemuOpt) -> Result<()> {
         release: opt.build_mode.release,
         target: Some(*opt.target),
         warnings_as_errors: false,
+        default_features: true,
     };
     run_cmd(cargo.command()?)?;
 
@@ -117,6 +137,7 @@ fn run_host_tests() -> Result<()> {
         release: false,
         target: None,
         warnings_as_errors: false,
+        default_features: true,
     };
     run_cmd(cargo.command()?)?;
 
@@ -132,6 +153,7 @@ fn run_host_tests() -> Result<()> {
         // Use the host target so that tests can run without a VM.
         target: None,
         warnings_as_errors: false,
+        default_features: true,
     };
     run_cmd(cargo.command()?)
 }
@@ -184,6 +206,7 @@ fn main() -> Result<()> {
         Action::Doc(doc_opt) => doc(doc_opt),
         Action::Miri(miri_opt) => run_miri(miri_opt),
         Action::Run(qemu_opt) => run_vm_tests(qemu_opt),
+        Action::RunNative(run_native_opt) => run_native(run_native_opt),
         Action::Test(_) => run_host_tests(),
         Action::TestLatestRelease(_) => test_latest_release(),
     }

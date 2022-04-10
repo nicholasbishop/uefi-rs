@@ -47,6 +47,7 @@ pub enum Feature {
     Exts,
     Logger,
 
+    Native,
     Ci,
     Qemu,
 }
@@ -58,6 +59,7 @@ impl Feature {
             Self::Exts => "exts",
             Self::Logger => "logger",
 
+            Self::Native => "uefi-test-runner/native",
             Self::Ci => "uefi-test-runner/ci",
             Self::Qemu => "uefi-test-runner/qemu",
         }
@@ -83,6 +85,7 @@ pub enum CargoAction {
     Clippy,
     Doc { open: bool },
     Miri,
+    Run,
     Test,
 }
 
@@ -95,6 +98,7 @@ pub struct Cargo {
     pub release: bool,
     pub target: Option<UefiArch>,
     pub warnings_as_errors: bool,
+    pub default_features: bool,
 }
 
 impl Cargo {
@@ -132,6 +136,9 @@ impl Cargo {
                 action = "miri";
                 sub_action = Some("test");
             }
+            CargoAction::Run => {
+                action = "run";
+            }
             CargoAction::Test => {
                 action = "test";
             }
@@ -143,6 +150,10 @@ impl Cargo {
 
         if self.release {
             cmd.arg("--release");
+        }
+
+        if !self.default_features {
+            cmd.arg("--no-default-features");
         }
 
         if let Some(target) = self.target {
