@@ -17,6 +17,7 @@ use core::ptr::NonNull;
 use core::{ptr, slice};
 
 /// Contains pointers to all of the boot services.
+#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 #[repr(C)]
 pub struct BootServices {
     header: Header,
