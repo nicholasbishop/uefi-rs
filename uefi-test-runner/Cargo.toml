@@ -4,6 +4,7 @@ version = "0.2.0"
 authors = ["The Rust OSDev team"]
 publish = false
 edition = "2021"
+default-run = "uefi-test-runner"
 
 [dependencies]
 uefi = { path = "../uefi", features = ["alloc"] }

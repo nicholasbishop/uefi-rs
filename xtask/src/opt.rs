@@ -72,6 +72,7 @@ pub enum Action {
     GenCode(GenCodeOpt),
     Miri(MiriOpt),
     Run(QemuOpt),
+    RunNative(RunNativeOpt),
     Test(TestOpt),
     Fmt(FmtOpt),
 }
@@ -182,6 +183,19 @@ pub struct QemuOpt {
 
     #[clap(flatten)]
     pub unstable: UnstableOpt,
+}
+
+/// Build uefi-test-runner and run it on the host.
+#[derive(Debug, Parser)]
+pub struct RunNativeOpt {
+    // TODO: maybe a better way to structure this would be to run it as
+    // part of the "test" action, and also move the miri action to being
+    // an `--miri` flag under the "test" action.
+    #[clap(flatten)]
+    pub build_mode: BuildModeOpt,
+
+    #[clap(long)]
+    pub miri: bool,
 }
 
 /// Run unit tests and doctests on the host.
