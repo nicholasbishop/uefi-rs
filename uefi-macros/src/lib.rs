@@ -5,11 +5,11 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 
 use proc_macro2::TokenStream as TokenStream2;
-use quote::{quote, quote_spanned, TokenStreamExt};
+use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::spanned::Spanned;
 use syn::{
-    parse_macro_input, parse_quote, Error, Expr, ExprLit, ExprPath, FnArg, Ident, ItemFn,
-    ItemStruct, Lit, LitStr, Pat, Visibility,
+    parse_macro_input, parse_quote, punctuated::Punctuated, token::Pub, Error, Expr, ExprLit,
+    ExprPath, Field, Fields, FnArg, Ident, ItemFn, ItemStruct, Lit, LitStr, Pat, Visibility,
 };
 
 macro_rules! err {
@@ -337,4 +337,60 @@ pub fn cstr16(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         .into_compile_error()
         .into(),
     }
+}
+
+/// Struct attribute macro that makes all fields public.
+///
+/// This can be used with `cfg_attr` to conditionally make all fields
+/// of a struct public.
+///
+/// # Example
+///
+/// In this example, `S.f` is public only if the `platform` feature is
+/// enabled:
+///
+/// ```
+/// #[cfg_attr(feature = "platform", platform_struct)]
+/// pub struct S {
+///     f: usize,
+/// }
+/// ```
+#[proc_macro_attribute]
+pub fn platform_struct(args: TokenStream, input: TokenStream) -> TokenStream {
+    if !args.is_empty() {
+        return Error::new_spanned(
+            TokenStream2::from(args),
+            "platform_struct attribute accepts no arguments",
+        )
+        .into_compile_error()
+        .into();
+    }
+
+    let mut input = parse_macro_input!(input as ItemStruct);
+
+    let make_fields_public = |fields: &mut Punctuated<Field, _>| {
+        for field in fields.iter_mut() {
+            field.vis = Visibility::Public(Pub {
+                span: proc_macro2::Span::call_site(),
+            });
+        }
+    };
+
+    // Make the struct itself public.
+    input.vis = Visibility::Public(Pub {
+        span: proc_macro2::Span::call_site(),
+    });
+
+    // Make all fields public.
+    match &mut input.fields {
+        Fields::Named(named) => make_fields_public(&mut named.named),
+        Fields::Unnamed(unnamed) => make_fields_public(&mut unnamed.unnamed),
+        Fields::Unit => {}
+    }
+
+    // Allow missing documentation. Some internal fields are just
+    // padding, no point requiring documentation there.
+    input.attrs.push(parse_quote! {#[allow(missing_docs)]});
+
+    input.to_token_stream().into()
 }
