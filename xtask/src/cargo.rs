@@ -59,6 +59,7 @@ pub enum Feature {
 
     // `uefi-test-runner` features.
     Ci,
+    Native,
 }
 
 impl Feature {
@@ -74,6 +75,7 @@ impl Feature {
             Self::Qemu => "uefi-services/qemu",
             Self::ServicesLogger => "uefi-services/logger",
 
+            Self::Native => "uefi-test-runner/native",
             Self::Ci => "uefi-test-runner/ci",
         }
     }
@@ -175,6 +177,7 @@ pub enum CargoAction {
         document_private_items: bool,
     },
     Miri,
+    Run,
     Test,
 }
 
@@ -226,6 +229,7 @@ pub struct Cargo {
     pub target: Option<UefiArch>,
     pub warnings_as_errors: bool,
     pub target_types: TargetTypes,
+    pub default_features: bool,
 }
 
 impl Cargo {
@@ -267,6 +271,9 @@ impl Cargo {
                 action = "miri";
                 sub_action = Some("test");
             }
+            CargoAction::Run => {
+                action = "run";
+            }
             CargoAction::Test => {
                 action = "test";
             }
@@ -278,6 +285,10 @@ impl Cargo {
 
         if self.release {
             cmd.arg("--release");
+        }
+
+        if !self.default_features {
+            cmd.arg("--no-default-features");
         }
 
         if let Some(target) = self.target {
