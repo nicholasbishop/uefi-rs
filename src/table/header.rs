@@ -2,6 +2,7 @@ use super::Revision;
 use core::fmt::{Debug, Formatter};
 
 /// All standard UEFI tables begin with a common header.
+#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 #[repr(C)]
 pub struct Header {
     /// Unique identifier for this table.

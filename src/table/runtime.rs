@@ -18,6 +18,7 @@ use core::{fmt, ptr};
 ///
 /// This table, and the function pointers it contains are valid
 /// even after the UEFI OS loader and OS have taken control of the platform.
+#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 #[repr(C)]
 pub struct RuntimeServices {
     header: Header,
