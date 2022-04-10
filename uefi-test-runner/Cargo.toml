@@ -23,7 +23,7 @@ multi_processor = []
 
 # Build for the host with a stub UEFI implementation instead of a real
 # UEFI target.
-native = []
+native = ["uefi/platform"]
 
 # Enable the PXE test.
 pxe = []
