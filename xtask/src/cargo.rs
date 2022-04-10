@@ -59,6 +59,7 @@ pub enum Feature {
 
     // `uefi-test-runner` features.
     MultiProcessor,
+    Native,
     Pxe,
     TestUnstable,
     TpmV1,
@@ -79,6 +80,7 @@ impl Feature {
             Self::ServicesLogger => "uefi-services/logger",
 
             Self::MultiProcessor => "uefi-test-runner/multi_processor",
+            Self::Native => "uefi-test-runner/native",
             Self::Pxe => "uefi-test-runner/pxe",
             Self::TestUnstable => "uefi-test-runner/unstable",
             Self::TpmV1 => "uefi-test-runner/tpm_v1",
@@ -191,6 +193,7 @@ pub enum CargoAction {
         document_private_items: bool,
     },
     Miri,
+    Run,
     Test,
 }
 
@@ -229,6 +232,7 @@ pub struct Cargo {
     pub target: Option<UefiArch>,
     pub warnings_as_errors: bool,
     pub target_types: TargetTypes,
+    pub default_features: bool,
 }
 
 impl Cargo {
@@ -271,6 +275,9 @@ impl Cargo {
                 sub_action = Some("test");
                 cmd.env("MIRIFLAGS", "-Zmiri-strict-provenance");
             }
+            CargoAction::Run => {
+                action = "run";
+            }
             CargoAction::Test => {
                 action = "test";
             }
@@ -282,6 +289,10 @@ impl Cargo {
 
         if self.release {
             cmd.arg("--release");
+        }
+
+        if !self.default_features {
+            cmd.arg("--no-default-features");
         }
 
         if let Some(target) = self.target {

@@ -16,7 +16,7 @@ use arch::UefiArch;
 use cargo::{fix_nested_cargo_env, Cargo, CargoAction, Feature, Package, TargetTypes};
 use clap::Parser;
 use itertools::Itertools;
-use opt::{Action, BuildOpt, ClippyOpt, DocOpt, Opt, QemuOpt, TpmVersion};
+use opt::{Action, BuildOpt, ClippyOpt, DocOpt, Opt, QemuOpt, RunNativeOpt, TpmVersion};
 use std::process::Command;
 use tempfile::TempDir;
 use util::{command_to_string, run_cmd};
@@ -35,6 +35,7 @@ fn build_feature_permutations(opt: &BuildOpt) -> Result<()> {
                 target: Some(*opt.target),
                 warnings_as_errors: true,
                 target_types: TargetTypes::BinsExamplesLib,
+                default_features: true,
             };
             run_cmd(cargo.command()?)?;
         }
@@ -56,6 +57,7 @@ fn build(opt: &BuildOpt) -> Result<()> {
         target: Some(*opt.target),
         warnings_as_errors: false,
         target_types: TargetTypes::BinsExamplesLib,
+        default_features: true,
     };
     run_cmd(cargo.command()?)
 }
@@ -71,6 +73,7 @@ fn clippy(opt: &ClippyOpt) -> Result<()> {
         target: Some(*opt.target),
         warnings_as_errors: opt.warning.warnings_as_errors,
         target_types: TargetTypes::BinsExamplesLib,
+        default_features: true,
     };
     run_cmd(cargo.command()?)?;
 
@@ -83,6 +86,7 @@ fn clippy(opt: &ClippyOpt) -> Result<()> {
         target: None,
         warnings_as_errors: opt.warning.warnings_as_errors,
         target_types: TargetTypes::Default,
+        default_features: true,
     };
     run_cmd(cargo.command()?)
 }
@@ -100,6 +104,7 @@ fn doc(opt: &DocOpt) -> Result<()> {
         target: None,
         warnings_as_errors: opt.warning.warnings_as_errors,
         target_types: TargetTypes::Default,
+        default_features: true,
     };
     run_cmd(cargo.command()?)
 }
@@ -114,6 +119,21 @@ fn run_miri() -> Result<()> {
         target: None,
         warnings_as_errors: false,
         target_types: TargetTypes::Default,
+        default_features: true,
+    };
+    run_cmd(cargo.command()?)
+}
+
+fn run_native(opt: &RunNativeOpt) -> Result<()> {
+    let cargo = Cargo {
+        action: CargoAction::Run,
+        features: vec![Feature::Native],
+        packages: vec![Package::UefiTestRunner],
+        release: opt.build_mode.release,
+        target: None,
+        warnings_as_errors: false,
+        target_types: TargetTypes::Default,
+        default_features: false,
     };
     run_cmd(cargo.command()?)
 }
@@ -155,6 +175,7 @@ fn run_vm_tests(opt: &QemuOpt) -> Result<()> {
         target: Some(*opt.target),
         warnings_as_errors: false,
         target_types: TargetTypes::BinsExamples,
+        default_features: true,
     };
     run_cmd(cargo.command()?)?;
 
@@ -174,6 +195,7 @@ fn run_host_tests(test_opt: &TestOpt) -> Result<()> {
         target: None,
         warnings_as_errors: false,
         target_types: TargetTypes::Default,
+        default_features: true,
     };
     run_cmd(cargo.command()?)?;
 
@@ -198,6 +220,7 @@ fn run_host_tests(test_opt: &TestOpt) -> Result<()> {
         target: None,
         warnings_as_errors: false,
         target_types: TargetTypes::Default,
+        default_features: true,
     };
     run_cmd(cargo.command()?)
 }
@@ -253,6 +276,7 @@ fn main() -> Result<()> {
         Action::Miri(_) => run_miri(),
         Action::Run(qemu_opt) => run_vm_tests(qemu_opt),
         Action::Test(test_opt) => run_host_tests(test_opt),
+        Action::RunNative(run_native_opt) => run_native(run_native_opt),
         Action::TestLatestRelease(_) => test_latest_release(),
     }
 }
