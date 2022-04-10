@@ -896,8 +896,10 @@ name = "uefi-test-runner"
 version = "0.2.0"
 dependencies = [
  "log",
+ "ptr_meta",
  "qemu-exit",
  "uefi",
+ "uefi-raw",
  "uefi-services",
 ]
 
