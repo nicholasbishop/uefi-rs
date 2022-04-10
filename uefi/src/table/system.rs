@@ -300,6 +300,7 @@ impl SystemTable<Runtime> {
 }
 
 /// The actual UEFI system table
+#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 #[repr(C)]
 struct SystemTableImpl {
     header: Header,

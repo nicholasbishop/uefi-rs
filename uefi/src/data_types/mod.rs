@@ -7,7 +7,7 @@ use core::{ffi::c_void, ptr::NonNull};
 /// Opaque handle to an UEFI entity (protocol, image...), guaranteed to be non-null.
 ///
 /// If you need to have a nullable handle (for a custom UEFI FFI for example) use `Option<Handle>`.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct Handle(NonNull<c_void>);
 
@@ -35,11 +35,19 @@ impl Handle {
         // shorthand for "|ptr| Self(ptr)"
         NonNull::new(ptr).map(Self)
     }
+
+    /// Get the underlying pointer.
+    #[cfg(feature = "platform")]
+    pub fn as_ptr(&self) -> *const c_void {
+        self.0.as_ptr()
+    }
 }
 
 /// Handle to an event structure, guaranteed to be non-null.
 ///
 /// If you need to have a nullable event, use `Option<Event>`.
+#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
+#[derive(Hash, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct Event(NonNull<c_void>);
 

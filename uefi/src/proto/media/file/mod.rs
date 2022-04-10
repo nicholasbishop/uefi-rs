@@ -292,6 +292,7 @@ impl Drop for FileHandle {
 }
 
 /// The function pointer table for the File protocol.
+#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 #[repr(C)]
 pub(super) struct FileImpl {
     revision: u64,

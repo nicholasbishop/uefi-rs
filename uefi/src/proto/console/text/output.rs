@@ -20,6 +20,7 @@ use core::fmt::{Debug, Formatter};
 /// [`SystemTable::stdout`]: crate::table::SystemTable::stdout
 /// [`SystemTable::stderr`]: crate::table::SystemTable::stderr
 /// [`BootServices`]: crate::table::boot::BootServices#accessing-protocols
+#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 #[repr(C)]
 #[unsafe_guid("387477c2-69c7-11d2-8e39-00a0c969723b")]
 #[derive(Protocol)]
@@ -309,6 +310,7 @@ impl<'out, 'boot> Iterator for OutputModeIter<'out, 'boot> {
 }
 
 /// Additional data of the output device.
+#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 #[derive(Debug)]
 #[repr(C)]
 struct OutputData {

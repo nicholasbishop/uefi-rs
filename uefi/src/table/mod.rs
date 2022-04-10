@@ -15,6 +15,8 @@ pub use self::revision::Revision;
 
 mod system;
 pub use self::system::{Boot, Runtime, SystemTable};
+#[cfg(feature = "platform")]
+pub use system::SystemTableImpl;
 
 pub mod boot;
 pub mod runtime;

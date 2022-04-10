@@ -82,6 +82,7 @@ static IMAGE_HANDLE: GlobalImageHandle = GlobalImageHandle {
 ///
 /// [`Output`]: crate::proto::console::text::Output
 /// [`open_protocol`]: BootServices::open_protocol
+#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 #[repr(C)]
 pub struct BootServices {
     header: Header,
@@ -1922,6 +1923,7 @@ impl MemoryType {
 pub const MEMORY_DESCRIPTOR_VERSION: u32 = 1;
 
 /// A structure describing a region of memory.
+#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 #[derive(Debug, Copy, Clone)]
 #[repr(C)]
 pub struct MemoryDescriptor {
@@ -2082,6 +2084,7 @@ impl<'guid> SearchType<'guid> {
 
 bitflags! {
     /// Flags describing the type of an UEFI event and its attributes.
+    #[repr(transparent)]
     pub struct EventType: u32 {
         /// The event is a timer event and may be passed to `BootServices::set_timer()`
         /// Note that timers only function during boot services time.
