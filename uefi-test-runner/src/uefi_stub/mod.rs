@@ -3,11 +3,13 @@
 
 pub mod uefi_services;
 
+mod boot;
 mod runtime;
 mod text;
 
 use core::{mem, ptr};
 use uefi::proto::console::text::{Output, OutputData};
+use uefi::table::boot::BootServices;
 use uefi::table::runtime::RuntimeServices;
 use uefi::table::{Boot, Header, Revision, SystemTable, SystemTableImpl};
 use uefi::{CString16, Handle, Status};
@@ -41,6 +43,63 @@ where
         update_capsule: 0,
         query_capsule_capabilities: 0,
         query_variable_info,
+    };
+
+    let boot_services = {
+        use boot::*;
+        BootServices {
+            header: Header {
+                signature: 0x1234_5678,
+                revision: Revision::new(0, 1),
+                size: 0,
+                crc: 0,
+                _reserved: 0,
+            },
+            raise_tpl,
+            restore_tpl,
+            allocate_pages,
+            free_pages,
+            get_memory_map,
+            allocate_pool,
+            free_pool,
+            create_event,
+            set_timer,
+            wait_for_event,
+            signal_event,
+            close_event,
+            check_event,
+            install_protocol_interface: 0,
+            reinstall_protocol_interface: 0,
+            uninstall_protocol_interface: 0,
+            handle_protocol,
+            _reserved: 0,
+            register_protocol_notify: 0,
+            locate_handle,
+            locate_device_path,
+            install_configuration_table: 0,
+            load_image,
+            start_image,
+            exit,
+            unload_image,
+            exit_boot_services,
+            get_next_monotonic_count: 0,
+            stall,
+            set_watchdog_timer,
+            connect_controller,
+            disconnect_controller,
+            open_protocol,
+            close_protocol,
+            open_protocol_information: 0,
+            protocols_per_handle,
+            locate_handle_buffer,
+            locate_protocol,
+            install_multiple_protocol_interfaces: 0,
+            uninstall_multiple_protocol_interfaces: 0,
+            calculate_crc32: 0,
+            copy_mem,
+            set_mem,
+            create_event_ex,
+        }
     };
 
     let fw_vendor = CString16::try_from("uefi_stub").unwrap();
