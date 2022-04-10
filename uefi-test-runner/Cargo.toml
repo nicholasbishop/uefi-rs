@@ -20,7 +20,7 @@ uefi-services = { path = "../uefi-services" }
 [features]
 # Build for the host with a stub UEFI implementation instead of a real
 # UEFI target.
-native = []
+native = ["uefi/platform"]
 
 # This feature should only be enabled in our CI, it disables some tests
 # which currently fail in that environment (see #103 for discussion).
