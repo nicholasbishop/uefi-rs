@@ -24,11 +24,7 @@ use uefi_stub::uefi_services;
 
 #[cfg(feature = "native")]
 fn main() {
-    // TODO
-    use core::mem;
-    let image: Handle = unsafe { mem::transmute(1u64) };
-    let st: SystemTable<Boot> = unsafe { mem::transmute(uefi_stub::create_system_table()) };
-    let status = efi_main(image, st);
+    let status = uefi_stub::launch(|image, st| efi_main(image, st));
     assert_eq!(status, Status::SUCCESS);
 }
 
