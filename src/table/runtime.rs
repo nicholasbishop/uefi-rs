@@ -553,6 +553,7 @@ pub struct TimeCapabilities {
 
 bitflags! {
     /// Flags describing the attributes of a variable.
+    #[repr(transparent)]
     pub struct VariableAttributes: u32 {
         /// Variable is maintained across a power cycle.
         const NON_VOLATILE = 0x01;
