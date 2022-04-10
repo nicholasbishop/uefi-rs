@@ -37,9 +37,9 @@ impl Logger {
     ///
     /// Undefined behaviour may occur if this logger is still active after the
     /// application has exited the boot services stage.
-    pub unsafe fn new(output: &mut Output) -> Self {
+    pub unsafe fn new(output: *mut Output) -> Self {
         Logger {
-            writer: NonNull::new(output as *const _ as *mut _),
+            writer: NonNull::new(output),
         }
     }
 

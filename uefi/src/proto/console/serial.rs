@@ -15,6 +15,7 @@ use bitflags::bitflags;
 /// check for input/output, some data might be lost.
 #[repr(C)]
 #[unsafe_protocol("bb25cf6f-f1d4-11d2-9a0c-0090273fc1fd")]
+#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 pub struct Serial {
     // Revision of this protocol, only 1.0 is currently defined.
     // Future versions will be backwards compatible.
@@ -132,7 +133,7 @@ impl Write for Serial {
 /// - 1 stop bit
 ///
 /// The software is responsible for flow control.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone)]
 #[repr(C)]
 pub struct IoMode {
     /// Bitmask of the control bits that this device supports.
@@ -196,10 +197,11 @@ bitflags! {
 }
 
 /// The parity of the device.
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Default, Copy, Clone, Eq, PartialEq)]
 #[repr(u32)]
 pub enum Parity {
     /// Device default
+    #[default]
     Default = 0,
     /// No parity
     None,
@@ -217,10 +219,11 @@ pub enum Parity {
 }
 
 /// Number of stop bits per character.
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Default, Copy, Clone, Eq, PartialEq)]
 #[repr(u32)]
 pub enum StopBits {
     /// Device default
+    #[default]
     Default = 0,
     /// 1 stop bit
     One,
