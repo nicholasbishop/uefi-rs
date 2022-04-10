@@ -27,7 +27,7 @@ pub unsafe fn test(image: Handle, bt: &BootServices) {
     draw_fb(gop);
 
     // `draw_fb` is skipped on aarch64, so the screenshot doesn't match.
-    if cfg!(not(target_arch = "aarch64")) {
+    if cfg!(not(any(target_arch = "aarch64", miri))) {
         send_request_to_host(bt, HostRequest::Screenshot("gop_test"));
     }
 }
@@ -62,7 +62,9 @@ fn fill_color(gop: &mut GraphicsOutput) {
 fn draw_fb(gop: &mut GraphicsOutput) {
     // The `virtio-gpu-pci` graphics device we use on aarch64 doesn't
     // support `PixelFormat::BltOnly`.
-    if cfg!(target_arch = "aarch64") {
+    //
+    // Also skip under miri because it's slow.
+    if cfg!(any(target_arch = "aarch64", miri)) {
         return;
     }
 

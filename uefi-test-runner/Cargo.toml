@@ -8,8 +8,10 @@ default-run = "uefi-test-runner"
 
 [dependencies]
 uefi = { path = "../uefi", features = ["alloc", "logger"] }
+uefi-raw = { path = "../uefi-raw" }
 
 log.workspace = true
+ptr_meta = { workspace = true, optional = true }
 
 qemu-exit = "3.0.0"
 
@@ -26,7 +28,7 @@ multi_processor = []
 
 # Build for the host with a stub UEFI implementation instead of a real
 # UEFI target.
-native = []
+native = ["dep:ptr_meta"]
 
 # Enable the PXE test.
 pxe = []

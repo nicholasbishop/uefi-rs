@@ -71,7 +71,15 @@ fn memory_map(bt: &BootServices) {
     let buf_sz = sizes.map_size + 2 * sizes.entry_size;
 
     // We will use vectors for convenience.
-    let mut buffer = vec![0_u8; buf_sz];
+    // TODO: hacky alignment fix
+    let mut buffer = vec![0_u64; buf_sz];
+    let mut buffer = unsafe {
+        core::slice::from_raw_parts_mut(
+            buffer.as_mut_ptr() as *mut u8,
+            buffer.len() * core::mem::size_of::<u64>(),
+        )
+    };
+    info!("BISH: buf_sz={}", buf_sz);
 
     let mut memory_map = bt
         .memory_map(&mut buffer)
