@@ -8,9 +8,11 @@ use proc_macro2::{TokenStream as TokenStream2, TokenTree};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::{
     parse::{Parse, ParseStream},
-    parse_macro_input,
+    parse_macro_input, parse_quote,
+    punctuated::Punctuated,
     spanned::Spanned,
-    DeriveInput, Error, Generics, Ident, ItemFn, ItemType, LitStr, Visibility,
+    DeriveInput, Error, Field, Fields, Generics, Ident, ItemFn, ItemStruct, ItemType, LitStr,
+    VisPublic, Visibility,
 };
 
 /// Parses a type definition, extracts its identifier and generic parameters
@@ -210,4 +212,64 @@ pub fn entry(args: TokenStream, input: TokenStream) -> TokenStream {
         const _: #unsafety extern "efiapi" fn(::uefi::Handle, ::uefi::table::SystemTable<::uefi::table::Boot>) -> ::uefi::Status = #ident;
     };
     result.into()
+}
+
+/// Struct attribute macro that makes all fields public.
+///
+/// This can be used with `cfg_attr` to conditionally make all fields
+/// of a struct public.
+///
+/// # Example
+///
+/// In this example, `S.f` is public only if the `platform` feature is
+/// enabled:
+///
+/// ```
+/// #[cfg_attr(feature = "platform", platform_struct)]
+/// pub struct S {
+///     f: usize,
+/// }
+/// ```
+#[proc_macro_attribute]
+pub fn platform_struct(args: TokenStream, input: TokenStream) -> TokenStream {
+    if !args.is_empty() {
+        return Error::new_spanned(
+            TokenStream2::from(args),
+            "platform_struct attribute accepts no arguments",
+        )
+        .into_compile_error()
+        .into();
+    }
+
+    let mut input = parse_macro_input!(input as ItemStruct);
+
+    let make_fields_public = |fields: &mut Punctuated<Field, _>| {
+        for field in fields.iter_mut() {
+            field.vis = Visibility::Public(VisPublic {
+                pub_token: syn::token::Pub {
+                    span: proc_macro2::Span::call_site(),
+                },
+            });
+        }
+    };
+
+    // Make the struct itself public.
+    input.vis = Visibility::Public(VisPublic {
+        pub_token: syn::token::Pub {
+            span: proc_macro2::Span::call_site(),
+        },
+    });
+
+    // Make all fields public.
+    match &mut input.fields {
+        Fields::Named(named) => make_fields_public(&mut named.named),
+        Fields::Unnamed(unnamed) => make_fields_public(&mut unnamed.unnamed),
+        Fields::Unit => {}
+    }
+
+    // Allow missing documentation. Some internal fields are just
+    // padding, no point requiring documentation there.
+    input.attrs.push(parse_quote! {#[allow(missing_docs)]});
+
+    input.to_token_stream().into()
 }
