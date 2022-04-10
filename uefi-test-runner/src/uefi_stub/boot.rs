@@ -188,7 +188,7 @@ pub extern "efiapi" fn open_protocol(
     controller_handle: Option<Handle>,
     attributes: u32,
 ) -> Status {
-    todo!()
+    Status::UNSUPPORTED
 }
 
 pub extern "efiapi" fn close_protocol(

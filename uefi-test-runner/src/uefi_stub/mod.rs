@@ -47,7 +47,7 @@ where
         }
     };
 
-    let boot_services = {
+    let mut boot_services = {
         use boot::*;
         BootServices {
             header: Header {
@@ -150,7 +150,7 @@ where
         stderr: ptr::null_mut(),
         // TODO
         runtime: unsafe { &*(&runtime_services as *const RuntimeServices) },
-        boot: ptr::null(),
+        boot: &mut boot_services,
         nr_cfg: 0,
         cfg_table: ptr::null(),
     };
