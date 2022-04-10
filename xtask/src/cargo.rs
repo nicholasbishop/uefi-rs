@@ -57,6 +57,7 @@ pub enum Feature {
     // `uefi-test-runner` features.
     DebugSupport,
     MultiProcessor,
+    Native,
     Pxe,
     TestUnstable,
     TpmV1,
@@ -75,6 +76,7 @@ impl Feature {
 
             Self::DebugSupport => "uefi-test-runner/debug_support",
             Self::MultiProcessor => "uefi-test-runner/multi_processor",
+            Self::Native => "uefi-test-runner/native",
             Self::Pxe => "uefi-test-runner/pxe",
             Self::TestUnstable => "uefi-test-runner/unstable",
             Self::TpmV1 => "uefi-test-runner/tpm_v1",
@@ -188,6 +190,8 @@ pub enum CargoAction {
         document_private_items: bool,
     },
     Miri,
+    MiriRun,
+    Run,
     Test,
 }
 
@@ -226,6 +230,7 @@ pub struct Cargo {
     pub target: Option<UefiArch>,
     pub warnings_as_errors: bool,
     pub target_types: TargetTypes,
+    pub default_features: bool,
 }
 
 impl Cargo {
@@ -269,6 +274,19 @@ impl Cargo {
                 sub_action = Some("test");
                 cmd.env("MIRIFLAGS", "-Zmiri-strict-provenance");
             }
+            CargoAction::MiriRun => {
+                action = "miri";
+                sub_action = Some("run");
+                // TODO
+                cmd.env(
+                    "MIRIFLAGS",
+                    "-Zmiri-permissive-provenance -Zmiri-tree-borrows",
+                    //"-Zmiri-permissive-provenance",
+                );
+            }
+            CargoAction::Run => {
+                action = "run";
+            }
             CargoAction::Test => {
                 action = "test";
             }
@@ -280,6 +298,10 @@ impl Cargo {
 
         if self.release {
             cmd.arg("--release");
+        }
+
+        if !self.default_features {
+            cmd.arg("--no-default-features");
         }
 
         if let Some(target) = self.target {
@@ -362,6 +384,7 @@ mod tests {
             target: None,
             warnings_as_errors: true,
             target_types: TargetTypes::Default,
+            default_features: true,
         };
         assert_eq!(
             command_to_string(&cargo.command().unwrap()),
