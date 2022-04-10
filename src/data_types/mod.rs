@@ -35,6 +35,12 @@ impl Handle {
         // shorthand for "|ptr| Self(ptr)"
         NonNull::new(ptr).map(Self)
     }
+
+    /// Get the underlying pointer.
+    #[cfg(feature = "platform")]
+    pub fn as_ptr(&self) -> *const c_void {
+        self.0.as_ptr()
+    }
 }
 
 /// Handle to an event structure
