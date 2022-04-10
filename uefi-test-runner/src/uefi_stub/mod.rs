@@ -71,7 +71,7 @@ where
     let mut system_table_impl = SystemTableImpl {
         header: Header {
             signature: 0x1234_5678,
-            revision: Revision::new(0, 1),
+            revision: Revision::new(2, 90),
             size: 0,
             crc: 0,
             _reserved: 0,
