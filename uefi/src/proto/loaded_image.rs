@@ -11,6 +11,7 @@ use crate::{
 use core::{ffi::c_void, mem, slice};
 
 /// The LoadedImage protocol. This can be opened on any image handle using the `HandleProtocol` boot service.
+#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 #[repr(C)]
 #[unsafe_protocol("5b1b31a1-9562-11d2-8e3f-00a0c969723b")]
 pub struct LoadedImage {

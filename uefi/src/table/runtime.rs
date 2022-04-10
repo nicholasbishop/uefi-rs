@@ -24,6 +24,7 @@ use core::{fmt, ptr};
 /// A reference to `RuntimeServices` can only be accessed by calling [`SystemTable::runtime_services`].
 ///
 /// [`SystemTable::runtime_services`]: crate::table::SystemTable::runtime_services
+#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 #[repr(C)]
 pub struct RuntimeServices {
     header: Header,
@@ -581,6 +582,7 @@ pub struct TimeCapabilities {
 
 bitflags! {
     /// Flags describing the attributes of a variable.
+    #[repr(transparent)]
     pub struct VariableAttributes: u32 {
         /// Variable is maintained across a power cycle.
         const NON_VOLATILE = 0x01;
