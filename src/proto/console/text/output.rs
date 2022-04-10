@@ -7,6 +7,7 @@ use core::fmt::{Debug, Formatter};
 ///
 /// It implements the fmt::Write trait, so you can use it to print text with
 /// standard Rust constructs like the `write!()` and `writeln!()` macros.
+#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 #[repr(C)]
 #[unsafe_guid("387477c2-69c7-11d2-8e39-00a0c969723b")]
 #[derive(Protocol)]
@@ -291,6 +292,7 @@ impl<'out, 'boot> Iterator for OutputModeIter<'out, 'boot> {
 }
 
 /// Additional data of the output device.
+#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 #[derive(Debug)]
 #[repr(C)]
 struct OutputData {
