@@ -14,22 +14,26 @@ pub fn test(image: Handle, st: &mut SystemTable<Boot>) {
 
     debug::test(bt);
     device_path::test(image, bt);
-    driver::test(bt);
-    loaded_image::test(image, bt);
-    media::test(bt);
-    network::test(bt);
-    pi::test(bt);
-    rng::test(bt);
-    string::test(bt);
 
-    #[cfg(any(
-        target_arch = "i386",
-        target_arch = "x86_64",
-        target_arch = "arm",
-        target_arch = "aarch64"
-    ))]
-    shim::test(bt);
-    tcg::test(bt);
+    // TODO: disable for now so we can test non-proto stuff
+    if cfg!(not(miri)) {
+        driver::test(bt);
+        loaded_image::test(image, bt);
+        media::test(bt);
+        network::test(bt);
+        pi::test(bt);
+        rng::test(bt);
+        string::test(bt);
+
+        #[cfg(any(
+            target_arch = "i386",
+            target_arch = "x86_64",
+            target_arch = "arm",
+            target_arch = "aarch64"
+        ))]
+        shim::test(bt);
+        tcg::test(bt);
+    }
 }
 
 fn find_protocol(bt: &BootServices) {

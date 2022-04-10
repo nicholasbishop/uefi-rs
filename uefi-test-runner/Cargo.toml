@@ -7,11 +7,11 @@ edition = "2021"
 default-run = "uefi-test-runner"
 
 [dependencies]
-# TODO we should let the uefi-test-runner run with and without unstable.
-uefi = { path = "../uefi", features = ["alloc"] }
+uefi = { path = "../uefi", features = ["alloc", "logger"] }
+uefi-raw = { path = "../uefi-raw" }
 
-log = { version = "0.4.17", default-features = false }
-
+log = { version = "0.4.11", default-features = false }
+ptr_meta = { version = "0.2.0", optional = true }
 qemu-exit = "3.0.0"
 
 # TODO
@@ -27,7 +27,7 @@ multi_processor = []
 
 # Build for the host with a stub UEFI implementation instead of a real
 # UEFI target.
-native = ["uefi/platform"]
+native = ["uefi/platform", "dep:ptr_meta"]
 
 # Enable the PXE test.
 pxe = []

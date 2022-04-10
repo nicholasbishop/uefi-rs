@@ -26,11 +26,11 @@ use uefi_stub::uefi_services;
 
 #[cfg(feature = "native")]
 fn main() {
-    // TODO
-    use core::mem;
-    let image: Handle = unsafe { mem::transmute(1u64) };
-    let st: SystemTable<Boot> = unsafe { mem::transmute(uefi_stub::create_system_table()) };
-    let status = efi_main(image, st);
+    let status = uefi_stub::launch(|image, st| {
+        let image = unsafe { Handle::from_ptr(image) }.unwrap();
+        let st = unsafe { SystemTable::from_ptr(st.cast()) }.unwrap();
+        efi_main(image, st)
+    });
     assert_eq!(status, Status::SUCCESS);
 }
 
@@ -43,7 +43,12 @@ fn efi_main(image: Handle, mut st: SystemTable<Boot>) -> Status {
 
     let firmware_vendor = st.firmware_vendor();
     info!("Firmware Vendor: {}", firmware_vendor);
-    assert_eq!(firmware_vendor.to_string(), "EDK II");
+    let expected_vendor = if cfg!(feature = "native") {
+        "uefi_stub"
+    } else {
+        "EDK II"
+    };
+    assert_eq!(firmware_vendor.to_string(), expected_vendor);
 
     // Test print! and println! macros.
     let (print, println) = ("print!", "println!"); // necessary for clippy to ignore
@@ -182,7 +187,7 @@ fn shutdown(mut st: SystemTable<Boot>) -> ! {
     // Exit boot services as a proof that it works :)
     let (st, _iter) = st.exit_boot_services();
 
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(all(target_arch = "x86_64", not(feature = "native")))]
     {
         // Prevent unused variable warning.
         let _ = st;
@@ -193,7 +198,7 @@ fn shutdown(mut st: SystemTable<Boot>) -> ! {
         qemu_exit_handle.exit_success();
     }
 
-    #[cfg(not(target_arch = "x86_64"))]
+    #[cfg(any(not(target_arch = "x86_64"), feature = "native"))]
     {
         // Shut down the system
         let rt = unsafe { st.runtime_services() };

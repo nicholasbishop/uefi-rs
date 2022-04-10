@@ -1,3 +1,5 @@
+use core::slice;
+
 use uefi::table::boot::{AllocateType, BootServices, MemoryType};
 
 use alloc::vec::Vec;
@@ -22,17 +24,17 @@ fn allocate_pages(bt: &BootServices) {
         .allocate_pages(ty, mem_ty, 1)
         .expect("Failed to allocate a page of memory");
 
-    assert_eq!(pgs % 4096, 0, "Page pointer is not page-aligned");
+    assert_eq!(pgs as usize % 4096, 0, "Page pointer is not page-aligned");
 
     // Reinterpret the page as an array of bytes
-    let buf = unsafe { &mut *(pgs as *mut [u8; 4096]) };
+    let buf = unsafe { slice::from_raw_parts_mut(pgs, 4096) };
 
     // If these don't fail then we properly allocated some memory.
     buf[0] = 0xF0;
     buf[4095] = 0x23;
 
     // Clean up to avoid memory leaks.
-    bt.free_pages(pgs, 1).unwrap();
+    bt.free_pages(pgs as u64, 1).unwrap();
 }
 
 // Simple test to ensure our custom allocator works with the `alloc` crate.
@@ -89,7 +91,15 @@ fn memory_map(bt: &BootServices) {
     let buf_sz = sizes.map_size + 2 * sizes.entry_size;
 
     // We will use vectors for convenience.
-    let mut buffer = vec![0_u8; buf_sz];
+    // TODO: hacky alignment fix
+    let mut buffer = vec![0_u64; buf_sz];
+    let mut buffer = unsafe {
+        core::slice::from_raw_parts_mut(
+            buffer.as_mut_ptr() as *mut u8,
+            buffer.len() * core::mem::size_of::<u64>(),
+        )
+    };
+    info!("BISH: buf_sz={}", buf_sz);
 
     let mut memory_map = bt
         .memory_map(&mut buffer)
