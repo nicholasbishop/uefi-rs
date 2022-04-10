@@ -1,11 +1,16 @@
+// TODO
+#![allow(unused_variables)]
+
 pub mod uefi_services;
 
 mod runtime;
+mod text;
 
 use core::{mem, ptr};
+use uefi::proto::console::text::{Output, OutputData};
 use uefi::table::runtime::RuntimeServices;
 use uefi::table::{Boot, Header, Revision, SystemTable, SystemTableImpl};
-use uefi::{Handle, Status};
+use uefi::{CString16, Handle, Status};
 
 pub fn launch<E>(entry: E) -> Status
 where
@@ -38,6 +43,31 @@ where
         query_variable_info,
     };
 
+    let fw_vendor = CString16::try_from("uefi_stub").unwrap();
+
+    let output_data = OutputData {
+        max_mode: 0,
+        mode: 0,
+        attribute: 0,
+        cursor_column: 0,
+        cursor_row: 0,
+        cursor_visible: false,
+    };
+
+    let mut stdout = Output {
+        reset: text::reset,
+        output_string: text::output_string,
+        test_string: text::test_string,
+        query_mode: text::query_mode,
+        set_mode: text::set_mode,
+        set_attribute: text::set_attribute,
+        clear_screen: text::clear_screen,
+        set_cursor_position: text::set_cursor_position,
+        enable_cursor: text::enable_cursor,
+        // TODO
+        data: unsafe { &*(&output_data as *const OutputData) },
+    };
+
     let mut system_table_impl = SystemTableImpl {
         header: Header {
             signature: 0x1234_5678,
@@ -46,12 +76,12 @@ where
             crc: 0,
             _reserved: 0,
         },
-        fw_vendor: ptr::null(),
+        fw_vendor: fw_vendor.as_ptr(),
         fw_revision: Revision::new(1, 2),
         stdin_handle: bad_handle,
         stdin: ptr::null_mut(),
         stdout_handle: bad_handle,
-        stdout: ptr::null_mut(),
+        stdout: &mut stdout,
         stderr_handle: bad_handle,
         stderr: ptr::null_mut(),
         // TODO

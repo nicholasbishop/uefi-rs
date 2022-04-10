@@ -1,6 +1,3 @@
-// TODO
-#![allow(unused_variables)]
-
 use uefi::table::boot::MemoryDescriptor;
 use uefi::table::runtime::{ResetType, Time, TimeCapabilities, VariableAttributes};
 use uefi::{Char16, Guid, Status};
