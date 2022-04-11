@@ -9,6 +9,7 @@ use core::ptr;
 ///
 /// This interface is implemented by some storage devices
 /// to allow file access to the contained file systems.
+#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 #[repr(C)]
 #[unsafe_guid("964e5b22-6459-11d2-8e39-00a0c969723b")]
 #[derive(Protocol)]
