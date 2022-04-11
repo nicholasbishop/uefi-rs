@@ -51,22 +51,24 @@ impl Pages {
     }
 }
 
-#[derive(Default)]
-pub struct MemoryMap {
-    descriptors: Vec<MemoryDescriptor>,
+pub struct State {
+    handle_db: HandleDb,
+    pages: Vec<Pages>,
+    memory_descriptors: Vec<MemoryDescriptor>,
 }
 
+// All "global" state goes in this thread local block. UEFI is single
+// threaded, so we have types like `Protocols` that can't be shared
+// between threads.
 thread_local! {
-    pub static HANDLE_DB: Rc<RefCell<HandleDb>> = Rc::new(RefCell::new(HandleDb {
-        handles: HashMap::new(),
-        next_handle_val: 1,
-    }));
-
-    pub static PAGES: Rc<RefCell<Vec<Pages>>> = Rc::default();
-
-    pub static MEM_MAP: Rc<RefCell<MemoryMap>> = Rc::new(RefCell::new(MemoryMap {
-        // TODO
-        descriptors: vec![MemoryDescriptor {
+    pub static STATE: Rc<RefCell<State>> = Rc::new(RefCell::new(State {
+        handle_db: HandleDb {
+            handles: HashMap::new(),
+            next_handle_val: 1,
+        },
+        pages: Vec::new(),
+        // Stub in some data to get past the memory test.
+        memory_descriptors: vec![MemoryDescriptor {
             ty: MemoryType::LOADER_CODE,
             padding: 0,
             phys_start: 0,
@@ -82,8 +84,9 @@ pub fn install_protocol(
     guid: Guid,
     interface: Box<dyn Any>,
 ) -> Result<Handle> {
-    HANDLE_DB.with(|db| {
-        let mut db = db.borrow_mut();
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let db = &mut state.handle_db;
 
         let handle = if let Some(handle) = handle {
             handle
@@ -134,8 +137,9 @@ pub extern "efiapi" fn allocate_pages(
     count: usize,
     addr: &mut u64,
 ) -> Status {
-    PAGES.with(|pages| {
-        let mut pages = pages.borrow_mut();
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let pages = &mut state.pages;
 
         let new_pages = Pages::new(count);
         *addr = new_pages.physical_address();
@@ -157,11 +161,12 @@ pub unsafe extern "efiapi" fn get_memory_map(
     desc_size: &mut usize,
     desc_version: &mut u32,
 ) -> Status {
-    MEM_MAP.with(|mem_map| {
-        let mem_map = mem_map.borrow();
+    STATE.with(|state| {
+        let state = state.borrow();
+        let mem_desc = &state.memory_descriptors;
 
         let current_size = *size;
-        let required_size = mem_map.descriptors.len() * mem::size_of::<MemoryDescriptor>();
+        let required_size = mem_desc.len() * mem::size_of::<MemoryDescriptor>();
 
         // Set output sizes.
         *size = required_size;
@@ -171,7 +176,7 @@ pub unsafe extern "efiapi" fn get_memory_map(
             return Status::BUFFER_TOO_SMALL;
         }
 
-        for (i, desc) in mem_map.descriptors.iter().enumerate() {
+        for (i, desc) in mem_desc.iter().enumerate() {
             map.add(i).write(*desc);
         }
         Status::SUCCESS
@@ -249,10 +254,10 @@ pub unsafe extern "efiapi" fn locate_device_path(
 ) -> Status {
     // Very TODO: for now just grab the first handle we find with a
     // `DevicePath` protocol.
-    HANDLE_DB.with(|db| {
-        let db = db.borrow();
+    STATE.with(|state| {
+        let state = state.borrow();
 
-        for (handle, pg) in db.handles.iter() {
+        for (handle, pg) in state.handle_db.handles.iter() {
             if pg.contains_key(&DevicePath::GUID) {
                 if pg.contains_key(proto) {
                     out_handle.write(*handle);
@@ -344,10 +349,10 @@ pub extern "efiapi" fn open_protocol(
 ) -> Status {
     debug!("opening protocol {protocol} for handle {handle:?}");
 
-    HANDLE_DB.with(|db| {
-        let mut db = db.borrow_mut();
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
 
-        if let Some(pg) = db.handles.get_mut(&handle) {
+        if let Some(pg) = state.handle_db.handles.get_mut(&handle) {
             if let Some(pw) = pg.get_mut(protocol) {
                 // TODO: only matters for exclusive access
                 assert!(!pw.in_use);
@@ -373,10 +378,10 @@ pub extern "efiapi" fn close_protocol(
     agent_handle: Handle,
     controller_handle: Option<Handle>,
 ) -> Status {
-    HANDLE_DB.with(|db| {
-        let mut db = db.borrow_mut();
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
 
-        if let Some(pg) = db.handles.get_mut(&handle) {
+        if let Some(pg) = state.handle_db.handles.get_mut(&handle) {
             if let Some(pw) = pg.get_mut(protocol) {
                 // TODO: only matters for exclusive access
                 assert!(pw.in_use);
