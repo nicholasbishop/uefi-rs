@@ -10,6 +10,7 @@ mod text;
 use boot::install_protocol;
 use core::{mem, ptr};
 use uefi::proto::console::text::{Output, OutputData};
+use uefi::proto::device_path::{DevicePath, DevicePathHeader, DeviceSubType, DeviceType};
 use uefi::proto::loaded_image::LoadedImage;
 use uefi::table::boot::{BootServices, MemoryType};
 use uefi::table::runtime::RuntimeServices;
@@ -162,6 +163,20 @@ where
         SystemTable::from_ptr((&mut system_table_impl as *mut SystemTableImpl).cast()).unwrap()
     };
 
+    let boot_fs_handle = install_protocol(
+        None,
+        DevicePath::GUID,
+        Box::new(
+            // TODO: not at all valid
+            DevicePathHeader {
+                device_type: DeviceType::HARDWARE,
+                sub_type: DeviceSubType::HARDWARE_PCI,
+                length: 4,
+            },
+        ),
+    )
+    .unwrap();
+
     let image = install_protocol(
         None,
         LoadedImage::GUID,
@@ -169,7 +184,7 @@ where
             revision: 1,
             parent_handle: bad_handle,
             system_table: ptr::null(),
-            device_handle: bad_handle,
+            device_handle: boot_fs_handle,
             file_path: ptr::null(),
             _reserved: ptr::null(),
             load_options_size: 0,

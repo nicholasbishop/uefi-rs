@@ -252,6 +252,8 @@ pub extern "efiapi" fn open_protocol(
     controller_handle: Option<Handle>,
     attributes: u32,
 ) -> Status {
+    debug!("opening protocol {protocol} for handle {handle:?}");
+
     HANDLE_DB.with(|db| {
         let mut db = db.borrow_mut();
 
