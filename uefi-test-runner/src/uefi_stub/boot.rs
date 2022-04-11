@@ -215,7 +215,8 @@ pub unsafe extern "efiapi" fn create_event(
 }
 
 pub unsafe extern "efiapi" fn set_timer(event: Event, ty: u32, trigger_time: u64) -> Status {
-    todo!()
+    // TODO: for now, just pretend.
+    Status::SUCCESS
 }
 
 pub unsafe extern "efiapi" fn wait_for_event(
@@ -223,7 +224,8 @@ pub unsafe extern "efiapi" fn wait_for_event(
     events: *mut Event,
     out_index: *mut usize,
 ) -> Status {
-    todo!()
+    // TODO: for now, just pretend.
+    Status::SUCCESS
 }
 
 pub extern "efiapi" fn signal_event(event: Event) -> Status {
@@ -235,7 +237,8 @@ pub unsafe extern "efiapi" fn close_event(event: Event) -> Status {
 }
 
 pub unsafe extern "efiapi" fn check_event(event: Event) -> Status {
-    todo!()
+    // TODO: for now, just pretend.
+    Status::SUCCESS
 }
 
 pub extern "efiapi" fn handle_protocol(
@@ -432,7 +435,19 @@ pub extern "efiapi" fn locate_protocol(
     registration: *mut c_void,
     out_proto: &mut *mut c_void,
 ) -> Status {
-    todo!()
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+
+        // Look for any handle that implements the protocol.
+        for handle_impl in state.handle_db.values_mut() {
+            if let Some(pw) = handle_impl.get_mut(proto) {
+                *out_proto = pw.protocol.as_mut() as *mut _ as *mut c_void;
+                return Status::SUCCESS;
+            }
+        }
+
+        Status::NOT_FOUND
+    })
 }
 
 pub unsafe extern "efiapi" fn copy_mem(dest: *mut u8, src: *const u8, len: usize) {
