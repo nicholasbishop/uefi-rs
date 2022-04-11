@@ -5,6 +5,7 @@ pub mod uefi_services;
 
 mod boot;
 mod fs;
+mod loaded_image;
 mod runtime;
 mod text;
 
@@ -206,7 +207,7 @@ where
             image_size: 0,
             image_code_type: MemoryType::LOADER_CODE,
             image_data_type: MemoryType::LOADER_DATA,
-            unload: unsafe { mem::transmute(ptr::null::<()>()) },
+            unload: loaded_image::unload,
         }),
     )
     .unwrap();
