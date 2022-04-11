@@ -8,7 +8,7 @@ use std::ptr::NonNull;
 use std::rc::Rc;
 use uefi::proto::device_path::DevicePath;
 use uefi::table::boot::{EventType, MemoryDescriptor, MemoryMapKey, MemoryType, Tpl};
-use uefi::{Char16, Error, Event, Guid, Handle, Result, Status};
+use uefi::{Char16, Error, Event, Guid, Handle, Identify, Result, Status};
 
 struct ProtocolWrapper {
     protocol: Box<dyn Any>,
@@ -172,7 +172,22 @@ pub unsafe extern "efiapi" fn locate_device_path(
     device_path: &mut &DevicePath,
     out_handle: &mut MaybeUninit<Handle>,
 ) -> Status {
-    todo!()
+    // Very TODO: for now just grab the first handle we find with a
+    // `DevicePath` protocol.
+    HANDLE_DB.with(|db| {
+        let db = db.borrow();
+
+        for (handle, pg) in db.handles.iter() {
+            if pg.contains_key(&DevicePath::GUID) {
+                if pg.contains_key(proto) {
+                    out_handle.write(*handle);
+                    return Status::SUCCESS;
+                }
+            }
+        }
+
+        Status::NOT_FOUND
+    })
 }
 
 pub unsafe extern "efiapi" fn load_image(

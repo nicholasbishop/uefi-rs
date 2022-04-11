@@ -12,6 +12,7 @@ use core::{mem, ptr};
 use uefi::proto::console::text::{Output, OutputData};
 use uefi::proto::device_path::{DevicePath, DevicePathHeader, DeviceSubType, DeviceType};
 use uefi::proto::loaded_image::LoadedImage;
+use uefi::proto::media::fs::SimpleFileSystem;
 use uefi::table::boot::{BootServices, MemoryType};
 use uefi::table::runtime::RuntimeServices;
 use uefi::table::{Boot, Header, Revision, SystemTable, SystemTableImpl};
@@ -174,6 +175,15 @@ where
                 length: 4,
             },
         ),
+    )
+    .unwrap();
+    install_protocol(
+        Some(boot_fs_handle),
+        SimpleFileSystem::GUID,
+        Box::new(SimpleFileSystem {
+            revision: 0,
+            open_volume: unsafe { mem::transmute(ptr::null::<()>()) },
+        }),
     )
     .unwrap();
 
