@@ -24,6 +24,8 @@ use uefi_stub::uefi_services;
 
 #[cfg(feature = "native")]
 fn main() {
+    env_logger::init();
+
     let status = uefi_stub::launch(|image, st| efi_main(image, st));
     assert_eq!(status, Status::SUCCESS);
 }
