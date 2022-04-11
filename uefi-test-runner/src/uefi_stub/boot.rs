@@ -9,14 +9,13 @@ use uefi::table::boot::{EventType, MemoryDescriptor, MemoryMapKey, MemoryType, T
 use uefi::{Char16, Event, Guid, Handle, Status};
 
 #[derive(Default)]
-struct HandleProtocol {
+struct ProtocolWrapper {
     in_use: bool,
 }
 
-// TODO: maybe ProtocolGroup?
 #[derive(Default)]
 struct ProtocolGroup {
-    protocols: HashMap<Guid, HandleProtocol>,
+    protocols: HashMap<Guid, ProtocolWrapper>,
 }
 
 impl ProtocolGroup {
