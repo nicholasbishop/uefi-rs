@@ -4,6 +4,7 @@
 pub mod uefi_services;
 
 mod boot;
+mod fs;
 mod runtime;
 mod text;
 
@@ -182,7 +183,7 @@ where
         SimpleFileSystem::GUID,
         Box::new(SimpleFileSystem {
             revision: 0,
-            open_volume: unsafe { mem::transmute(ptr::null::<()>()) },
+            open_volume: fs::open_volume,
         }),
     )
     .unwrap();
