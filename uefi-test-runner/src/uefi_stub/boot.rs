@@ -15,26 +15,26 @@ struct HandleProtocol {
 
 // TODO: maybe ProtocolGroup?
 #[derive(Default)]
-struct HandleImpl {
+struct ProtocolGroup {
     protocols: HashMap<Guid, HandleProtocol>,
 }
 
-impl HandleImpl {
+impl ProtocolGroup {
     fn as_handle(&mut self) -> Handle {
-        unsafe { Handle::from_ptr((self as *mut HandleImpl).cast()).unwrap() }
+        unsafe { Handle::from_ptr((self as *mut ProtocolGroup).cast()).unwrap() }
     }
 }
 
-impl PartialEq<Handle> for HandleImpl {
+impl PartialEq<Handle> for ProtocolGroup {
     fn eq(&self, other: &Handle) -> bool {
-        let other = other.as_ptr() as *const HandleImpl;
-        let this = self as *const HandleImpl;
+        let other = other.as_ptr() as *const ProtocolGroup;
+        let this = self as *const ProtocolGroup;
         this == other
     }
 }
 
-fn get_handles() -> Arc<Mutex<Vec<HandleImpl>>> {
-    static HANDLES: OnceCell<Arc<Mutex<Vec<HandleImpl>>>> = OnceCell::new();
+fn get_handles() -> Arc<Mutex<Vec<ProtocolGroup>>> {
+    static HANDLES: OnceCell<Arc<Mutex<Vec<ProtocolGroup>>>> = OnceCell::new();
     HANDLES
         .get_or_init(|| Arc::new(Mutex::new(Vec::new())))
         .clone()
@@ -43,7 +43,7 @@ fn get_handles() -> Arc<Mutex<Vec<HandleImpl>>> {
 pub fn new_handle() -> Handle {
     let handles = get_handles();
     let mut handles = handles.lock().unwrap();
-    handles.push(HandleImpl::default());
+    handles.push(ProtocolGroup::default());
     handles.last_mut().unwrap().as_handle()
 }
 
