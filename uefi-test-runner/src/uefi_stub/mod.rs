@@ -7,13 +7,14 @@ mod boot;
 mod runtime;
 mod text;
 
-use boot::new_handle;
+use boot::install_protocol;
 use core::{mem, ptr};
 use uefi::proto::console::text::{Output, OutputData};
-use uefi::table::boot::BootServices;
+use uefi::proto::loaded_image::LoadedImage;
+use uefi::table::boot::{BootServices, MemoryType};
 use uefi::table::runtime::RuntimeServices;
 use uefi::table::{Boot, Header, Revision, SystemTable, SystemTableImpl};
-use uefi::{CString16, Handle, Status};
+use uefi::{CString16, Handle, Identify, Status};
 
 pub fn launch<E>(entry: E) -> Status
 where
@@ -21,8 +22,6 @@ where
 {
     // TODO
     let bad_handle: Handle = unsafe { mem::transmute(0xbad_badu64) };
-
-    let image = new_handle();
 
     let runtime_services = {
         use runtime::*;
@@ -162,6 +161,29 @@ where
     let st: SystemTable<Boot> = unsafe {
         SystemTable::from_ptr((&mut system_table_impl as *mut SystemTableImpl).cast()).unwrap()
     };
+
+    let image = install_protocol(
+        None,
+        LoadedImage::GUID,
+        Box::new(LoadedImage {
+            revision: 1,
+            parent_handle: bad_handle,
+            system_table: ptr::null(),
+            device_handle: bad_handle,
+            file_path: ptr::null(),
+            _reserved: ptr::null(),
+            load_options_size: 0,
+            load_options: ptr::null(),
+
+            // Location where image was loaded
+            image_base: ptr::null(),
+            image_size: 0,
+            image_code_type: MemoryType::LOADER_CODE,
+            image_data_type: MemoryType::LOADER_DATA,
+            unload: unsafe { mem::transmute(ptr::null::<()>()) },
+        }),
+    )
+    .unwrap();
 
     entry(image, st)
 }

@@ -1,49 +1,72 @@
-use core::ffi::c_void;
-use core::mem::MaybeUninit;
-use core::ptr::NonNull;
-use once_cell::sync::OnceCell;
+use log::debug;
+use std::any::Any;
+use std::cell::RefCell;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::ffi::c_void;
+use std::mem::MaybeUninit;
+use std::ptr::NonNull;
+use std::rc::Rc;
 use uefi::proto::device_path::DevicePath;
 use uefi::table::boot::{EventType, MemoryDescriptor, MemoryMapKey, MemoryType, Tpl};
-use uefi::{Char16, Event, Guid, Handle, Status};
+use uefi::{Char16, Error, Event, Guid, Handle, Result, Status};
 
-#[derive(Default)]
 struct ProtocolWrapper {
+    protocol: Box<dyn Any>,
     in_use: bool,
 }
 
-#[derive(Default)]
-struct ProtocolGroup {
-    protocols: HashMap<Guid, ProtocolWrapper>,
+type ProtocolGroup = HashMap<Guid, ProtocolWrapper>;
+
+pub struct HandleDb {
+    handles: HashMap<Handle, ProtocolGroup>,
+    next_handle_val: usize,
 }
 
-impl ProtocolGroup {
-    fn as_handle(&mut self) -> Handle {
-        unsafe { Handle::from_ptr((self as *mut ProtocolGroup).cast()).unwrap() }
-    }
+thread_local! {
+    pub static HANDLE_DB: Rc<RefCell<HandleDb>> = Rc::new(RefCell::new(HandleDb {
+        handles: HashMap::new(),
+        next_handle_val: 1,
+    }));
 }
 
-impl PartialEq<Handle> for ProtocolGroup {
-    fn eq(&self, other: &Handle) -> bool {
-        let other = other.as_ptr() as *const ProtocolGroup;
-        let this = self as *const ProtocolGroup;
-        this == other
-    }
-}
+pub fn install_protocol(
+    handle: Option<Handle>,
+    guid: Guid,
+    interface: Box<dyn Any>,
+) -> Result<Handle> {
+    HANDLE_DB.with(|db| {
+        let mut db = db.borrow_mut();
 
-fn get_handles() -> Arc<Mutex<Vec<ProtocolGroup>>> {
-    static HANDLES: OnceCell<Arc<Mutex<Vec<ProtocolGroup>>>> = OnceCell::new();
-    HANDLES
-        .get_or_init(|| Arc::new(Mutex::new(Vec::new())))
-        .clone()
-}
+        let handle = if let Some(handle) = handle {
+            handle
+        } else {
+            // Create a new handle.
 
-pub fn new_handle() -> Handle {
-    let handles = get_handles();
-    let mut handles = handles.lock().unwrap();
-    handles.push(ProtocolGroup::default());
-    handles.last_mut().unwrap().as_handle()
+            let val = db.next_handle_val;
+            db.next_handle_val += 1;
+
+            let handle = unsafe { Handle::from_ptr(val as *mut _).unwrap() };
+            db.handles.insert(handle, ProtocolGroup::default());
+            handle
+        };
+
+        let group = db.handles.get_mut(&handle).unwrap();
+
+        // Not allowed to have Duplicate protocols on a handle.
+        if group.contains_key(&guid) {
+            return Err(Error::from(Status::INVALID_PARAMETER));
+        }
+
+        group.insert(
+            guid,
+            ProtocolWrapper {
+                protocol: interface,
+                in_use: false,
+            },
+        );
+
+        Status::SUCCESS.into_with_val(|| handle)
+    })
 }
 
 // TODO: copied from boot.rs
@@ -229,22 +252,27 @@ pub extern "efiapi" fn open_protocol(
     controller_handle: Option<Handle>,
     attributes: u32,
 ) -> Status {
-    let handles = get_handles();
-    let mut handles = handles.lock().unwrap();
+    HANDLE_DB.with(|db| {
+        let mut db = db.borrow_mut();
 
-    for h in handles.iter_mut() {
-        if *h == handle {
-            if let Some(hp) = h.protocols.get_mut(protocol) {
-                hp.in_use = true;
-                // TODO
-                return Status::SUCCESS;
+        if let Some(pg) = db.handles.get_mut(&handle) {
+            if let Some(pw) = pg.get_mut(protocol) {
+                // TODO: only matters for exclusive access
+                assert!(!pw.in_use);
+
+                pw.in_use = true;
+                *interface = pw.protocol.as_mut() as *mut _ as *mut c_void;
+
+                Status::SUCCESS
             } else {
-                return Status::UNSUPPORTED;
+                // Handle does not support protocol.
+                Status::UNSUPPORTED
             }
+        } else {
+            debug!("invalid handle: {handle:?}");
+            Status::INVALID_PARAMETER
         }
-    }
-
-    panic!("invalid handle: {handle:?}")
+    })
 }
 
 pub extern "efiapi" fn close_protocol(
@@ -253,7 +281,26 @@ pub extern "efiapi" fn close_protocol(
     agent_handle: Handle,
     controller_handle: Option<Handle>,
 ) -> Status {
-    todo!()
+    HANDLE_DB.with(|db| {
+        let mut db = db.borrow_mut();
+
+        if let Some(pg) = db.handles.get_mut(&handle) {
+            if let Some(pw) = pg.get_mut(protocol) {
+                // TODO: only matters for exclusive access
+                assert!(pw.in_use);
+
+                pw.in_use = false;
+
+                Status::SUCCESS
+            } else {
+                // Handle does not support protocol.
+                Status::NOT_FOUND
+            }
+        } else {
+            debug!("invalid handle: {handle:?}");
+            Status::INVALID_PARAMETER
+        }
+    })
 }
 
 pub unsafe extern "efiapi" fn protocols_per_handle(
