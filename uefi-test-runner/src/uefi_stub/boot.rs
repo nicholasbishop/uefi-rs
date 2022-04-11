@@ -385,11 +385,15 @@ pub extern "efiapi" fn locate_protocol(
 }
 
 pub unsafe extern "efiapi" fn copy_mem(dest: *mut u8, src: *const u8, len: usize) {
-    todo!()
+    for i in 0..len {
+        dest.add(i).write(src.add(i).read());
+    }
 }
 
 pub unsafe extern "efiapi" fn set_mem(buffer: *mut u8, len: usize, value: u8) {
-    todo!()
+    for i in 0..len {
+        buffer.add(i).write(value);
+    }
 }
 
 pub unsafe extern "efiapi" fn create_event_ex(
