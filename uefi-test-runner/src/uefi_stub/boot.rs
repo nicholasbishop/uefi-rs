@@ -22,11 +22,40 @@ pub struct HandleDb {
     next_handle_val: usize,
 }
 
+pub struct Pages {
+    data: Vec<u8>,
+}
+
+impl Pages {
+    fn new(num_pages: usize) -> Self {
+        Self {
+            // TODO: we need the alloc to be aligned to 4096. For now
+            // just allocate a bunch of extra space so we can be sure to
+            // make that possible for a suballocation.
+            data: vec![0; 4096 * (num_pages + 1)],
+        }
+    }
+
+    fn physical_address(&self) -> u64 {
+        let addr = self.data.as_ptr() as u64;
+        // Round up to a page boundary. We allocate enough extra space
+        // to make this OK.
+        let r = addr % 4096;
+        if r == 0 {
+            addr
+        } else {
+            addr + (4096 - r)
+        }
+    }
+}
+
 thread_local! {
     pub static HANDLE_DB: Rc<RefCell<HandleDb>> = Rc::new(RefCell::new(HandleDb {
         handles: HashMap::new(),
         next_handle_val: 1,
     }));
+
+    pub static PAGES: Rc<RefCell<Vec<Pages>>> = Rc::default();
 }
 
 pub fn install_protocol(
@@ -86,11 +115,20 @@ pub extern "efiapi" fn allocate_pages(
     count: usize,
     addr: &mut u64,
 ) -> Status {
-    todo!()
+    PAGES.with(|pages| {
+        let mut pages = pages.borrow_mut();
+
+        let new_pages = Pages::new(count);
+        *addr = new_pages.physical_address();
+        pages.push(new_pages);
+
+        Status::SUCCESS
+    })
 }
 
 pub extern "efiapi" fn free_pages(addr: u64, pages: usize) -> Status {
-    todo!()
+    // TODO: for now just let pages leak.
+    Status::SUCCESS
 }
 
 pub unsafe extern "efiapi" fn get_memory_map(
