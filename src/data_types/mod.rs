@@ -44,6 +44,7 @@ impl Handle {
 }
 
 /// Handle to an event structure
+#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 #[repr(transparent)]
 pub struct Event(*mut c_void);
 
