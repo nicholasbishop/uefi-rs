@@ -1359,6 +1359,7 @@ impl MemoryType {
 pub const MEMORY_DESCRIPTOR_VERSION: u32 = 1;
 
 /// A structure describing a region of memory.
+#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 #[derive(Debug, Copy, Clone)]
 #[repr(C)]
 pub struct MemoryDescriptor {
