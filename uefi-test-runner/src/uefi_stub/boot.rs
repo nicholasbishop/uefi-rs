@@ -19,6 +19,10 @@ struct ProtocolWrapper {
 
 type HandleImpl = HashMap<Guid, ProtocolWrapper>;
 
+struct EventImpl {
+    // TODO
+}
+
 pub struct Pages {
     data: Vec<u8>,
 }
@@ -48,6 +52,7 @@ impl Pages {
 
 pub struct State {
     handle_db: HashMap<Handle, Box<HandleImpl>>,
+    events: HashMap<Event, Box<EventImpl>>,
     pages: Vec<Pages>,
     memory_descriptors: Vec<MemoryDescriptor>,
 }
@@ -58,6 +63,7 @@ pub struct State {
 thread_local! {
     pub static STATE: Rc<RefCell<State>> = Rc::new(RefCell::new(State {
         handle_db: HashMap::new(),
+        events: HashMap::new(),
         pages: Vec::new(),
         // Stub in some data to get past the memory test.
         memory_descriptors: vec![MemoryDescriptor {
@@ -86,8 +92,8 @@ pub fn install_protocol(
             // Create a new handle.
 
             let mut handle_impl = Box::new(HandleImpl::default());
-            let handle_impl_ptr = (handle_impl.as_mut() as *mut HandleImpl).cast();
-            let handle = unsafe { Handle::from_ptr(handle_impl_ptr) }.unwrap();
+            let handle_impl_ptr = handle_impl.as_mut() as *mut HandleImpl;
+            let handle = unsafe { Handle::from_ptr(handle_impl_ptr.cast()) }.unwrap();
 
             db.insert(handle, handle_impl);
             handle
@@ -194,7 +200,18 @@ pub unsafe extern "efiapi" fn create_event(
     notify_ctx: Option<NonNull<c_void>>,
     out_event: *mut Event,
 ) -> Status {
-    todo!()
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+
+        let mut event_impl = Box::new(EventImpl {});
+        let event_impl_ptr = event_impl.as_mut() as *mut EventImpl;
+        let event = Event(event_impl_ptr.cast());
+
+        state.events.insert(event.unsafe_clone(), event_impl);
+        *out_event = event;
+
+        Status::SUCCESS
+    })
 }
 
 pub unsafe extern "efiapi" fn set_timer(event: Event, ty: u32, trigger_time: u64) -> Status {
