@@ -123,7 +123,7 @@ where
 
     let mut stdout = {
         use text::*;
-        Output {
+        Box::new(Output {
             reset,
             output_string,
             test_string,
@@ -135,8 +135,11 @@ where
             enable_cursor,
             // TODO
             data: unsafe { &*(&output_data as *const OutputData) },
-        }
+        })
     };
+    let stdout_ptr = stdout.as_mut() as *mut _;
+
+    let stdout_handle = install_protocol(None, Output::GUID, stdout).unwrap();
 
     let mut system_table_impl = SystemTableImpl {
         header: Header {
@@ -150,8 +153,8 @@ where
         fw_revision: Revision::new(1, 2),
         stdin_handle: bad_handle,
         stdin: ptr::null_mut(),
-        stdout_handle: bad_handle,
-        stdout: &mut stdout,
+        stdout_handle: stdout_handle,
+        stdout: stdout_ptr,
         stderr_handle: bad_handle,
         stderr: ptr::null_mut(),
         // TODO
