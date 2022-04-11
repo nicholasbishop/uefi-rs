@@ -17,12 +17,7 @@ struct ProtocolWrapper {
     in_use: bool,
 }
 
-type ProtocolGroup = HashMap<Guid, ProtocolWrapper>;
-
-pub struct HandleDb {
-    handles: HashMap<Handle, ProtocolGroup>,
-    next_handle_val: usize,
-}
+type HandleImpl = HashMap<Guid, ProtocolWrapper>;
 
 pub struct Pages {
     data: Vec<u8>,
@@ -52,7 +47,7 @@ impl Pages {
 }
 
 pub struct State {
-    handle_db: HandleDb,
+    handle_db: HashMap<Handle, Box<HandleImpl>>,
     pages: Vec<Pages>,
     memory_descriptors: Vec<MemoryDescriptor>,
 }
@@ -62,10 +57,7 @@ pub struct State {
 // between threads.
 thread_local! {
     pub static STATE: Rc<RefCell<State>> = Rc::new(RefCell::new(State {
-        handle_db: HandleDb {
-            handles: HashMap::new(),
-            next_handle_val: 1,
-        },
+        handle_db: HashMap::new(),
         pages: Vec::new(),
         // Stub in some data to get past the memory test.
         memory_descriptors: vec![MemoryDescriptor {
@@ -93,15 +85,15 @@ pub fn install_protocol(
         } else {
             // Create a new handle.
 
-            let val = db.next_handle_val;
-            db.next_handle_val += 1;
+            let mut handle_impl = Box::new(HandleImpl::default());
+            let handle_impl_ptr = (handle_impl.as_mut() as *mut HandleImpl).cast();
+            let handle = unsafe { Handle::from_ptr(handle_impl_ptr) }.unwrap();
 
-            let handle = unsafe { Handle::from_ptr(val as *mut _).unwrap() };
-            db.handles.insert(handle, ProtocolGroup::default());
+            db.insert(handle, handle_impl);
             handle
         };
 
-        let group = db.handles.get_mut(&handle).unwrap();
+        let group = db.get_mut(&handle).unwrap();
 
         // Not allowed to have Duplicate protocols on a handle.
         if group.contains_key(&guid) {
@@ -257,7 +249,7 @@ pub unsafe extern "efiapi" fn locate_device_path(
     STATE.with(|state| {
         let state = state.borrow();
 
-        for (handle, pg) in state.handle_db.handles.iter() {
+        for (handle, pg) in state.handle_db.iter() {
             if pg.contains_key(&DevicePath::GUID) {
                 if pg.contains_key(proto) {
                     out_handle.write(*handle);
@@ -352,7 +344,7 @@ pub extern "efiapi" fn open_protocol(
     STATE.with(|state| {
         let mut state = state.borrow_mut();
 
-        if let Some(pg) = state.handle_db.handles.get_mut(&handle) {
+        if let Some(pg) = state.handle_db.get_mut(&handle) {
             if let Some(pw) = pg.get_mut(protocol) {
                 // TODO: only matters for exclusive access
                 assert!(!pw.in_use);
@@ -381,7 +373,7 @@ pub extern "efiapi" fn close_protocol(
     STATE.with(|state| {
         let mut state = state.borrow_mut();
 
-        if let Some(pg) = state.handle_db.handles.get_mut(&handle) {
+        if let Some(pg) = state.handle_db.get_mut(&handle) {
             if let Some(pw) = pg.get_mut(protocol) {
                 // TODO: only matters for exclusive access
                 assert!(pw.in_use);
