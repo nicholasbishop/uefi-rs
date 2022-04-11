@@ -3,11 +3,13 @@ use std::any::Any;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ffi::c_void;
-use std::mem::MaybeUninit;
+use std::mem::{self, MaybeUninit};
 use std::ptr::NonNull;
 use std::rc::Rc;
 use uefi::proto::device_path::DevicePath;
-use uefi::table::boot::{EventType, MemoryDescriptor, MemoryMapKey, MemoryType, Tpl};
+use uefi::table::boot::{
+    EventType, MemoryAttribute, MemoryDescriptor, MemoryMapKey, MemoryType, Tpl,
+};
 use uefi::{Char16, Error, Event, Guid, Handle, Identify, Result, Status};
 
 struct ProtocolWrapper {
@@ -49,6 +51,11 @@ impl Pages {
     }
 }
 
+#[derive(Default)]
+pub struct MemoryMap {
+    descriptors: Vec<MemoryDescriptor>,
+}
+
 thread_local! {
     pub static HANDLE_DB: Rc<RefCell<HandleDb>> = Rc::new(RefCell::new(HandleDb {
         handles: HashMap::new(),
@@ -56,6 +63,18 @@ thread_local! {
     }));
 
     pub static PAGES: Rc<RefCell<Vec<Pages>>> = Rc::default();
+
+    pub static MEM_MAP: Rc<RefCell<MemoryMap>> = Rc::new(RefCell::new(MemoryMap {
+        // TODO
+        descriptors: vec![MemoryDescriptor {
+            ty: MemoryType::LOADER_CODE,
+            padding: 0,
+            phys_start: 0,
+            virt_start: 0,
+            page_count: 1,
+            att: MemoryAttribute::empty(),
+        }],
+    }));
 }
 
 pub fn install_protocol(
@@ -138,7 +157,25 @@ pub unsafe extern "efiapi" fn get_memory_map(
     desc_size: &mut usize,
     desc_version: &mut u32,
 ) -> Status {
-    todo!()
+    MEM_MAP.with(|mem_map| {
+        let mem_map = mem_map.borrow();
+
+        let current_size = *size;
+        let required_size = mem_map.descriptors.len() * mem::size_of::<MemoryDescriptor>();
+
+        // Set output sizes.
+        *size = required_size;
+        *desc_size = mem::size_of::<MemoryDescriptor>();
+
+        if current_size < required_size {
+            return Status::BUFFER_TOO_SMALL;
+        }
+
+        for (i, desc) in mem_map.descriptors.iter().enumerate() {
+            map.add(i).write(*desc);
+        }
+        Status::SUCCESS
+    })
 }
 
 pub extern "efiapi" fn allocate_pool(
