@@ -331,7 +331,8 @@ pub unsafe extern "efiapi" fn set_watchdog_timer(
     data_size: usize,
     watchdog_data: *const u16,
 ) -> Status {
-    todo!()
+    // TODO: for now, just pretend.
+    Status::SUCCESS
 }
 
 pub unsafe extern "efiapi" fn connect_controller(
