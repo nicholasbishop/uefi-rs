@@ -1,11 +1,14 @@
+use crate::try_status;
 use log::debug;
 use std::any::Any;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ffi::c_void;
 use std::mem::{self, MaybeUninit};
+use std::ptr;
 use std::ptr::NonNull;
 use std::rc::Rc;
+use uefi::data_types::Align;
 use uefi::proto::device_path::{DevicePath, FfiDevicePath};
 use uefi::table::boot::{
     EventType, InterfaceType, MemoryAttribute, MemoryDescriptor, MemoryMapKey, MemoryType,
@@ -182,16 +185,30 @@ pub unsafe extern "efiapi" fn get_memory_map(
     })
 }
 
+struct PageAlignment;
+impl Align for PageAlignment {
+    fn alignment() -> usize {
+        4096
+    }
+}
+
 pub extern "efiapi" fn allocate_pool(
     pool_type: MemoryType,
     size: usize,
     buffer: &mut *mut u8,
 ) -> Status {
-    todo!()
+    let num_pages = PageAlignment::round_up_to_alignment(size);
+
+    let mut addr = 0;
+    try_status!(allocate_pages(0, pool_type, num_pages, &mut addr));
+    *buffer = addr as *mut u8;
+
+    Status::SUCCESS
 }
 
 pub extern "efiapi" fn free_pool(buffer: *mut u8) -> Status {
-    todo!()
+    // TODO
+    Status::SUCCESS
 }
 
 pub unsafe extern "efiapi" fn create_event(
@@ -463,7 +480,52 @@ pub unsafe extern "efiapi" fn locate_handle_buffer(
     no_handles: &mut usize,
     buf: &mut *mut Handle,
 ) -> Status {
-    todo!()
+    let matched_handles: Vec<Handle> = STATE.with(|state| {
+        let state = state.borrow();
+
+        match search_ty {
+            // AllHandles
+            0 => state.handle_db.keys().cloned().collect(),
+            // ByRegisterNotify
+            1 => {
+                todo!();
+            }
+            // ByProtocol
+            2 => state
+                .handle_db
+                .iter()
+                .filter_map(|(handle, v)| {
+                    if v.contains_key(proto.unwrap()) {
+                        Some(handle)
+                    } else {
+                        None
+                    }
+                })
+                .cloned()
+                .collect(),
+            _ => {
+                panic!("invalid {search_ty}");
+            }
+        }
+    });
+
+    *no_handles = matched_handles.len();
+
+    let mut ptr = ptr::null_mut();
+    try_status!(allocate_pool(
+        MemoryType::CONVENTIONAL,
+        matched_handles.len() * mem::size_of::<Handle>(),
+        &mut ptr,
+    ));
+
+    let ptr = ptr.cast::<Handle>();
+    for (i, handle) in matched_handles.iter().enumerate() {
+        ptr.add(i).write(*handle);
+    }
+
+    *buf = ptr;
+
+    Status::SUCCESS
 }
 
 pub extern "efiapi" fn locate_protocol(

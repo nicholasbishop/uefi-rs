@@ -20,6 +20,18 @@ use uefi::table::runtime::RuntimeServices;
 use uefi::table::{Boot, Header, Revision, SystemTable, SystemTableImpl};
 use uefi::{CString16, Handle, Identify, Status};
 
+#[macro_export]
+macro_rules! try_status {
+    ($expr:expr) => {
+        match $expr {
+            Status::SUCCESS => (),
+            status => {
+                return status;
+            }
+        }
+    };
+}
+
 pub fn launch<E>(entry: E) -> Status
 where
     E: Fn(Handle, SystemTable<Boot>) -> Status,
