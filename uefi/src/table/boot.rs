@@ -2046,7 +2046,7 @@ impl<'buf> Iterator for MemoryMapIter<'buf> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index < self.len {
-            let ptr = self.buffer.as_ptr() as usize + self.entry_size * self.index;
+            let ptr = unsafe { self.buffer.as_ptr().add(self.entry_size * self.index) };
 
             self.index += 1;
 
