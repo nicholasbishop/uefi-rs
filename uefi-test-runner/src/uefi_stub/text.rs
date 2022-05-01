@@ -63,3 +63,17 @@ pub extern "efiapi" fn convert_device_path_to_text(
     // TODO
     ptr::null()
 }
+
+pub extern "efiapi" fn convert_text_to_device_node(
+    text_device_node: *const Char16,
+) -> *const FfiDevicePath {
+    // TODO
+    ptr::null()
+}
+
+pub extern "efiapi" fn convert_text_to_device_path(
+    text_device_path: *const Char16,
+) -> *const FfiDevicePath {
+    // TODO
+    ptr::null()
+}

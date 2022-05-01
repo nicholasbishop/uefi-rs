@@ -150,6 +150,7 @@ impl DevicePathToText {
 ///
 /// This protocol provides common utilities for converting text to
 /// device paths and device nodes.
+#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 #[repr(C)]
 #[unsafe_guid("05c99a21-c70f-4ad2-8a5f-35df3343f51e")]
 #[derive(Protocol)]
