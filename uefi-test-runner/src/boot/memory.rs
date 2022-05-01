@@ -1,3 +1,5 @@
+use core::slice;
+
 use uefi::table::boot::{AllocateType, BootServices, MemoryType};
 
 use alloc::vec::Vec;
@@ -18,14 +20,14 @@ fn allocate_pages(bt: &BootServices) {
 
     let ty = AllocateType::AnyPages;
     let mem_ty = MemoryType::LOADER_DATA;
-    let pgs = bt
+    let pgs: u64 = bt
         .allocate_pages(ty, mem_ty, 1)
         .expect("Failed to allocate a page of memory");
 
     assert_eq!(pgs % 4096, 0, "Page pointer is not page-aligned");
 
     // Reinterpret the page as an array of bytes
-    let buf = unsafe { &mut *(pgs as *mut [u8; 4096]) };
+    let buf = unsafe { slice::from_raw_parts_mut(pgs as *mut u8, 4096) };
 
     // If these don't fail then we properly allocated some memory.
     buf[0] = 0xF0;
