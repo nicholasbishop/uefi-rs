@@ -125,7 +125,7 @@ where
     let fw_vendor = CString16::try_from("uefi_stub").unwrap();
 
     let output_data = OutputData {
-        max_mode: 0,
+        max_mode: 1,
         mode: 0,
         attribute: 0,
         cursor_column: 0,
