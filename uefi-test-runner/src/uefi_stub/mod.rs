@@ -13,7 +13,7 @@ use boot::{install_protocol, open_protocol};
 use std::cell::UnsafeCell;
 use std::{mem, ptr};
 use uefi::proto::console::text::{Output, OutputData};
-use uefi::proto::device_path::text::DevicePathToText;
+use uefi::proto::device_path::text::{DevicePathFromText, DevicePathToText};
 use uefi::proto::device_path::{DevicePath, DevicePathHeader, DeviceSubType, DeviceType};
 use uefi::proto::loaded_image::LoadedImage;
 use uefi::proto::media::fs::SimpleFileSystem;
@@ -200,7 +200,7 @@ where
     )
     .unwrap();
 
-    let dp_to_text = {
+    {
         use text::*;
         install_protocol(
             None,
@@ -210,8 +210,18 @@ where
                 convert_device_path_to_text,
             })),
         )
-        .unwrap()
-    };
+        .unwrap();
+
+        install_protocol(
+            None,
+            DevicePathFromText::GUID,
+            Box::new(UnsafeCell::new(DevicePathFromText {
+                convert_text_to_device_node,
+                convert_text_to_device_path,
+            })),
+        )
+        .unwrap();
+    }
 
     let mut stdout_ptr = ptr::null_mut();
     assert_eq!(
