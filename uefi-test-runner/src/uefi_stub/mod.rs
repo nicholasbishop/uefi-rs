@@ -159,8 +159,8 @@ where
         Box::new(UnsafeCell::new(
             // TODO: not at all valid
             DevicePathHeader {
-                device_type: DeviceType::HARDWARE,
-                sub_type: DeviceSubType::HARDWARE_PCI,
+                device_type: DeviceType::END,
+                sub_type: DeviceSubType::END_ENTIRE,
                 length: 4,
             },
         )),
