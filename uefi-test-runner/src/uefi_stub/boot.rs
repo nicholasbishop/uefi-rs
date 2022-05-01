@@ -518,7 +518,38 @@ pub unsafe extern "efiapi" fn protocols_per_handle(
     protocol_buffer: *mut *mut *const Guid,
     protocol_buffer_count: *mut usize,
 ) -> Status {
-    todo!()
+    let num_protocols = if let Some(num_protocols) = STATE.with(|state| {
+        let state = state.borrow();
+
+        let handle_impl = state.handle_db.get(&handle)?;
+        Some(handle_impl.len())
+    }) {
+        num_protocols
+    } else {
+        return Status::INVALID_PARAMETER;
+    };
+
+    let mut buf = ptr::null_mut();
+    try_status!(allocate_pool(
+        MemoryType::CONVENTIONAL,
+        num_protocols * mem::size_of::<*const Guid>(),
+        &mut buf,
+    ));
+    let buf: *mut *const Guid = buf.cast();
+
+    STATE.with(|state| {
+        let state = state.borrow();
+
+        let handle_impl = state.handle_db.get(&handle).unwrap();
+        for (i, protocol_guid) in handle_impl.keys().enumerate() {
+            buf.add(i).write(protocol_guid);
+        }
+
+        *protocol_buffer = buf.cast();
+        *protocol_buffer_count = num_protocols;
+
+        Status::SUCCESS
+    })
 }
 
 pub unsafe extern "efiapi" fn locate_handle_buffer(
