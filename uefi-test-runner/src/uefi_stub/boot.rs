@@ -239,6 +239,7 @@ pub unsafe extern "efiapi" fn wait_for_event(
     events: *mut Event,
     out_index: *mut usize,
 ) -> Status {
+    *out_index = 0;
     // TODO: for now, just pretend.
     Status::SUCCESS
 }
