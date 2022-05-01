@@ -1,7 +1,7 @@
 use crate::try_status;
 use log::debug;
 use std::any::Any;
-use std::cell::RefCell;
+use std::cell::{RefCell, UnsafeCell};
 use std::collections::HashMap;
 use std::ffi::c_void;
 use std::mem::{self, MaybeUninit};
@@ -17,7 +17,7 @@ use uefi::table::boot::{
 use uefi::{Char16, Error, Event, Guid, Handle, Identify, Result, Status};
 
 struct ProtocolWrapper {
-    protocol: Box<dyn Any>,
+    protocol: Box<UnsafeCell<dyn Any>>,
     in_use: bool,
 }
 
@@ -84,7 +84,7 @@ thread_local! {
 pub fn install_protocol(
     handle: Option<Handle>,
     guid: Guid,
-    interface: Box<dyn Any>,
+    interface: Box<UnsafeCell<dyn Any>>,
 ) -> Result<Handle> {
     STATE.with(|state| {
         let mut state = state.borrow_mut();
@@ -552,7 +552,7 @@ pub unsafe extern "efiapi" fn locate_handle_buffer(
 }
 
 pub extern "efiapi" fn locate_protocol(
-    proto: &Guid,
+    protocol_guid: &Guid,
     registration: *mut c_void,
     out_proto: &mut *mut c_void,
 ) -> Status {
@@ -561,8 +561,8 @@ pub extern "efiapi" fn locate_protocol(
 
         // Look for any handle that implements the protocol.
         for handle_impl in state.handle_db.values_mut() {
-            if let Some(pw) = handle_impl.get_mut(proto) {
-                *out_proto = pw.protocol.as_mut() as *mut _ as *mut c_void;
+            if let Some(pw) = handle_impl.get_mut(protocol_guid) {
+                *out_proto = pw.protocol.get().cast::<c_void>();
                 return Status::SUCCESS;
             }
         }
