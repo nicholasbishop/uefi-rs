@@ -81,6 +81,7 @@ impl Drop for PoolString<'_> {
 ///
 /// This protocol provides common utility functions for converting device
 /// nodes and device paths to a text representation.
+#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 #[repr(C)]
 #[unsafe_guid("8b843e20-8132-4852-90cc-551a4e4a7f1c")]
 #[derive(Protocol)]

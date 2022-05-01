@@ -1,4 +1,6 @@
+use std::ptr;
 use uefi::proto::console::text::Output;
+use uefi::proto::device_path::FfiDevicePath;
 use uefi::{Char16, Status};
 
 pub extern "efiapi" fn reset(this: &Output, extended: bool) -> Status {
@@ -42,4 +44,22 @@ pub extern "efiapi" fn set_cursor_position(this: &mut Output, column: usize, row
 
 pub extern "efiapi" fn enable_cursor(this: &mut Output, visible: bool) -> Status {
     Status::SUCCESS
+}
+
+pub extern "efiapi" fn convert_device_node_to_text(
+    device_node: *const FfiDevicePath,
+    display_only: bool,
+    allow_shortcuts: bool,
+) -> *const Char16 {
+    // TODO
+    ptr::null()
+}
+
+pub extern "efiapi" fn convert_device_path_to_text(
+    device_path: *const FfiDevicePath,
+    display_only: bool,
+    allow_shortcuts: bool,
+) -> *const Char16 {
+    // TODO
+    ptr::null()
 }
