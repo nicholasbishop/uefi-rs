@@ -9,8 +9,9 @@ mod loaded_image;
 mod runtime;
 mod text;
 
-use boot::install_protocol;
-use core::{mem, ptr};
+use boot::{install_protocol, open_protocol};
+use std::cell::UnsafeCell;
+use std::{mem, ptr};
 use uefi::proto::console::text::{Output, OutputData};
 use uefi::proto::device_path::{DevicePath, DevicePathHeader, DeviceSubType, DeviceType};
 use uefi::proto::loaded_image::LoadedImage;
@@ -133,9 +134,9 @@ where
         cursor_visible: false,
     };
 
-    let mut stdout = {
+    let stdout = {
         use text::*;
-        Box::new(Output {
+        Box::new(UnsafeCell::new(Output {
             reset,
             output_string,
             test_string,
@@ -147,67 +148,38 @@ where
             enable_cursor,
             // TODO
             data: unsafe { &*(&output_data as *const OutputData) },
-        })
+        }))
     };
-    let stdout_ptr = stdout.as_mut() as *mut _;
 
     let stdout_handle = install_protocol(None, Output::GUID, stdout).unwrap();
-
-    let mut system_table_impl = SystemTableImpl {
-        header: Header {
-            signature: 0x1234_5678,
-            revision: Revision::new(2, 90),
-            size: 0,
-            crc: 0,
-            _reserved: 0,
-        },
-        fw_vendor: fw_vendor.as_ptr(),
-        fw_revision: 0x1516_1718,
-        stdin_handle: bad_handle,
-        stdin: ptr::null_mut(),
-        stdout_handle: stdout_handle,
-        stdout: stdout_ptr,
-        stderr_handle: bad_handle,
-        stderr: ptr::null_mut(),
-        // TODO
-        runtime: unsafe { &*(&runtime_services as *const RuntimeServices) },
-        boot: &mut boot_services,
-        nr_cfg: 0,
-        cfg_table: ptr::null(),
-    };
-
-    //let st: SystemTable<Boot> = uefi_stub::create_system_table();
-    let st: SystemTable<Boot> = unsafe {
-        SystemTable::from_ptr((&mut system_table_impl as *mut SystemTableImpl).cast()).unwrap()
-    };
 
     let boot_fs_handle = install_protocol(
         None,
         DevicePath::GUID,
-        Box::new(
+        Box::new(UnsafeCell::new(
             // TODO: not at all valid
             DevicePathHeader {
                 device_type: DeviceType::HARDWARE,
                 sub_type: DeviceSubType::HARDWARE_PCI,
                 length: 4,
             },
-        ),
+        )),
     )
     .unwrap();
     install_protocol(
         Some(boot_fs_handle),
         SimpleFileSystem::GUID,
-        Box::new(SimpleFileSystem {
+        Box::new(UnsafeCell::new(SimpleFileSystem {
             revision: 0,
             open_volume: fs::open_volume,
-        }),
+        })),
     )
     .unwrap();
 
     let image = install_protocol(
         None,
         LoadedImage::GUID,
-        Box::new(LoadedImage {
+        Box::new(UnsafeCell::new(LoadedImage {
             revision: 1,
             parent_handle: bad_handle,
             system_table: ptr::null(),
@@ -223,9 +195,49 @@ where
             image_code_type: MemoryType::LOADER_CODE,
             image_data_type: MemoryType::LOADER_DATA,
             unload: loaded_image::unload,
-        }),
+        })),
     )
     .unwrap();
+
+    let mut stdout_ptr = ptr::null_mut();
+    assert_eq!(
+        open_protocol(
+            stdout_handle,
+            &Output::GUID,
+            &mut stdout_ptr,
+            image,
+            None,
+            0,
+        ),
+        Status::SUCCESS
+    );
+
+    let mut system_table_impl = SystemTableImpl {
+        header: Header {
+            signature: 0x1234_5678,
+            revision: Revision::new(2, 90),
+            size: 0,
+            crc: 0,
+            _reserved: 0,
+        },
+        fw_vendor: fw_vendor.as_ptr(),
+        fw_revision: 0x1516_1718,
+        stdin_handle: bad_handle,
+        stdin: ptr::null_mut(),
+        stdout_handle: stdout_handle,
+        stdout: stdout_ptr.cast(),
+        stderr_handle: bad_handle,
+        stderr: ptr::null_mut(),
+        // TODO
+        runtime: unsafe { &*(&runtime_services as *const RuntimeServices) },
+        boot: &mut boot_services,
+        nr_cfg: 0,
+        cfg_table: ptr::null(),
+    };
+
+    let st: SystemTable<Boot> = unsafe {
+        SystemTable::from_ptr((&mut system_table_impl as *mut SystemTableImpl).cast()).unwrap()
+    };
 
     entry(image, st)
 }
