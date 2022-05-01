@@ -301,6 +301,41 @@ pub extern "efiapi" fn register_protocol_notify(
     todo!()
 }
 
+fn find_handles_impl(
+    search_ty: i32,
+    proto: Option<&Guid>,
+    key: Option<ProtocolSearchKey>,
+) -> Vec<Handle> {
+    STATE.with(|state| {
+        let state = state.borrow();
+
+        match search_ty {
+            // AllHandles
+            0 => state.handle_db.keys().cloned().collect(),
+            // ByRegisterNotify
+            1 => {
+                todo!();
+            }
+            // ByProtocol
+            2 => state
+                .handle_db
+                .iter()
+                .filter_map(|(handle, v)| {
+                    if v.contains_key(proto.unwrap()) {
+                        Some(handle)
+                    } else {
+                        None
+                    }
+                })
+                .cloned()
+                .collect(),
+            _ => {
+                panic!("invalid {search_ty}");
+            }
+        }
+    })
+}
+
 pub unsafe extern "efiapi" fn locate_handle(
     search_ty: i32,
     proto: Option<&Guid>,
@@ -308,7 +343,22 @@ pub unsafe extern "efiapi" fn locate_handle(
     buf_sz: &mut usize,
     buf: *mut MaybeUninit<Handle>,
 ) -> Status {
-    todo!()
+    let matched_handles = find_handles_impl(search_ty, proto, key);
+
+    let available_size_in_bytes = *buf_sz;
+    let size_in_bytes = matched_handles.len() * mem::size_of::<Handle>();
+    *buf_sz = size_in_bytes;
+
+    if available_size_in_bytes < size_in_bytes {
+        return Status::BUFFER_TOO_SMALL;
+    }
+
+    let buf = buf.cast::<Handle>();
+    for (i, handle) in matched_handles.iter().enumerate() {
+        buf.add(i).write(*handle);
+    }
+
+    Status::SUCCESS
 }
 
 pub unsafe extern "efiapi" fn locate_device_path(
@@ -480,34 +530,7 @@ pub unsafe extern "efiapi" fn locate_handle_buffer(
     no_handles: &mut usize,
     buf: &mut *mut Handle,
 ) -> Status {
-    let matched_handles: Vec<Handle> = STATE.with(|state| {
-        let state = state.borrow();
-
-        match search_ty {
-            // AllHandles
-            0 => state.handle_db.keys().cloned().collect(),
-            // ByRegisterNotify
-            1 => {
-                todo!();
-            }
-            // ByProtocol
-            2 => state
-                .handle_db
-                .iter()
-                .filter_map(|(handle, v)| {
-                    if v.contains_key(proto.unwrap()) {
-                        Some(handle)
-                    } else {
-                        None
-                    }
-                })
-                .cloned()
-                .collect(),
-            _ => {
-                panic!("invalid {search_ty}");
-            }
-        }
-    });
+    let matched_handles = find_handles_impl(search_ty, proto, key);
 
     *no_handles = matched_handles.len();
 
