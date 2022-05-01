@@ -102,7 +102,9 @@ pub struct BootServices {
         alloc_ty: u32,
         mem_ty: MemoryType,
         count: usize,
-        addr: &mut PhysicalAddress,
+        // TODO: this is to make Miri happy, but is probably only
+        // correct for 64-bit.
+        addr: &mut *mut u8,
     ) -> Status,
     free_pages: extern "efiapi" fn(addr: PhysicalAddress, pages: usize) -> Status,
     get_memory_map: unsafe extern "efiapi" fn(
@@ -358,9 +360,9 @@ impl BootServices {
         ty: AllocateType,
         mem_ty: MemoryType,
         count: usize,
-    ) -> Result<PhysicalAddress> {
+    ) -> Result<*mut u8> {
         let (ty, mut addr) = match ty {
-            AllocateType::AnyPages => (0, 0),
+            AllocateType::AnyPages => (0, ptr::null_mut()),
             AllocateType::MaxAddress(addr) => (1, addr),
             AllocateType::Address(addr) => (2, addr),
         };
@@ -1921,9 +1923,9 @@ pub enum AllocateType {
     /// Allocate any possible pages.
     AnyPages,
     /// Allocate pages at any address below the given address.
-    MaxAddress(PhysicalAddress),
+    MaxAddress(*mut u8),
     /// Allocate pages at the specified address.
-    Address(PhysicalAddress),
+    Address(*mut u8),
 }
 
 newtype_enum! {

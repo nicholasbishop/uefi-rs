@@ -20,21 +20,21 @@ fn allocate_pages(bt: &BootServices) {
 
     let ty = AllocateType::AnyPages;
     let mem_ty = MemoryType::LOADER_DATA;
-    let pgs: u64 = bt
+    let pgs = bt
         .allocate_pages(ty, mem_ty, 1)
         .expect("Failed to allocate a page of memory");
 
-    assert_eq!(pgs % 4096, 0, "Page pointer is not page-aligned");
+    assert_eq!(pgs as usize % 4096, 0, "Page pointer is not page-aligned");
 
     // Reinterpret the page as an array of bytes
-    let buf = unsafe { slice::from_raw_parts_mut(pgs as *mut u8, 4096) };
+    let buf = unsafe { slice::from_raw_parts_mut(pgs, 4096) };
 
     // If these don't fail then we properly allocated some memory.
     buf[0] = 0xF0;
     buf[4095] = 0x23;
 
     // Clean up to avoid memory leaks.
-    bt.free_pages(pgs, 1).unwrap();
+    bt.free_pages(pgs as u64, 1).unwrap();
 }
 
 // Simple test to ensure our custom allocator works with the `alloc` crate.

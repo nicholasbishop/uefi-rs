@@ -41,16 +41,13 @@ impl Pages {
         }
     }
 
-    fn physical_address(&self) -> u64 {
-        let addr = self.data.as_ptr() as u64;
+    fn as_mut_ptr(&mut self) -> *mut u8 {
+        let addr = self.data.as_ptr() as usize;
         // Round up to a page boundary. We allocate enough extra space
         // to make this OK.
         let r = addr % 4096;
-        if r == 0 {
-            addr
-        } else {
-            addr + (4096 - r)
-        }
+        let offset = if r == 0 { 0 } else { 4096 - r };
+        unsafe { self.data.as_mut_ptr().add(offset) }
     }
 }
 
@@ -137,14 +134,14 @@ pub extern "efiapi" fn allocate_pages(
     alloc_ty: u32,
     mem_ty: MemoryType,
     count: usize,
-    addr: &mut u64,
+    addr: &mut *mut u8,
 ) -> Status {
     STATE.with(|state| {
         let mut state = state.borrow_mut();
         let pages = &mut state.pages;
 
-        let new_pages = Pages::new(count);
-        *addr = new_pages.physical_address();
+        let mut new_pages = Pages::new(count);
+        *addr = new_pages.as_mut_ptr();
         pages.push(new_pages);
 
         Status::SUCCESS
@@ -199,7 +196,7 @@ pub extern "efiapi" fn allocate_pool(
 ) -> Status {
     let num_pages = PageAlignment::round_up_to_alignment(size);
 
-    let mut addr = 0;
+    let mut addr = ptr::null_mut();
     try_status!(allocate_pages(0, pool_type, num_pages, &mut addr));
     *buffer = addr as *mut u8;
 
