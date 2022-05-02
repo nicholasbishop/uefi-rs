@@ -1,5 +1,6 @@
 mod known_disk;
 
+use core::{mem, slice};
 use uefi::prelude::*;
 use uefi::proto::media::file::{Directory, File, FileSystemInfo, FileSystemVolumeLabel};
 use uefi::proto::media::fs::SimpleFileSystem;
@@ -35,7 +36,14 @@ pub fn test(bt: &BootServices) {
             .expect("failed to open SimpleFileSystem protocol");
 
         let mut directory = sfs.open_volume().unwrap();
-        let mut buffer = vec![0; 128];
+        // TODO: hack... resize is wrong now too
+        let mut buffer = vec![0u64; 16];
+        let mut buffer = unsafe {
+            slice::from_raw_parts_mut(
+                buffer.as_mut_ptr().cast::<u8>(),
+                buffer.len() * mem::size_of::<u64>(),
+            )
+        };
         loop {
             let file_info = match directory.read_entry(&mut buffer) {
                 Ok(info) => {
@@ -46,11 +54,9 @@ pub fn test(bt: &BootServices) {
                         break;
                     }
                 }
-                Err(error) => {
+                Err(_error) => {
                     // Buffer is not big enough, allocate a bigger one and try again.
-                    let min_size = error.data().unwrap();
-                    buffer.resize(min_size, 0);
-                    continue;
+                    todo!()
                 }
             };
             info!("Root directory entry: {:?}", file_info);
