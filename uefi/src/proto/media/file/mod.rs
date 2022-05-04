@@ -235,12 +235,17 @@ impl<T: File> FileInternal for T {}
 /// `{RegularFile, Directory}::new()` methods to perform the conversion.
 ///
 /// Dropping this structure will result in the file handle being closed.
+#[derive(Debug, Eq, PartialEq, Hash)]
 #[repr(transparent)]
-#[derive(Debug)]
 pub struct FileHandle(*mut FileImpl);
 
 impl FileHandle {
-    pub(super) const unsafe fn new(ptr: *mut FileImpl) -> Self {
+    /// Create a `FileHandle`.
+    ///
+    /// # Safety
+    ///
+    /// TODO
+    pub unsafe fn new(ptr: *mut FileImpl) -> Self {
         Self(ptr)
     }
 
@@ -316,7 +321,7 @@ impl Drop for FileHandle {
 /// The function pointer table for the File protocol.
 #[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 #[repr(C)]
-pub(super) struct FileImpl {
+pub struct FileImpl {
     revision: u64,
     open: unsafe extern "efiapi" fn(
         this: &mut FileImpl,

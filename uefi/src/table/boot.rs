@@ -2288,6 +2288,7 @@ pub enum InterfaceType: i32 => {
 
 /// Opaque pointer returned by [`BootServices::register_protocol_notify`] to be used
 /// with [`BootServices::locate_handle`] via [`SearchType::ByRegisterNotify`].
+#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 #[derive(Debug, Clone, Copy)]
 #[repr(transparent)]
 pub struct ProtocolSearchKey(NonNull<c_void>);

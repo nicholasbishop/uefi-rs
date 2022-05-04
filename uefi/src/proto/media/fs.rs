@@ -25,7 +25,7 @@ use core::ptr;
 pub struct SimpleFileSystem {
     revision: u64,
     open_volume:
-        extern "efiapi" fn(this: *mut SimpleFileSystem, root: &mut *mut FileImpl) -> Status,
+        unsafe extern "efiapi" fn(this: *mut SimpleFileSystem, root: &mut *mut FileImpl) -> Status,
 }
 
 impl SimpleFileSystem {
@@ -49,7 +49,9 @@ impl SimpleFileSystem {
     /// * [`uefi::Status::MEDIA_CHANGED`]
     pub fn open_volume(&mut self) -> Result<Directory> {
         let mut ptr = ptr::null_mut();
-        (self.open_volume)(self, &mut ptr)
-            .into_with_val(|| unsafe { Directory::new(FileHandle::new(ptr)) })
+        unsafe {
+            (self.open_volume)(self, &mut ptr)
+                .into_with_val(|| Directory::new(FileHandle::new(ptr)))
+        }
     }
 }

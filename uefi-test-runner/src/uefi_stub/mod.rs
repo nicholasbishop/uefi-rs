@@ -4,14 +4,14 @@
 pub mod uefi_services;
 
 mod boot;
+mod console;
 mod fs;
 mod loaded_image;
 mod runtime;
 mod text;
 
 use boot::{install_protocol, open_protocol};
-use fs::SimpleFileSystemImpl;
-use std::cell::UnsafeCell;
+use core::ffi::c_void;
 use std::{mem, ptr};
 use uefi::proto::console::text::{Output, OutputData};
 use uefi::proto::device_path::text::{DevicePathFromText, DevicePathToText};
@@ -33,6 +33,19 @@ macro_rules! try_status {
             }
         }
     };
+}
+
+fn make_and_leak<T>(val: T) -> *mut T {
+    let b = Box::new(val);
+    let r: *mut _ = Box::leak(b);
+    r.cast()
+}
+
+// TODO: dedup with above
+fn leak_proto<T>(val: T) -> *mut c_void {
+    let b = Box::new(val);
+    let r: *mut _ = Box::leak(b);
+    r.cast()
 }
 
 pub fn launch<E>(entry: E) -> Status
@@ -138,7 +151,7 @@ where
 
     let stdout = {
         use text::*;
-        Box::new(UnsafeCell::new(Output {
+        leak_proto(Output {
             reset,
             output_string,
             test_string,
@@ -150,7 +163,7 @@ where
             enable_cursor,
             // TODO
             data: unsafe { &*(&output_data as *const OutputData) },
-        }))
+        })
     };
 
     let stdout_handle = install_protocol(None, Output::GUID, stdout).unwrap();
@@ -158,27 +171,27 @@ where
     let boot_fs_handle = install_protocol(
         None,
         DevicePath::GUID,
-        Box::new(UnsafeCell::new(
+        leak_proto(
             // TODO: not at all valid
             DevicePathHeader {
                 device_type: DeviceType::END,
                 sub_type: DeviceSubType::END_ENTIRE,
                 length: 4,
             },
-        )),
+        ),
     )
     .unwrap();
     install_protocol(
         Some(boot_fs_handle),
         SimpleFileSystem::GUID,
-        Box::new(UnsafeCell::new(SimpleFileSystemImpl::new())),
+        fs::make_simple_file_system().cast(),
     )
     .unwrap();
 
     let image = install_protocol(
         None,
         LoadedImage::GUID,
-        Box::new(UnsafeCell::new(LoadedImage {
+        leak_proto(LoadedImage {
             revision: 1,
             parent_handle: bad_handle,
             system_table: ptr::null(),
@@ -194,7 +207,7 @@ where
             image_code_type: MemoryType::LOADER_CODE,
             image_data_type: MemoryType::LOADER_DATA,
             unload: loaded_image::unload,
-        })),
+        }),
     )
     .unwrap();
 
@@ -203,20 +216,20 @@ where
         install_protocol(
             None,
             DevicePathToText::GUID,
-            Box::new(UnsafeCell::new(DevicePathToText {
+            leak_proto(DevicePathToText {
                 convert_device_node_to_text,
                 convert_device_path_to_text,
-            })),
+            }),
         )
         .unwrap();
 
         install_protocol(
             None,
             DevicePathFromText::GUID,
-            Box::new(UnsafeCell::new(DevicePathFromText {
+            leak_proto(DevicePathFromText {
                 convert_text_to_device_node,
                 convert_text_to_device_path,
-            })),
+            }),
         )
         .unwrap();
     }
