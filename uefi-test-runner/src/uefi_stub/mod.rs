@@ -10,7 +10,6 @@ mod runtime;
 mod text;
 
 use boot::{install_protocol, open_protocol};
-use fs::SimpleFileSystemImpl;
 use std::cell::UnsafeCell;
 use std::{mem, ptr};
 use uefi::proto::console::text::{Output, OutputData};
@@ -171,7 +170,7 @@ where
     install_protocol(
         Some(boot_fs_handle),
         SimpleFileSystem::GUID,
-        Box::new(UnsafeCell::new(SimpleFileSystemImpl::new())),
+        fs::make_simple_file_system(),
     )
     .unwrap();
 

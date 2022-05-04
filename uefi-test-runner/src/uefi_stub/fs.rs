@@ -1,29 +1,33 @@
+use super::boot::STATE;
+use std::cell::UnsafeCell;
+use std::collections::HashMap;
 use std::ffi::c_void;
-use std::ptr;
-use uefi::proto::media::file::{FileAttribute, FileImpl, FileMode};
+use std::{mem, ptr};
+use uefi::proto::media::file::{FileAttribute, FileImpl, FileInfo, FileMode};
 use uefi::proto::media::fs::SimpleFileSystem;
-use uefi::{Char16, Guid, Status};
+use uefi::table::runtime::Time;
+use uefi::{CString16, Char16, Guid, Status};
 
-#[repr(C)]
-struct VolumeFileImpl {
-    file: FileImpl,
+pub struct FsImpl {
+    root: FileImpl,
 }
 
-#[repr(C)]
-pub struct SimpleFileSystemImpl {
-    sfs: SimpleFileSystem,
-    volume: VolumeFileImpl,
-}
+pub type FsDb = HashMap<*const SimpleFileSystem, Box<FsImpl>>;
 
-impl SimpleFileSystemImpl {
-    pub fn new() -> Self {
-        Self {
-            sfs: SimpleFileSystem {
-                revision: 0,
-                open_volume,
-            },
-            volume: VolumeFileImpl {
-                file: FileImpl {
+pub fn make_simple_file_system() -> Box<UnsafeCell<SimpleFileSystem>> {
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+
+        let sfs = Box::new(UnsafeCell::new(SimpleFileSystem {
+            revision: 0,
+            open_volume,
+        }));
+        let ptr: *const SimpleFileSystem = sfs.get();
+
+        state.fs_db.insert(
+            ptr,
+            Box::new(FsImpl {
+                root: FileImpl {
                     revision: 0,
                     open,
                     close,
@@ -36,15 +40,26 @@ impl SimpleFileSystemImpl {
                     set_info,
                     flush,
                 },
-            },
-        }
-    }
+            }),
+        );
+
+        sfs
+    })
 }
 
-extern "efiapi" fn open_volume(this: *mut SimpleFileSystem, root: &mut *mut FileImpl) -> Status {
-    let this = this.cast::<SimpleFileSystemImpl>();
-    *root = unsafe { ptr::addr_of_mut!((*this).volume.file) };
-    Status::SUCCESS
+unsafe extern "efiapi" fn open_volume(
+    this: *mut SimpleFileSystem,
+    root: &mut *mut FileImpl,
+) -> Status {
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+
+        let this: *const SimpleFileSystem = this;
+        let fs_impl = state.fs_db.get_mut(&this).unwrap();
+        *root = &mut fs_impl.root;
+
+        Status::SUCCESS
+    })
 }
 
 unsafe extern "efiapi" fn open(
@@ -70,7 +85,31 @@ unsafe extern "efiapi" fn read(
     buffer_size: &mut usize,
     buffer: *mut u8,
 ) -> Status {
-    todo!()
+    let mut tmp_buf = [0; 256];
+
+    let info = FileInfo::new(
+        &mut tmp_buf,
+        0,
+        0,
+        Time::invalid(),
+        Time::invalid(),
+        Time::invalid(),
+        FileAttribute::empty(),
+        &CString16::try_from("test_dir").unwrap(),
+    )
+    .unwrap();
+
+    let required_size = mem::size_of_val(info);
+    let available_size = *buffer_size;
+    *buffer_size = required_size;
+    if available_size < required_size {
+        return Status::BUFFER_TOO_SMALL;
+    }
+
+    let info_ptr: *const FileInfo = info;
+    ptr::copy(info_ptr.cast::<u8>(), buffer, required_size);
+
+    Status::SUCCESS
 }
 
 unsafe extern "efiapi" fn write(

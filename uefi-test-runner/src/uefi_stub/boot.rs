@@ -1,3 +1,4 @@
+use super::fs::FsDb;
 use crate::try_status;
 use log::debug;
 use std::any::Any;
@@ -56,6 +57,7 @@ pub struct State {
     events: HashMap<Event, Box<EventImpl>>,
     pages: Vec<Pages>,
     memory_descriptors: Vec<MemoryDescriptor>,
+    pub fs_db: FsDb,
 }
 
 // All "global" state goes in this thread local block. UEFI is single
@@ -75,6 +77,7 @@ thread_local! {
             page_count: 1,
             att: MemoryAttribute::empty(),
         }],
+        fs_db: FsDb::default(),
     }));
 }
 
