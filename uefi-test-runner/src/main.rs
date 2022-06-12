@@ -8,6 +8,7 @@ extern crate log;
 #[macro_use]
 extern crate alloc;
 
+use alloc::string::String;
 use alloc::string::ToString;
 use uefi::prelude::*;
 use uefi::proto::console::serial::Serial;
@@ -166,9 +167,9 @@ fn shutdown(image: uefi::Handle, mut st: SystemTable<Boot>) -> ! {
     // Exit boot services as a proof that it works :)
     let sizes = st.boot_services().memory_map_size();
     let max_mmap_size = sizes.map_size + 2 * sizes.entry_size;
-    let mut mmap_storage = vec![0; max_mmap_size].into_boxed_slice();
+    let mut mmap_storage = vec![0; max_mmap_size / mem::size_of::<u64>()];
     let (st, _iter) = st
-        .exit_boot_services(image, &mut mmap_storage[..])
+        .exit_boot_services(image, &mut mmap_storage)
         .expect("Failed to exit boot services");
 
     #[cfg(target_arch = "x86_64")]

@@ -5,7 +5,7 @@ use core::ptr::NonNull;
 use core::{ptr, slice};
 
 use crate::proto::console::text;
-use crate::{CStr16, Char16, Handle, Result, ResultExt, Status};
+use crate::{Buffer, CStr16, Char16, Error, Handle, Result, ResultExt, Status};
 
 use super::boot::{BootServices, MemoryDescriptor};
 use super::runtime::RuntimeServices;
@@ -178,24 +178,26 @@ impl SystemTable<Boot> {
     /// [`global_allocator::exit_boot_services`]: crate::global_allocator::exit_boot_services
     /// [`Logger::disable`]: crate::logger::Logger::disable
     /// [`uefi_services::init`]: https://docs.rs/uefi-services/latest/uefi_services/fn.init.html
-    pub fn exit_boot_services(
+    pub fn exit_boot_services<B: Buffer<u64>>(
         self,
         image: Handle,
-        mmap_buf: &mut [u8],
-    ) -> Result<(
-        SystemTable<Runtime>,
-        impl ExactSizeIterator<Item = &MemoryDescriptor> + Clone,
-    )> {
+        mmap_buf: &mut B,
+    ) -> Result<
+        (
+            SystemTable<Runtime>,
+            impl ExactSizeIterator<Item = &MemoryDescriptor> + Clone,
+        ),
+        Option<usize>,
+    > {
         unsafe {
             let boot_services = self.boot_services();
 
             loop {
-                // Fetch a memory map, propagate errors and split the completion
+                // Fetch a memory map and propagate errors.
                 // FIXME: This sad pointer hack works around a current
                 //        limitation of the NLL analysis (see Rust bug 51526).
-                let mmap_buf = &mut *(mmap_buf as *mut [u8]);
-                let mmap_comp = boot_services.memory_map(mmap_buf)?;
-                let (mmap_key, mmap_iter) = mmap_comp;
+                let mmap_buf = &mut *(mmap_buf as *mut _);
+                let (mmap_key, mmap_iter) = boot_services.memory_map(mmap_buf)?;
 
                 // Try to exit boot services using this memory map key
                 let result = boot_services.exit_boot_services(image, mmap_key);
@@ -206,13 +208,15 @@ impl SystemTable<Boot> {
                     continue;
                 } else {
                     // If not, report the outcome of the operation
-                    return result.map(|_| {
-                        let st = SystemTable {
-                            table: self.table,
-                            _marker: PhantomData,
-                        };
-                        (st, mmap_iter)
-                    });
+                    return result
+                        .map(|_| {
+                            let st = SystemTable {
+                                table: self.table,
+                                _marker: PhantomData,
+                            };
+                            (st, mmap_iter)
+                        })
+                        .map_err(|err| Error::new(err.status(), None));
                 }
             }
         }

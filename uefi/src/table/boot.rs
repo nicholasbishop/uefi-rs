@@ -441,15 +441,19 @@ impl BootServices {
     ///
     /// * [`uefi::Status::BUFFER_TOO_SMALL`]
     /// * [`uefi::Status::INVALID_PARAMETER`]
-    pub fn memory_map<'buf>(
+    pub fn memory_map<'buf, B: Buffer<u64>>(
         &self,
-        buffer: &'buf mut [u8],
-    ) -> Result<(
-        MemoryMapKey,
-        impl ExactSizeIterator<Item = &'buf MemoryDescriptor> + Clone,
-    )> {
-        let mut map_size = buffer.len();
-        MemoryDescriptor::assert_aligned(buffer);
+        // TODO: is this right?
+        buffer: &'buf mut B,
+    ) -> Result<
+        (
+            MemoryMapKey,
+            impl ExactSizeIterator<Item = &'buf MemoryDescriptor> + Clone,
+        ),
+        Option<usize>,
+    > {
+        let map_size = buffer.len() * mem::size_of::<u64>();
+        // TODO MemoryDescriptor::assert_aligned(buffer);
         let map_buffer = buffer.as_mut_ptr().cast::<MemoryDescriptor>();
         let mut map_key = MemoryMapKey(0);
         let mut entry_size = 0;
@@ -462,15 +466,21 @@ impl BootServices {
         );
 
         unsafe {
-            (self.get_memory_map)(
-                &mut map_size,
-                map_buffer,
-                &mut map_key,
-                &mut entry_size,
-                &mut entry_version,
+            buffer.write_with_padded_auto_resize(
+                |buf, size_in_bytes| {
+                    (self.get_memory_map)(
+                        size_in_bytes,
+                        buf.cast(),
+                        &mut map_key,
+                        &mut entry_size,
+                        &mut entry_version,
+                    )
+                },
+                // TODO
+                180,
             )
         }
-        .into_with_val(move || {
+        .map(move |_| {
             let len = map_size / entry_size;
             let iter = MemoryMapIter {
                 buffer,
@@ -2005,7 +2015,7 @@ pub struct MemoryMapSize {
 /// An iterator of memory descriptors
 #[derive(Debug, Clone)]
 struct MemoryMapIter<'buf> {
-    buffer: &'buf [u8],
+    buffer: &'buf [u64],
     entry_size: usize,
     index: usize,
     len: usize,
