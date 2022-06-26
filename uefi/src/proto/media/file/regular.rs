@@ -1,5 +1,5 @@
 use super::{File, FileHandle, FileInternal};
-use crate::{Result, Status};
+use crate::{Error, Result, Status};
 
 /// A `FileHandle` that is also a regular (data) file.
 ///
@@ -39,7 +39,7 @@ impl RegularFile {
     /// * [`uefi::Status::DEVICE_ERROR`]
     /// * [`uefi::Status::VOLUME_CORRUPTED`]
     /// * [`uefi::Status::BUFFER_TOO_SMALL`]
-    pub fn read(&mut self, buffer: &mut [u8]) -> Result<usize, Option<usize>> {
+    pub fn read(&mut self, buffer: &mut [u8]) -> Result<usize> {
         let mut buffer_size = buffer.len();
         let status =
             unsafe { (self.imp().read)(self.imp(), &mut buffer_size, buffer.as_mut_ptr()) };
@@ -78,10 +78,14 @@ impl RegularFile {
     /// * [`uefi::Status::WRITE_PROTECTED`]
     /// * [`uefi::Status::ACCESS_DENIED`]
     /// * [`uefi::Status::VOLUME_FULL`]
-    pub fn write(&mut self, buffer: &[u8]) -> Result<(), usize> {
+    pub fn write(&mut self, buffer: &[u8]) -> core::result::Result<(), (Error, usize)> {
         let mut buffer_size = buffer.len();
-        unsafe { (self.imp().write)(self.imp(), &mut buffer_size, buffer.as_ptr()) }
-            .into_with_err(|_| buffer_size)
+        let status = unsafe { (self.imp().write)(self.imp(), &mut buffer_size, buffer.as_ptr()) };
+        if status == Status::SUCCESS {
+            Ok(())
+        } else {
+            Err((status.into(), buffer_size))
+        }
     }
 
     /// Get the file's current position

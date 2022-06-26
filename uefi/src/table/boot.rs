@@ -6,7 +6,7 @@ use crate::proto::device_path::{DevicePath, FfiDevicePath};
 #[cfg(feature = "alloc")]
 use crate::proto::{loaded_image::LoadedImage, media::fs::SimpleFileSystem};
 use crate::proto::{Protocol, ProtocolPointer};
-use crate::{Char16, Event, Guid, Handle, Result, Status};
+use crate::{Char16, Error, Event, Guid, Handle, Result, Status};
 #[cfg(feature = "alloc")]
 use ::alloc::vec::Vec;
 use bitflags::bitflags;
@@ -575,7 +575,7 @@ impl BootServices {
         event_group: Option<NonNull<Guid>>,
     ) -> Result<Event> {
         if self.header.revision < Revision::EFI_2_00 {
-            return Err(Status::UNSUPPORTED.into());
+            return Err(Error::Unsupported);
         }
 
         let mut event = MaybeUninit::<Event>::uninit();
@@ -641,7 +641,7 @@ impl BootServices {
     ///
     /// * [`uefi::Status::INVALID_PARAMETER`]
     /// * [`uefi::Status::UNSUPPORTED`]
-    pub fn wait_for_event(&self, events: &mut [Event]) -> Result<usize, Option<usize>> {
+    pub fn wait_for_event(&self, events: &mut [Event]) -> Result<usize> {
         let (number_of_events, events) = (events.len(), events.as_mut_ptr());
         let mut index = MaybeUninit::<usize>::uninit();
         unsafe { (self.wait_for_event)(number_of_events, events, index.as_mut_ptr()) }.into_with(
@@ -1211,7 +1211,7 @@ impl BootServices {
                 recursive,
             )
         }
-        .into_with_err(|_| ())
+        .into()
     }
 
     /// Disconnect one or more drivers from a controller.
@@ -1231,8 +1231,7 @@ impl BootServices {
         driver_image: Option<Handle>,
         child: Option<Handle>,
     ) -> Result {
-        unsafe { (self.disconnect_controller)(controller, driver_image, child) }
-            .into_with_err(|_| ())
+        unsafe { (self.disconnect_controller)(controller, driver_image, child) }.into()
     }
 
     /// Open a protocol interface for a handle.

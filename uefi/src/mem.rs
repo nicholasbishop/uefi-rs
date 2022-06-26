@@ -1,6 +1,6 @@
 //! This is a utility module with helper methods for allocations/memory.
 
-use crate::{Result, ResultExt, Status};
+use crate::{Result, Status};
 use ::alloc::boxed::Box;
 use core::alloc::Layout;
 use core::fmt::Debug;
@@ -35,7 +35,7 @@ pub(crate) fn make_boxed<
     'a,
     // The UEFI data structure.
     Data: Align + ?Sized + Debug + 'a,
-    F: FnMut(&'a mut [u8]) -> Result<&'a mut Data, Option<usize>>,
+    F: FnMut(&'a mut [u8]) -> Result<&'a mut Data>,
     #[cfg(feature = "unstable")] A: Allocator,
 >(
     // A function to read the UEFI data structure into a provided buffer.
@@ -44,14 +44,14 @@ pub(crate) fn make_boxed<
     // Allocator of the `allocator_api` feature. You can use `Global` as default.
     allocator: A,
 ) -> Result<Box<Data>> {
-    let required_size = match fetch_data_fn(&mut []).map_err(Error::split) {
+    let required_size = match fetch_data_fn(&mut []) {
         // This is the expected case: the empty buffer passed in is too
         // small, so we get the required size.
-        Err((Status::BUFFER_TOO_SMALL, Some(required_size))) => Ok(required_size),
+        Err(Error::BufferTooSmall(required_size)) => Ok(required_size),
         // Propagate any other error.
-        Err((status, _)) => Err(Error::from(status)),
+        Err(err) => Err(err),
         // Success is unexpected, return an error.
-        Ok(_) => Err(Error::from(Status::UNSUPPORTED)),
+        Ok(_) => Err(Error::Unsupported),
     }?;
 
     // We add trailing padding because the size of a rust structure must
@@ -82,7 +82,7 @@ pub(crate) fn make_boxed<
     // Read the data into the provided buffer.
     let data: Result<&mut Data> = {
         let buffer = unsafe { slice::from_raw_parts_mut(heap_buf, required_size) };
-        fetch_data_fn(buffer).discard_errdata()
+        fetch_data_fn(buffer)
     };
 
     // If an error occurred, deallocate the memory before returning.

@@ -1,6 +1,6 @@
 use uefi::proto::console::serial::{ControlBits, Serial};
 use uefi::table::boot::BootServices;
-use uefi::{Result, ResultExt, Status};
+use uefi::{Result, Status};
 
 // For the duration of this function, the serial device is opened in
 // exclusive mode. That means logs will not work, which means we should
@@ -24,10 +24,10 @@ fn serial_test_helper(serial: &mut Serial) -> Result {
     const OUTPUT: &[u8] = b"Hello world!";
     const MSG_LEN: usize = OUTPUT.len();
 
-    serial.write(OUTPUT).discard_errdata()?;
+    serial.write(OUTPUT)?;
 
     let mut input = [0u8; MSG_LEN];
-    serial.read(&mut input).discard_errdata()?;
+    serial.read(&mut input)?;
 
     // Clean up after ourselves
     serial.reset()?;

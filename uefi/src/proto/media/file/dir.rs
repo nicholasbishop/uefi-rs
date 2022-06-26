@@ -44,7 +44,7 @@ impl Directory {
     pub fn read_entry<'buf>(
         &mut self,
         buffer: &'buf mut [u8],
-    ) -> Result<Option<&'buf mut FileInfo>, Option<usize>> {
+    ) -> Result<Option<&'buf mut FileInfo>> {
         // Make sure that the storage is properly aligned
         FileInfo::assert_aligned(buffer);
 

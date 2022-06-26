@@ -97,11 +97,11 @@ fn send_request_helper(serial: &mut Serial, request: HostRequest) -> Result {
     serial.set_attributes(&io_mode)?;
 
     // Send a screenshot request to the host.
-    serial.write(request.as_bytes()).discard_errdata()?;
+    serial.write(request.as_bytes())?;
 
     // Wait for the host's acknowledgement before moving forward.
     let mut reply = [0; 3];
-    serial.read(&mut reply[..]).discard_errdata()?;
+    serial.read(&mut reply[..])?;
 
     if reply == *b"OK\n" {
         Ok(())

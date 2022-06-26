@@ -93,7 +93,7 @@ impl Serial {
     /// This operation will block until the buffer has been filled with data or
     /// an error occurs. In the latter case, the error will indicate how many
     /// bytes were actually read from the device.
-    pub fn read(&mut self, data: &mut [u8]) -> Result<(), usize> {
+    pub fn read(&mut self, data: &mut [u8]) -> Result<()> {
         let mut buffer_size = data.len();
         unsafe { (self.read)(self, &mut buffer_size, data.as_mut_ptr()) }.into_with(
             || debug_assert_eq!(buffer_size, data.len()),
@@ -106,7 +106,7 @@ impl Serial {
     /// This operation will block until the data has been fully written or an
     /// error occurs. In the latter case, the error will indicate how many bytes
     /// were actually written to the device.
-    pub fn write(&mut self, data: &[u8]) -> Result<(), usize> {
+    pub fn write(&mut self, data: &[u8]) -> Result<()> {
         let mut buffer_size = data.len();
         unsafe { (self.write)(self, &mut buffer_size, data.as_ptr()) }.into_with(
             || debug_assert_eq!(buffer_size, data.len()),

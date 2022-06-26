@@ -1,4 +1,4 @@
-use super::{Error, Result};
+use super::Result;
 use core::fmt::Debug;
 
 /// Bit indicating that an UEFI status code is an error
@@ -136,28 +136,8 @@ impl Status {
     /// If the status does not indicate success, the status representing the specific error
     /// code is embedded into the `Err` variant of type [`uefi::Error`].
     #[inline]
-    pub fn into_with_val<T>(self, val: impl FnOnce() -> T) -> Result<T, ()> {
-        if self.is_success() {
-            Ok(val())
-        } else {
-            Err(self.into())
-        }
-    }
-
-    /// Converts this status code into a [`uefi::Result`] with a given `Err` payload.
-    ///
-    /// If the status does not indicate success, the status representing the specific error
-    /// code is embedded into the `Err` variant of type [`uefi::Error`].
-    #[inline]
-    pub fn into_with_err<ErrData: Debug>(
-        self,
-        err: impl FnOnce(Status) -> ErrData,
-    ) -> Result<(), ErrData> {
-        if self.is_success() {
-            Ok(())
-        } else {
-            Err(Error::new(self, err(self)))
-        }
+    pub fn into_with_val<T>(self, _val: impl FnOnce() -> T) -> Result<T> {
+        todo!()
     }
 
     /// Convert this status code into a result with a given `Ok` value and `Err` payload.
@@ -167,22 +147,19 @@ impl Status {
     #[inline]
     pub fn into_with<T, ErrData: Debug>(
         self,
-        val: impl FnOnce() -> T,
-        err: impl FnOnce(Status) -> ErrData,
-    ) -> Result<T, ErrData> {
-        if self.is_success() {
-            Ok(val())
-        } else {
-            Err(Error::new(self, err(self)))
-        }
+        _val: impl FnOnce() -> T,
+        _err: impl FnOnce(Status) -> ErrData,
+    ) -> Result<T> {
+        todo!()
     }
 }
 
 // An UEFI status is equivalent to a Result with no data or error payload
-impl From<Status> for Result<(), ()> {
+impl From<Status> for Result<()> {
     #[inline]
-    fn from(status: Status) -> Result<(), ()> {
-        status.into_with(|| (), |_| ())
+    fn from(_status: Status) -> Result<()> {
+        //status.into_with(|| (), |_| ())
+        todo!();
     }
 }
 

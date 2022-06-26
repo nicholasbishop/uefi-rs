@@ -57,7 +57,7 @@ impl Rng {
     pub fn get_info<'buf>(
         &mut self,
         algorithm_list: &'buf mut [RngAlgorithmType],
-    ) -> Result<&'buf [RngAlgorithmType], Option<usize>> {
+    ) -> Result<&'buf [RngAlgorithmType]> {
         let mut algorithm_list_size = algorithm_list.len() * mem::size_of::<RngAlgorithmType>();
 
         unsafe {

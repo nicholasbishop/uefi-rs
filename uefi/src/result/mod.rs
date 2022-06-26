@@ -1,5 +1,4 @@
 ///! Facilities for dealing with UEFI operation results.
-use core::fmt::Debug;
 
 /// The error type that we use, essentially a status code + optional additional data
 mod error;
@@ -21,15 +20,12 @@ pub use self::status::Status;
 /// an abnormal situation.
 ///
 /// Some convenience methods are provided by the [`ResultExt`] trait.
-pub type Result<Output = (), ErrData = ()> = core::result::Result<Output, Error<ErrData>>;
+pub type Result<Output = (), E = Error> = core::result::Result<Output, E>;
 
 /// Extension trait which provides some convenience methods for [`Result`].
-pub trait ResultExt<Output, ErrData: Debug> {
+pub trait ResultExt<Output> {
     /// Extract the UEFI status from this result
     fn status(&self) -> Status;
-
-    /// Transform the ErrData value to ()
-    fn discard_errdata(self) -> Result<Output>;
 
     /// Calls `op` if the result contains a warning, otherwise returns
     /// the result unchanged.
@@ -58,12 +54,12 @@ pub trait ResultExt<Output, ErrData: Debug> {
     /// # Status::SUCCESS.into()
     /// # }
     /// ```
-    fn handle_warning<O>(self, op: O) -> Result<Output, ErrData>
+    fn handle_warning<O>(self, op: O) -> Result<Output>
     where
-        O: FnOnce(Error<ErrData>) -> Result<Output, ErrData>;
+        O: FnOnce(Error) -> Result<Output>;
 }
 
-impl<Output, ErrData: Debug> ResultExt<Output, ErrData> for Result<Output, ErrData> {
+impl<Output> ResultExt<Output> for Result<Output> {
     fn status(&self) -> Status {
         match self {
             Ok(_) => Status::SUCCESS,
@@ -71,16 +67,9 @@ impl<Output, ErrData: Debug> ResultExt<Output, ErrData> for Result<Output, ErrDa
         }
     }
 
-    fn discard_errdata(self) -> Result<Output> {
-        match self {
-            Ok(o) => Ok(o),
-            Err(e) => Err(e.status().into()),
-        }
-    }
-
-    fn handle_warning<O>(self, op: O) -> Result<Output, ErrData>
+    fn handle_warning<O>(self, op: O) -> Result<Output>
     where
-        O: FnOnce(Error<ErrData>) -> Result<Output, ErrData>,
+        O: FnOnce(Error) -> Result<Output>,
     {
         match self {
             Ok(output) => Ok(output),

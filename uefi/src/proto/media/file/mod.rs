@@ -117,7 +117,7 @@ pub trait File: Sized {
     fn get_info<'buf, Info: FileProtocolInfo + ?Sized>(
         &mut self,
         buffer: &'buf mut [u8],
-    ) -> Result<&'buf mut Info, Option<usize>> {
+    ) -> Result<&'buf mut Info> {
         let mut buffer_size = buffer.len();
         Info::assert_aligned(buffer);
         unsafe {
