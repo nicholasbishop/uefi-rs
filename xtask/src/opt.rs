@@ -143,6 +143,10 @@ pub struct QemuOpt {
     /// Directory in which to look for OVMF files.
     #[clap(long, action)]
     pub ovmf_dir: Option<PathBuf>,
+
+    /// Run an example instead of the main binary.
+    #[clap(long, action)]
+    pub example: Option<String>,
 }
 
 /// Build uefi-test-runner and run it in QEMU.
