@@ -79,6 +79,36 @@ impl Feature {
     }
 }
 
+/// Select which target types (libs, bins, examples, etc) to
+/// include. Control over this is needed for the following reasons:
+///
+/// * Cargo has inconsistent behavior for the various types. For
+///   example, specifying `--lib` if no included packages contain a lib is
+///   an error, but the same is not true for `--examples`.
+/// * Specifying a type in isolation will disable others types, so
+///   e.g. specifying just `--example` will turn off libs and bins.
+/// * There's an `--all-targets` flag that is a bit smarter, but that
+///   enables the test target which will fail to compile on the UEFI targets.
+///
+/// So, just make it explicit at each cargo call site which target types
+/// need to be built.
+#[derive(Clone, Copy, Debug)]
+pub enum TargetTypes {
+    Default,
+    BinsExamples,
+    BinsExamplesLib,
+}
+
+impl TargetTypes {
+    const fn args(self) -> &'static [&'static str] {
+        match self {
+            TargetTypes::Default => &[],
+            TargetTypes::BinsExamples => &["--bins", "--examples"],
+            TargetTypes::BinsExamplesLib => &["--bins", "--examples", "--lib"],
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub enum CargoAction {
     Build,
@@ -123,6 +153,7 @@ pub struct Cargo {
     pub release: bool,
     pub target: Option<UefiArch>,
     pub warnings_as_errors: bool,
+    pub target_types: TargetTypes,
 }
 
 impl Cargo {
@@ -199,6 +230,8 @@ impl Cargo {
             ]);
         }
 
+        cmd.args(self.target_types.args());
+
         cmd.args(extra_args);
 
         if !tool_args.is_empty() {
@@ -244,6 +277,7 @@ mod tests {
             release: false,
             target: None,
             warnings_as_errors: true,
+            target_types: TargetTypes::Default,
         };
         assert_eq!(
             command_to_string(&cargo.command().unwrap()),
