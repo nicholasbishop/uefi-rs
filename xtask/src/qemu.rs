@@ -316,7 +316,7 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt) -> Result<()> {
     // Set up OVMF.
     let ovmf_paths = OvmfPaths::find(opt, arch)?;
     add_pflash_args(&mut cmd, &ovmf_paths.code, /*read_only=*/ true);
-    add_pflash_args(&mut cmd, &ovmf_paths.vars, ovmf_paths.vars_read_only);
+    add_pflash_args(&mut cmd, &ovmf_paths.vars, /*read_only=*/ true);
 
     // Mount a local directory as a FAT partition.
     cmd.arg("-drive");
