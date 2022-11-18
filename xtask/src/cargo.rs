@@ -164,15 +164,16 @@ pub fn fix_nested_cargo_env(cmd: &mut Command) {
 
 /// Check if the three UEFI targets are installed via rustup (only
 /// supported since nightly-2022-11-10).
-fn is_target_installed(target: &str) -> Result<bool> {
-    let output = Command::new("rustup")
-        .args(["target", "list", "--installed"])
-        .output()?;
-    if !output.status.success() {
-        bail!("failed to get installed targets");
-    }
-    let stdout = String::from_utf8(output.stdout)?;
-    Ok(stdout.lines().any(|x| x == target))
+fn is_target_installed(_target: &str) -> Result<bool> {
+    Ok(true)
+    // let output = Command::new("rustup")
+    //     .args(["target", "list", "--installed"])
+    //     .output()?;
+    // if !output.status.success() {
+    //     bail!("failed to get installed targets");
+    // }
+    // let stdout = String::from_utf8(output.stdout)?;
+    // Ok(stdout.lines().any(|x| x == target))
 }
 
 #[derive(Debug)]
@@ -228,6 +229,9 @@ impl Cargo {
         if let Some(sub_action) = sub_action {
             cmd.arg(sub_action);
         }
+
+        // TODO
+        cmd.env("RUSTFLAGS", "-C linker=lld");
 
         if self.release {
             cmd.arg("--release");
