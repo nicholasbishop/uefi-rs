@@ -448,6 +448,38 @@ impl Time {
     pub const fn daylight(&self) -> Daylight {
         self.0.daylight
     }
+
+    /// Convert to [`time::PrimitiveDateTime`].
+    ///
+    /// This will return a [`TimeError`] if any of the date/time
+    /// components are outside the valid range.
+    #[cfg(feature = "time")]
+    pub fn to_primitive_date_time(
+        &self,
+    ) -> core::result::Result<time::PrimitiveDateTime, TimeError> {
+        let month = self.month.try_into().map_err(|_| TimeError)?;
+        let date = time::Date::from_calendar_date(self.year.into(), month, self.day)
+            .map_err(|_| TimeError)?;
+        date.with_hms_nano(self.hour, self.minute, self.second, self.nanosecond)
+            .map_err(|_| TimeError)
+    }
+
+    /// Convert to [`time::OffsetDateTime`].
+    ///
+    /// This will return a [`TimeError`] if any of the date/time
+    /// components are outside the valid range, or if [`self.time_zone`]
+    /// is `None`.
+    ///
+    /// [`self.time_zone`]: Self::time_zone
+    #[cfg(feature = "time")]
+    pub fn to_offset_date_time(&self) -> core::result::Result<time::OffsetDateTime, TimeError> {
+        let primitive = self.to_primitive_date_time()?;
+        let offset_in_minutes: i32 = self.time_zone().ok_or(TimeError)?.into();
+        let offset_in_seconds = offset_in_minutes * 60;
+        let offset =
+            time::UtcOffset::from_whole_seconds(offset_in_seconds).map_err(|_| TimeError)?;
+        Ok(primitive.assume_offset(offset))
+    }
 }
 
 impl Debug for Time {

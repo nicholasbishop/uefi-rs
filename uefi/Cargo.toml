@@ -28,6 +28,7 @@ unstable = []
 bitflags.workspace = true
 log.workspace = true
 ptr_meta.workspace = true
+time = { version = "0.3.0", default-features = false, optional = true }
 ucs2 = "0.3.2"
 uefi-macros = "0.13.0"
 uefi-raw = "0.5.1"
