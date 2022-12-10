@@ -57,3 +57,21 @@ impl<T> Buffer<T> for Vec<T> {
         self.write(f)
     }
 }
+
+// TODO: describe why this exists instead of using `Vec<u64>` or
+// similar.
+pub struct AlignedByteVec<A: Align> {
+    _align: PhantomData<A>,
+    data: Vec<u8>,
+}
+
+impl<A: Align> AlignedByteVec<A> {
+    pub fn new() -> Self {
+        Self {
+            _align: PhantomData,
+            data: Vec::new(),
+        }
+    }
+}
+
+impl<A: Align> Buffer<A> for AlignedByteVec<A> {}

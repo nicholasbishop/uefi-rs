@@ -5,6 +5,24 @@ use core::mem::{self, MaybeUninit};
 use core::ops::{Deref, DerefMut};
 use core::slice;
 
+/// TODO
+// TODO: make this a sealed trait instead of unsafe?
+pub unsafe trait Align {
+    const V: Self;
+}
+/// TODO
+#[repr(align(1))]
+pub struct Align1;
+/// TODO
+#[repr(align(8))]
+pub struct Align8;
+unsafe impl Align for Align1 {
+    const V: Self = Align1;
+}
+unsafe impl Align for Align8 {
+    const V: Self = Align8;
+}
+
 /// Generic buffer interface for use with UEFI functions that output a
 /// data into a buffer. Its primary purpose is to allow UEFI functions
 /// to be wrapped in a single Rust method that can work with either a
@@ -21,7 +39,7 @@ use core::slice;
 /// TODO: examples of SliceBuffer, ArrayBuffer, and Vec.
 ///
 /// [`Vec`]: https://doc.rust-lang.org/alloc/vec/struct.Vec.html
-pub trait Buffer<T>: Deref<Target = [T]> + DerefMut {
+pub trait Buffer<T, A: Align = Align1>: Deref<Target = [T]> + DerefMut {
     /// Attempt to write data into the buffer. Data is always written
     /// starting at the beginning of the buffer, overwriting any
     /// existing data.
@@ -240,7 +258,11 @@ impl<'a, T> SliceBuffer<'a, T> {
 }
 
 /// Wrapper that implements [`Buffer`] for a mutable array.
-pub struct ArrayBuffer<T, const N: usize> {
+#[repr(C)]
+pub struct ArrayBuffer<T, const N: usize, A: Align = Align1> {
+    // `ArrayBuffer` is `repr(C)`, so we can use this empty-array trick
+    // to force `array` to start at the desired alignment.
+    _align: [A; 0],
     array: [MaybeUninit<T>; N],
     initialized_len: usize,
 }
@@ -265,10 +287,11 @@ impl<T: Debug, const N: usize> Debug for ArrayBuffer<T, N> {
     }
 }
 
-impl<T, const N: usize> ArrayBuffer<T, N> {
+impl<T, const N: usize, A: Align> ArrayBuffer<T, N, A> {
     /// Create a new `ArrayBuffer`.
     pub const fn new() -> Self {
         Self {
+            _align: [A::V; 0],
             // Safety: as described in the `MaybeUninit` docs, it is
             // safe to use `assume_init` here because the `MaybeUninit`
             // elements in the array do not require initialization.
@@ -297,7 +320,7 @@ impl<T, const N: usize> DerefMut for ArrayBuffer<T, N> {
 }
 
 #[cfg(feature = "alloc")]
-mod vec_buffer;
+pub mod vec_buffer;
 
 #[cfg(test)]
 mod tests {

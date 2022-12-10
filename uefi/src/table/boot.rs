@@ -4,7 +4,7 @@ use super::{Header, Revision};
 use crate::data_types::{Align, PhysicalAddress, VirtualAddress};
 use crate::proto::device_path::{DevicePath, FfiDevicePath};
 use crate::proto::{Protocol, ProtocolPointer};
-use crate::{Buffer, Char16, Event, Guid, Handle, Result, Status};
+use crate::{Align8, Buffer, Char16, Event, Guid, Handle, Result, Status};
 use bitflags::bitflags;
 use core::cell::UnsafeCell;
 use core::ffi::c_void;
@@ -437,7 +437,7 @@ impl BootServices {
     ///
     /// * [`uefi::Status::BUFFER_TOO_SMALL`]
     /// * [`uefi::Status::INVALID_PARAMETER`]
-    pub fn memory_map<'buf, B: Buffer<u64>>(
+    pub fn memory_map<'buf, B: Buffer<u8, Align8>>(
         &self,
         // TODO: is this right?
         buffer: &'buf mut B,
@@ -2011,7 +2011,7 @@ pub struct MemoryMapSize {
 /// An iterator of memory descriptors
 #[derive(Debug, Clone)]
 struct MemoryMapIter<'buf> {
-    buffer: &'buf [u64],
+    buffer: &'buf [u8],
     entry_size: usize,
     index: usize,
     len: usize,

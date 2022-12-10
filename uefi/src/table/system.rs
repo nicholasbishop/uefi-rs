@@ -5,7 +5,7 @@ use core::ptr::NonNull;
 use core::{ptr, slice};
 
 use crate::proto::console::text;
-use crate::{Buffer, CStr16, Char16, Error, Handle, Result, ResultExt, Status};
+use crate::{Align8, Buffer, CStr16, Char16, Error, Handle, Result, ResultExt, Status};
 
 use super::boot::{BootServices, MemoryDescriptor};
 use super::runtime::RuntimeServices;
@@ -178,7 +178,7 @@ impl SystemTable<Boot> {
     /// [`global_allocator::exit_boot_services`]: crate::global_allocator::exit_boot_services
     /// [`Logger::disable`]: crate::logger::Logger::disable
     /// [`uefi_services::init`]: https://docs.rs/uefi-services/latest/uefi_services/fn.init.html
-    pub fn exit_boot_services<B: Buffer<u64>>(
+    pub fn exit_boot_services<B: Buffer<u8, Align8>>(
         self,
         image: Handle,
         mmap_buf: &mut B,
