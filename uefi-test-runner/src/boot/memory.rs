@@ -1,6 +1,7 @@
 use uefi::table::boot::{AllocateType, BootServices, MemoryType};
+use uefi::AlignedByteVec;
 
-use crate::alloc::vec::Vec;
+use alloc::vec::Vec;
 use core::mem;
 
 pub fn test(bt: &BootServices) {
@@ -90,7 +91,7 @@ fn memory_map(bt: &BootServices) {
     let buf_sz = sizes.map_size + 2 * sizes.entry_size;
 
     // We will use vectors for convenience.
-    let mut buffer = vec![0_u64; buf_sz / mem::size_of::<u64>()];
+    let mut buffer = AlignedByteVec::with_capacity(buf_sz);
 
     let (_key, desc_iter) = bt
         .memory_map(&mut buffer)
