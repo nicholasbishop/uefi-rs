@@ -296,7 +296,7 @@ impl<T, const N: usize> DerefMut for ArrayBuffer<T, N> {
     }
 }
 
-#[cfg(feature = "exts")]
+#[cfg(feature = "alloc")]
 mod vec_buffer;
 
 #[cfg(test)]
@@ -305,8 +305,8 @@ mod tests {
     use crate::ResultExt;
     use alloc::format;
 
-    #[cfg(feature = "exts")]
-    use alloc_api::vec::Vec;
+    #[cfg(feature = "alloc")]
+    use alloc::vec::Vec;
 
     fn write_n<B: Buffer<u32>>(n: usize, buf: &mut B) -> Result<(), Option<usize>> {
         unsafe {
@@ -396,7 +396,7 @@ mod tests {
         check_buffer(&mut buf, CappedAt3(true));
     }
 
-    #[cfg(feature = "exts")]
+    #[cfg(feature = "alloc")]
     #[test]
     fn test_vec_buffer() {
         let mut buf = Vec::new();

@@ -1,4 +1,4 @@
-use uefi::proto::rng::{Rng, RngAlgorithmType};
+use uefi::proto::rng::Rng;
 use uefi::table::boot::BootServices;
 use uefi::ArrayBuffer;
 

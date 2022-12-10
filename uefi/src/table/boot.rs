@@ -3,12 +3,8 @@
 use super::{Header, Revision};
 use crate::data_types::{Align, PhysicalAddress, VirtualAddress};
 use crate::proto::device_path::{DevicePath, FfiDevicePath};
-#[cfg(feature = "alloc")]
-use crate::proto::{loaded_image::LoadedImage, media::fs::SimpleFileSystem};
 use crate::proto::{Protocol, ProtocolPointer};
 use crate::{Buffer, Char16, Event, Guid, Handle, Result, Status};
-#[cfg(feature = "alloc")]
-use ::alloc::vec::Vec;
 use bitflags::bitflags;
 use core::cell::UnsafeCell;
 use core::ffi::c_void;
@@ -17,11 +13,11 @@ use core::mem::{self, MaybeUninit};
 use core::ops::{Deref, DerefMut};
 use core::ptr::NonNull;
 use core::{ptr, slice};
-#[cfg(feature = "exts")]
+#[cfg(feature = "alloc")]
 use {
     crate::proto::{loaded_image::LoadedImage, media::fs::SimpleFileSystem},
     crate::ResultExt,
-    alloc_api::vec::Vec,
+    alloc::vec::Vec,
 };
 
 // TODO: this similar to `SyncUnsafeCell`. Once that is stabilized we

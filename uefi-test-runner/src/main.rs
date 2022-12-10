@@ -8,8 +8,8 @@ extern crate log;
 #[macro_use]
 extern crate alloc;
 
-use alloc::string::String;
 use alloc::string::ToString;
+use core::mem;
 use uefi::prelude::*;
 use uefi::proto::console::serial::Serial;
 use uefi::Result;

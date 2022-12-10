@@ -1,8 +1,8 @@
-// Everything in this module is gated behind the `exts` feature.
+// Everything in this module is gated behind the `alloc` feature.
 
 use super::*;
 use crate::ResultExt;
-use alloc_api::vec::Vec;
+use alloc::vec::Vec;
 
 impl<T> Buffer<T> for Vec<T> {
     unsafe fn write<F>(&mut self, f: F) -> Result<(), Option<usize>>
