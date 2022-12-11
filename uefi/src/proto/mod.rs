@@ -20,10 +20,8 @@ use core::ffi::c_void;
 /// protocol's GUID using the following syntax:
 ///
 /// ```
-/// #![feature(negative_impls)]
-/// use uefi::{proto::Protocol, unsafe_guid};
-/// #[unsafe_guid("12345678-9abc-def0-1234-56789abcdef0")]
-/// #[derive(Protocol)]
+/// use uefi::proto::unsafe_protocol;
+/// #[unsafe_protocol("12345678-9abc-def0-1234-56789abcdef0")]
 /// struct DummyProtocol {}
 /// ```
 pub trait Protocol: Identify {}
@@ -62,7 +60,7 @@ where
     }
 }
 
-pub use uefi_macros::{unsafe_protocol, Protocol};
+pub use uefi_macros::unsafe_protocol;
 
 pub mod console;
 pub mod debug;
