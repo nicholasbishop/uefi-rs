@@ -215,28 +215,6 @@ fn parse_guid(guid_lit: LitStr) -> Result<(u32, u16, u16, u16, u64), TokenStream
     ))
 }
 
-/// Custom derive for the `Protocol` trait
-#[proc_macro_derive(Protocol)]
-pub fn derive_protocol(item: TokenStream) -> TokenStream {
-    // Parse the input using Syn
-    let item = parse_macro_input!(item as DeriveInput);
-
-    // Then implement Protocol
-    let ident = item.ident.clone();
-    let (impl_generics, ty_generics, where_clause) = item.generics.split_for_impl();
-    let result = quote! {
-        // Mark this as a `Protocol` implementation
-        impl #impl_generics ::uefi::proto::Protocol for #ident #ty_generics #where_clause {}
-
-        // Most UEFI functions expect to be called on the bootstrap processor.
-        impl #impl_generics !Send for #ident #ty_generics #where_clause {}
-
-        // Most UEFI functions do not support multithreaded access.
-        impl #impl_generics !Sync for #ident #ty_generics #where_clause {}
-    };
-    result.into()
-}
-
 /// Get the name of a function's argument at `arg_index`.
 fn get_function_arg_name(f: &ItemFn, arg_index: usize, errors: &mut TokenStream2) -> Option<Ident> {
     if let Some(FnArg::Typed(arg)) = f.sig.inputs.iter().nth(arg_index) {
