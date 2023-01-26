@@ -80,3 +80,4 @@ pub mod security;
 pub mod shim;
 pub mod string;
 pub mod tcg;
+pub mod usb;
