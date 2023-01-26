@@ -9,12 +9,12 @@
 // `OUT_OF_RESOURCES` error.
 
 use crate::{
+    data_types::PoolString,
     proto::device_path::{DevicePath, DevicePathNode, FfiDevicePath},
     proto::unsafe_protocol,
     table::boot::BootServices,
     CStr16, Char16, Result, Status,
 };
-use core::ops::Deref;
 
 /// This struct is a wrapper of `display_only` parameter
 /// used by Device Path to Text protocol.
@@ -39,43 +39,6 @@ pub struct DisplayOnly(pub bool);
 /// can be used, where applicable.
 #[derive(Clone, Copy)]
 pub struct AllowShortcuts(pub bool);
-
-/// Wrapper for a string internally allocated from
-/// UEFI boot services memory.
-pub struct PoolString<'a> {
-    boot_services: &'a BootServices,
-    text: *const Char16,
-}
-
-impl<'a> PoolString<'a> {
-    fn new(boot_services: &'a BootServices, text: *const Char16) -> Result<Self> {
-        if text.is_null() {
-            Err(Status::OUT_OF_RESOURCES.into())
-        } else {
-            Ok(Self {
-                boot_services,
-                text,
-            })
-        }
-    }
-}
-
-impl<'a> Deref for PoolString<'a> {
-    type Target = CStr16;
-
-    fn deref(&self) -> &Self::Target {
-        unsafe { CStr16::from_ptr(self.text) }
-    }
-}
-
-impl Drop for PoolString<'_> {
-    fn drop(&mut self) {
-        let addr = self.text as *mut u8;
-        self.boot_services
-            .free_pool(addr)
-            .expect("Failed to free pool [{addr:#?}]");
-    }
-}
 
 /// Device Path to Text protocol.
 ///

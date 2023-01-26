@@ -2,6 +2,10 @@
 
 ## uefi - [Unreleased]
 
+### Changed
+
+- Moved `uefi::proto::device_path::text::PoolString` to `uefi::data_types::PoolString`.
+
 ## uefi-macros - [Unreleased]
 
 ## uefi-services - [Unreleased]

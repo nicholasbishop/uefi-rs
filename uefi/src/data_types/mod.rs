@@ -139,6 +139,9 @@ mod owned_strs;
 #[cfg(feature = "alloc")]
 pub use self::owned_strs::{CString16, FromStrError};
 
+mod pool_string;
+pub use pool_string::PoolString;
+
 mod unaligned_slice;
 pub use unaligned_slice::UnalignedSlice;
 
