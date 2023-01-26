@@ -124,55 +124,14 @@ pub struct UsbEndpointDescriptor {
 #[unsafe_protocol("2b2f68d6-0cd2-44cf-8e8b-bba20b1b5b75")]
 #[repr(C)]
 pub struct UsbIo {
-    usb_control_transfer: unsafe extern "efiapi" fn(
-        this: *const Self,
-        request: *const UsbDeviceRequest,
-        direction: UsbDataDirection,
-        timeout: u32,
-        data: *mut c_void,
-        data_length: usize,
-        status: *mut u32,
-    ) -> Status,
-    usb_bulk_transfer: unsafe extern "efiapi" fn(
-        this: *const Self,
-        device_endpoint: u8,
-        data: *mut c_void,
-        data_length: *mut usize,
-        timeout: usize,
-        status: *mut u32,
-    ) -> Status,
-    usb_async_interrupt_transfer: unsafe extern "efiapi" fn(
-        this: *const Self,
-        device_endpoint: u8,
-        is_new_transfer: bool,
-        polling_interval: usize,
-        data_length: usize,
-        interrupt_callBack: AsyncUsbTransferCallback,
-        context: *mut c_void,
-    ) -> Status,
-    usb_sync_interrupt_transfer: unsafe extern "efiapi" fn(
-        this: *const Self,
-        device_endpoint: u8,
-        data: *mut c_void,
-        data_length: *mut usize,
-        timeout: usize,
-        status: *mut u32,
-    ) -> Status,
-    usb_isochronous_transfer: unsafe extern "efiapi" fn(
-        this: *const Self,
-        device_endpoint: u8,
-        data: *mut c_void,
-        data_length: usize,
-        status: *mut u32,
-    ) -> Status,
-    usb_async_isochronous_transfer: unsafe extern "efiapi" fn(
-        this: *const Self,
-        device_endpoint: u8,
-        data: *mut c_void,
-        data_length: usize,
-        isochronous_callback: AsyncUsbTransferCallback,
-        context: *mut c_void,
-    ) -> Status,
+    // TODO: fill in the rest of these function pointers:
+    usb_control_transfer: unsafe extern "efiapi" fn() -> Status,
+    usb_bulk_transfer: unsafe extern "efiapi" fn() -> Status,
+    usb_async_interrupt_transfer: unsafe extern "efiapi" fn() -> Status,
+    usb_sync_interrupt_transfer: unsafe extern "efiapi" fn() -> Status,
+    usb_isochronous_transfer: unsafe extern "efiapi" fn() -> Status,
+    usb_async_isochronous_transfer: unsafe extern "efiapi" fn() -> Status,
+
     usb_get_device_descriptor: unsafe extern "efiapi" fn(
         this: *const Self,
         device_descriptor: *mut UsbDeviceDescriptor,
@@ -201,85 +160,6 @@ pub struct UsbIo {
 }
 
 impl UsbIo {
-    // TODO: any way to combine some of these transfer functions with an input enum?
-
-    pub fn usb_control_transfer(
-        &self,
-        request: &UsbDeviceRequest,
-        direction: UsbDataDirection,
-        timeout: u32,
-        data: &mut [u8],
-    ) -> Result<(), UsbTransferError> {
-        let mut transfer_error = 0;
-        unsafe {
-            (self.usb_control_transfer)(
-                self,
-                request,
-                direction,
-                timeout,
-                data.as_mut_ptr().cast(),
-                data.len(),
-                &mut transfer_error,
-            )
-            .into_with_err(|_| UsbTransferError::from_bits_unchecked(transfer_error))
-        }
-    }
-
-    pub fn usb_bulk_transfer(
-        &mut self,
-        device_endpoint: UsbDeviceEndpoint,
-        data: &mut [u8],
-        data_length: *mut usize,
-        timeout: usize,
-        status: *mut u32,
-    ) -> Result {
-        todo!()
-    }
-
-    pub fn usb_async_interrupt_transfer(
-        &mut self,
-        device_endpoint: UsbDeviceEndpoint,
-        is_new_transfer: bool,
-        polling_interval: usize,
-        data_length: usize,
-        interrupt_callBack: AsyncUsbTransferCallback,
-        context: *mut c_void,
-    ) -> Result {
-        todo!()
-    }
-
-    pub fn usb_sync_interrupt_transfer(
-        &mut self,
-        device_endpoint: UsbDeviceEndpoint,
-        data: *mut c_void,
-        data_length: *mut usize,
-        timeout: usize,
-        status: *mut u32,
-    ) -> Result {
-        todo!()
-    }
-
-    pub fn usb_isochronous_transfer(
-        &mut self,
-        device_endpoint: UsbDeviceEndpoint,
-        data: *mut c_void,
-        data_length: usize,
-        status: *mut u32,
-    ) -> Result {
-        todo!()
-    }
-
-    pub fn usb_async_isochronous_transfer(
-        &mut self,
-        device_endpoint: UsbDeviceEndpoint,
-        data: *mut c_void,
-        data_length: usize,
-        isochronous_callback: AsyncUsbTransferCallback,
-        context: *mut c_void,
-    ) -> Result {
-        todo!()
-    }
-
     pub fn usb_get_device_descriptor(
         &mut self,
         device_descriptor: *mut UsbDeviceDescriptor,
