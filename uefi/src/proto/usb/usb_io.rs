@@ -5,7 +5,10 @@
 
 use bitflags::bitflags;
 use core::ffi::c_void;
+use core::ptr;
+use uefi::data_types::PoolString;
 use uefi::proto::unsafe_protocol;
+use uefi::table::boot::BootServices;
 use uefi::{Char16, Result, Status};
 
 // TODO: pub?
@@ -146,6 +149,7 @@ pub struct UsbIo {
     ) -> Status,
     usb_get_endpoint_descriptor: unsafe extern "efiapi" fn(
         this: *const Self,
+        endpoint_index: u8,
         endpoint_descriptor: *mut UsbEndpointDescriptor,
     ) -> Status,
     usb_get_string_descriptor: unsafe extern "efiapi" fn(
@@ -160,44 +164,54 @@ pub struct UsbIo {
 }
 
 impl UsbIo {
-    pub fn usb_get_device_descriptor(&self) -> Result<UsbDeviceDescriptor> {
+    pub fn get_device_descriptor(&self) -> Result<UsbDeviceDescriptor> {
         let mut device_descriptor = UsbDeviceDescriptor::default();
         unsafe { (self.usb_get_device_descriptor)(self, &mut device_descriptor) }
             .into_with_val(|| device_descriptor)
     }
 
-    pub fn usb_get_config_descriptor(&self) -> Result<UsbConfigDescriptor> {
+    pub fn get_config_descriptor(&self) -> Result<UsbConfigDescriptor> {
         let mut config_descriptor = UsbConfigDescriptor::default();
         unsafe { (self.usb_get_config_descriptor)(self, &mut config_descriptor) }
             .into_with_val(|| config_descriptor)
     }
 
-    pub fn usb_get_interface_descriptor(&self) -> Result<UsbInterfaceDescriptor> {
+    pub fn get_interface_descriptor(&self) -> Result<UsbInterfaceDescriptor> {
         let mut interface_descriptor = UsbInterfaceDescriptor::default();
         unsafe { (self.usb_get_interface_descriptor)(self, &mut interface_descriptor) }
             .into_with_val(|| interface_descriptor)
     }
 
-    pub fn usb_get_endpoint_descriptor(&self) -> Result<UsbEndpointDescriptor> {
+    pub fn get_endpoint_descriptor(&self, endpoint_index: u8) -> Result<UsbEndpointDescriptor> {
         let mut endpoint_descriptor = UsbEndpointDescriptor::default();
-        unsafe { (self.usb_get_endpoint_descriptor)(self, &mut endpoint_descriptor) }
-            .into_with_val(|| endpoint_descriptor)
+        unsafe {
+            (self.usb_get_endpoint_descriptor)(self, endpoint_index, &mut endpoint_descriptor)
+        }
+        .into_with_val(|| endpoint_descriptor)
     }
 
-    pub fn usb_get_string_descriptor(
+    pub fn get_string_descriptor<'boot>(
         &self,
+        boot_services: &'boot BootServices,
         lang_id: u16,
         string_id: u8,
-        string: *mut *mut Char16,
-    ) -> Result {
+    ) -> Result<PoolString<'boot>> {
+        let mut string = ptr::null_mut();
+        let status =
+            unsafe { (self.usb_get_string_descriptor)(self, lang_id, string_id, &mut string) };
+        if status.is_success() {
+            let string = PoolString::new(boot_services, string)?;
+            status.into_with_val(|| string)
+        } else {
+            Err(status.into())
+        }
+    }
+
+    pub fn get_supported_languages(&self, lang_id_table: *mut *mut u16) -> Result {
         todo!()
     }
 
-    pub fn usb_get_supported_languages(&self, lang_id_table: *mut *mut u16) -> Result {
-        todo!()
-    }
-
-    pub fn usb_port_reset(&self) -> Result {
+    pub fn port_reset(&self) -> Result {
         todo!()
     }
 }
