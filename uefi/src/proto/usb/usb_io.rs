@@ -160,36 +160,32 @@ pub struct UsbIo {
 }
 
 impl UsbIo {
-    pub fn usb_get_device_descriptor(
-        &mut self,
-        device_descriptor: *mut UsbDeviceDescriptor,
-    ) -> Result {
-        todo!()
+    pub fn usb_get_device_descriptor(&self) -> Result<UsbDeviceDescriptor> {
+        let mut device_descriptor = UsbDeviceDescriptor::default();
+        unsafe { (self.usb_get_device_descriptor)(self, &mut device_descriptor) }
+            .into_with_val(|| device_descriptor)
     }
 
-    pub fn usb_get_config_descriptor(
-        &mut self,
-        config_descriptor: *mut UsbConfigDescriptor,
-    ) -> Result {
-        todo!()
+    pub fn usb_get_config_descriptor(&self) -> Result<UsbConfigDescriptor> {
+        let mut config_descriptor = UsbConfigDescriptor::default();
+        unsafe { (self.usb_get_config_descriptor)(self, &mut config_descriptor) }
+            .into_with_val(|| config_descriptor)
     }
 
-    pub fn usb_get_interface_descriptor(
-        &mut self,
-        interface_descriptor: *mut UsbInterfaceDescriptor,
-    ) -> Result {
-        todo!()
+    pub fn usb_get_interface_descriptor(&self) -> Result<UsbInterfaceDescriptor> {
+        let mut interface_descriptor = UsbInterfaceDescriptor::default();
+        unsafe { (self.usb_get_interface_descriptor)(self, &mut interface_descriptor) }
+            .into_with_val(|| interface_descriptor)
     }
 
-    pub fn usb_get_endpoint_descriptor(
-        &mut self,
-        endpoint_descriptor: *mut UsbEndpointDescriptor,
-    ) -> Result {
-        todo!()
+    pub fn usb_get_endpoint_descriptor(&self) -> Result<UsbEndpointDescriptor> {
+        let mut endpoint_descriptor = UsbEndpointDescriptor::default();
+        unsafe { (self.usb_get_endpoint_descriptor)(self, &mut endpoint_descriptor) }
+            .into_with_val(|| endpoint_descriptor)
     }
 
     pub fn usb_get_string_descriptor(
-        &mut self,
+        &self,
         lang_id: u16,
         string_id: u8,
         string: *mut *mut Char16,
@@ -197,11 +193,11 @@ impl UsbIo {
         todo!()
     }
 
-    pub fn usb_get_supported_languages(&mut self, lang_id_table: *mut *mut u16) -> Result {
+    pub fn usb_get_supported_languages(&self, lang_id_table: *mut *mut u16) -> Result {
         todo!()
     }
 
-    pub fn usb_port_reset(&mut self) -> Result {
+    pub fn usb_port_reset(&self) -> Result {
         todo!()
     }
 }
