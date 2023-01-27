@@ -3,13 +3,13 @@
 // TODO
 #![allow(missing_docs)]
 
-use core::{ptr, slice};
+use core::{mem, ptr, slice};
 use uefi::data_types::PoolString;
 use uefi::proto::unsafe_protocol;
 use uefi::table::boot::BootServices;
 use uefi::{Char16, Result, Status};
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Eq, PartialEq)]
 #[repr(C)]
 pub struct UsbDeviceDescriptor {
     pub length: u8,
@@ -28,7 +28,7 @@ pub struct UsbDeviceDescriptor {
     pub num_configurations: u8,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Eq, PartialEq)]
 pub struct UsbConfigDescriptor {
     pub length: u8,
     pub descriptor_type: u8,
@@ -40,7 +40,7 @@ pub struct UsbConfigDescriptor {
     pub max_power: u8,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Eq, PartialEq)]
 #[repr(C)]
 pub struct UsbInterfaceDescriptor {
     pub length: u8,
@@ -54,7 +54,7 @@ pub struct UsbInterfaceDescriptor {
     pub interface: u8,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Eq, PartialEq)]
 #[repr(C)]
 pub struct UsbEndpointDescriptor {
     pub length: u8,
@@ -159,7 +159,12 @@ impl UsbIo {
         let mut table_size = 0;
         unsafe {
             (self.usb_get_supported_languages)(self, &mut lang_id_table, &mut table_size)
-                .into_with_val(|| slice::from_raw_parts(lang_id_table, usize::from(table_size)))
+                .into_with_val(|| {
+                    slice::from_raw_parts(
+                        lang_id_table,
+                        usize::from(table_size) / mem::size_of::<u16>(),
+                    )
+                })
         }
     }
 

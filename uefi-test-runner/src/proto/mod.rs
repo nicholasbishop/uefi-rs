@@ -29,6 +29,7 @@ pub fn test(image: Handle, st: &mut SystemTable<Boot>) {
     ))]
     shim::test(bt);
     tcg::test(bt);
+    usb::test(bt);
 }
 
 fn find_protocol(bt: &BootServices) {
@@ -75,3 +76,4 @@ mod rng;
 mod shim;
 mod string;
 mod tcg;
+mod usb;
