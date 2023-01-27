@@ -437,6 +437,8 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt) -> Result<()> {
 
     cmd.args(["-device", "virtio-rng-pci"]);
 
+    cmd.args(["-usb", "-device", "usb-mouse"]);
+
     match arch {
         UefiArch::AArch64 => {
             // Use a generic ARM environment. Sadly qemu can't emulate a
