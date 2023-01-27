@@ -3,70 +3,11 @@
 // TODO
 #![allow(missing_docs)]
 
-use bitflags::bitflags;
-use core::ffi::c_void;
-use core::ptr;
+use core::{ptr, slice};
 use uefi::data_types::PoolString;
 use uefi::proto::unsafe_protocol;
 use uefi::table::boot::BootServices;
 use uefi::{Char16, Result, Status};
-
-// TODO: pub?
-pub struct UsbDeviceRequest {
-    pub request_type: u8,
-    pub request: u8,
-    pub value: u16,
-    pub index: u16,
-    pub length: u16,
-}
-
-newtype_enum! {
-    pub enum UsbDataDirection: u8 => {
-        IN = 0,
-        OUT = 1,
-        NO_DATA = 2,
-    }
-}
-
-bitflags! {
-    pub struct UsbTransferError: u32 {
-        const NOTEXECUTE = 0x0001;
-        const STALL = 0x0002;
-        const BUFFER = 0x0004;
-        const BABBLE = 0x0008;
-        const NAK = 0x0010;
-        const CRC = 0x0020;
-        const TIMEOUT = 0x0040;
-        const BITSTUFF = 0x0080;
-        const SYSTEM = 0x0100;
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
-#[repr(transparent)]
-pub struct UsbDeviceEndpoint(u8);
-
-impl UsbDeviceEndpoint {
-    pub fn new(device_endpoint: u8) -> Option<Self> {
-        if (0x01..=0x0f).contains(&device_endpoint) || (0x81..=0x8f).contains(&device_endpoint) {
-            Some(Self(device_endpoint))
-        } else {
-            None
-        }
-    }
-
-    pub fn direction(self) -> UsbDataDirection {
-        if self.0 & 0b1000_0000 == 0 {
-            UsbDataDirection::OUT
-        } else {
-            UsbDataDirection::IN
-        }
-    }
-}
-
-// TODO: pub?
-type AsyncUsbTransferCallback =
-    fn(data: *mut c_void, data_length: usize, context: *mut c_void, status: u32);
 
 #[derive(Debug, Default)]
 #[repr(C)]
@@ -156,10 +97,13 @@ pub struct UsbIo {
         this: *const Self,
         lang_id: u16,
         string_id: u8,
-        string: *mut *mut Char16,
+        string: *mut *const Char16,
     ) -> Status,
-    usb_get_supported_languages:
-        unsafe extern "efiapi" fn(this: *const Self, lang_id_table: *mut *mut u16) -> Status,
+    usb_get_supported_languages: unsafe extern "efiapi" fn(
+        this: *const Self,
+        lang_id_table: *mut *const u16,
+        table_size: *mut u16,
+    ) -> Status,
     usb_port_reset: unsafe extern "efiapi" fn(this: *const Self) -> Status,
 }
 
@@ -196,7 +140,7 @@ impl UsbIo {
         lang_id: u16,
         string_id: u8,
     ) -> Result<PoolString<'boot>> {
-        let mut string = ptr::null_mut();
+        let mut string = ptr::null();
         let status =
             unsafe { (self.usb_get_string_descriptor)(self, lang_id, string_id, &mut string) };
         if status.is_success() {
@@ -207,8 +151,16 @@ impl UsbIo {
         }
     }
 
-    pub fn get_supported_languages(&self, lang_id_table: *mut *mut u16) -> Result {
-        todo!()
+    pub fn get_supported_languages(&self) -> Result<&[u16]> {
+        // The table is owned by the protocol, so no need to free it. The
+        // lifetime of the returned slice is tied to the protocol.
+        let mut lang_id_table = ptr::null();
+
+        let mut table_size = 0;
+        unsafe {
+            (self.usb_get_supported_languages)(self, &mut lang_id_table, &mut table_size)
+                .into_with_val(|| slice::from_raw_parts(lang_id_table, usize::from(table_size)))
+        }
     }
 
     pub fn port_reset(&self) -> Result {
