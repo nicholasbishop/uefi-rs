@@ -1,4 +1,5 @@
 use log::info;
+use uefi::prelude::*;
 use uefi::proto::usb::UsbIo;
 use uefi::table::boot::BootServices;
 
@@ -32,27 +33,26 @@ pub fn test(bt: &BootServices) {
         .expect("failed to get endpoint descriptor");
     info!("{:?}", ed);
 
-    let sl = usb_io
+    let supported_languages = usb_io
         .get_supported_languages()
         .expect("failed to get supported languages");
-    info!("{:?}", sl);
 
-    info!(
-        "{}",
+    assert_eq!(
         &*usb_io
-            .get_string_descriptor(bt, sl[0], dd.str_manufacturer)
-            .unwrap()
+            .get_string_descriptor(bt, supported_languages[0], dd.str_manufacturer)
+            .expect("failed to get manufacturer string"),
+        cstr16!("QEMU")
     );
-    info!(
-        "{}",
+    assert_eq!(
         &*usb_io
-            .get_string_descriptor(bt, sl[0], dd.str_product)
-            .unwrap()
+            .get_string_descriptor(bt, supported_languages[0], dd.str_product)
+            .expect("failed to get product string"),
+        cstr16!("QEMU USB Mouse")
     );
-    info!(
-        "{}",
+    assert_eq!(
         &*usb_io
-            .get_string_descriptor(bt, sl[0], dd.str_serial_number)
-            .unwrap()
+            .get_string_descriptor(bt, supported_languages[0], dd.str_serial_number)
+            .expect("failed to get serial string"),
+        cstr16!("89126-0000:00:1d.7-1")
     );
 }
