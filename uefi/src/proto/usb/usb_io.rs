@@ -3,67 +3,12 @@
 // TODO
 #![allow(missing_docs)]
 
+use super::{ConfigDescriptor, DeviceDescriptor, EndpointDescriptor, InterfaceDescriptor};
 use core::{mem, ptr, slice};
 use uefi::data_types::PoolString;
 use uefi::proto::unsafe_protocol;
 use uefi::table::boot::BootServices;
 use uefi::{Char16, Result, Status};
-
-#[derive(Debug, Default, Eq, PartialEq)]
-#[repr(C)]
-pub struct UsbDeviceDescriptor {
-    pub length: u8,
-    pub descriptor_type: u8,
-    pub bcd_usb: u16,
-    pub device_class: u8,
-    pub device_sub_class: u8,
-    pub device_protocol: u8,
-    pub max_packet_size0: u8,
-    pub id_vendor: u16,
-    pub id_product: u16,
-    pub bcd_device: u16,
-    pub str_manufacturer: u8,
-    pub str_product: u8,
-    pub str_serial_number: u8,
-    pub num_configurations: u8,
-}
-
-#[derive(Debug, Default, Eq, PartialEq)]
-pub struct UsbConfigDescriptor {
-    pub length: u8,
-    pub descriptor_type: u8,
-    pub total_length: u16,
-    pub num_interfaces: u8,
-    pub configuration_value: u8,
-    pub configuration: u8,
-    pub attributes: u8,
-    pub max_power: u8,
-}
-
-#[derive(Debug, Default, Eq, PartialEq)]
-#[repr(C)]
-pub struct UsbInterfaceDescriptor {
-    pub length: u8,
-    pub descriptor_type: u8,
-    pub interface_number: u8,
-    pub alternate_setting: u8,
-    pub num_endpoints: u8,
-    pub interface_class: u8,
-    pub interface_sub_class: u8,
-    pub interface_protocol: u8,
-    pub interface: u8,
-}
-
-#[derive(Debug, Default, Eq, PartialEq)]
-#[repr(C)]
-pub struct UsbEndpointDescriptor {
-    pub length: u8,
-    pub descriptor_type: u8,
-    pub endpoint_address: u8,
-    pub attributes: u8,
-    pub max_packet_size: u16,
-    pub interval: u8,
-}
 
 #[unsafe_protocol("2b2f68d6-0cd2-44cf-8e8b-bba20b1b5b75")]
 #[repr(C)]
@@ -78,20 +23,20 @@ pub struct UsbIo {
 
     usb_get_device_descriptor: unsafe extern "efiapi" fn(
         this: *const Self,
-        device_descriptor: *mut UsbDeviceDescriptor,
+        device_descriptor: *mut DeviceDescriptor,
     ) -> Status,
     usb_get_config_descriptor: unsafe extern "efiapi" fn(
         this: *const Self,
-        config_descriptor: *mut UsbConfigDescriptor,
+        config_descriptor: *mut ConfigDescriptor,
     ) -> Status,
     usb_get_interface_descriptor: unsafe extern "efiapi" fn(
         this: *const Self,
-        interface_descriptor: *mut UsbInterfaceDescriptor,
+        interface_descriptor: *mut InterfaceDescriptor,
     ) -> Status,
     usb_get_endpoint_descriptor: unsafe extern "efiapi" fn(
         this: *const Self,
         endpoint_index: u8,
-        endpoint_descriptor: *mut UsbEndpointDescriptor,
+        endpoint_descriptor: *mut EndpointDescriptor,
     ) -> Status,
     usb_get_string_descriptor: unsafe extern "efiapi" fn(
         this: *const Self,
@@ -108,26 +53,26 @@ pub struct UsbIo {
 }
 
 impl UsbIo {
-    pub fn get_device_descriptor(&self) -> Result<UsbDeviceDescriptor> {
-        let mut device_descriptor = UsbDeviceDescriptor::default();
+    pub fn get_device_descriptor(&self) -> Result<DeviceDescriptor> {
+        let mut device_descriptor = DeviceDescriptor::default();
         unsafe { (self.usb_get_device_descriptor)(self, &mut device_descriptor) }
             .into_with_val(|| device_descriptor)
     }
 
-    pub fn get_config_descriptor(&self) -> Result<UsbConfigDescriptor> {
-        let mut config_descriptor = UsbConfigDescriptor::default();
+    pub fn get_config_descriptor(&self) -> Result<ConfigDescriptor> {
+        let mut config_descriptor = ConfigDescriptor::default();
         unsafe { (self.usb_get_config_descriptor)(self, &mut config_descriptor) }
             .into_with_val(|| config_descriptor)
     }
 
-    pub fn get_interface_descriptor(&self) -> Result<UsbInterfaceDescriptor> {
-        let mut interface_descriptor = UsbInterfaceDescriptor::default();
+    pub fn get_interface_descriptor(&self) -> Result<InterfaceDescriptor> {
+        let mut interface_descriptor = InterfaceDescriptor::default();
         unsafe { (self.usb_get_interface_descriptor)(self, &mut interface_descriptor) }
             .into_with_val(|| interface_descriptor)
     }
 
-    pub fn get_endpoint_descriptor(&self, endpoint_index: u8) -> Result<UsbEndpointDescriptor> {
-        let mut endpoint_descriptor = UsbEndpointDescriptor::default();
+    pub fn get_endpoint_descriptor(&self, endpoint_index: u8) -> Result<EndpointDescriptor> {
+        let mut endpoint_descriptor = EndpointDescriptor::default();
         unsafe {
             (self.usb_get_endpoint_descriptor)(self, endpoint_index, &mut endpoint_descriptor)
         }
@@ -169,6 +114,6 @@ impl UsbIo {
     }
 
     pub fn port_reset(&self) -> Result {
-        todo!()
+        unsafe { (self.usb_port_reset)(self) }.into()
     }
 }

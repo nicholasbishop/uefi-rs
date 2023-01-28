@@ -18,20 +18,19 @@ pub fn test(bt: &BootServices) {
         .expect("failed to get device descriptor");
     info!("{:?}", dd);
 
-    let cd = usb_io
+    usb_io
         .get_config_descriptor()
         .expect("failed to get config descriptor");
-    info!("{:?}", cd);
 
+    // TODO: check some values on this one?
     let id = usb_io
         .get_interface_descriptor()
         .expect("failed to get interface descriptor");
     info!("{:?}", id);
 
-    let ed = usb_io
+    usb_io
         .get_endpoint_descriptor(0)
         .expect("failed to get endpoint descriptor");
-    info!("{:?}", ed);
 
     let supported_languages = usb_io
         .get_supported_languages()
@@ -55,4 +54,6 @@ pub fn test(bt: &BootServices) {
             .expect("failed to get serial string"),
         cstr16!("89126-0000:00:1d.7-1")
     );
+
+    usb_io.port_reset().expect("failed to reset port");
 }
