@@ -2,6 +2,11 @@
 
 ## uefi - [Unreleased]
 
+### Changed
+
+- `SystemTable::exit_boot_services` now takes no parameters and handles the
+  memory map allocation itself.
+
 ## uefi-macros - [Unreleased]
 
 ## uefi-services - [Unreleased]
