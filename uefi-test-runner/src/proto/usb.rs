@@ -1,6 +1,6 @@
 use log::info;
 use uefi::prelude::*;
-use uefi::proto::usb::UsbIo;
+use uefi::proto::usb::{Class, DescriptorType, UsbIo};
 use uefi::table::boot::BootServices;
 
 pub fn test(bt: &BootServices) {
@@ -16,21 +16,24 @@ pub fn test(bt: &BootServices) {
     let dd = usb_io
         .get_device_descriptor()
         .expect("failed to get device descriptor");
-    info!("{:?}", dd);
+    assert_eq!(dd.descriptor_type, DescriptorType::DEVICE);
+    assert_eq!(dd.device_class, Class::USE_INTERFACE_DESCRIPTORS);
+    assert_eq!(dd.bcd_usb, 0x0200);
 
-    usb_io
+    let cd = usb_io
         .get_config_descriptor()
         .expect("failed to get config descriptor");
+    assert_eq!(cd.descriptor_type, DescriptorType::CONFIGURATION);
 
-    // TODO: check some values on this one?
     let id = usb_io
         .get_interface_descriptor()
         .expect("failed to get interface descriptor");
-    info!("{:?}", id);
+    assert_eq!(id.descriptor_type, DescriptorType::INTERFACE);
 
-    usb_io
+    let ed = usb_io
         .get_endpoint_descriptor(0)
         .expect("failed to get endpoint descriptor");
+    assert_eq!(ed.descriptor_type, DescriptorType::ENDPOINT);
 
     let supported_languages = usb_io
         .get_supported_languages()
@@ -53,6 +56,12 @@ pub fn test(bt: &BootServices) {
             .get_string_descriptor(bt, supported_languages[0], dd.str_serial_number)
             .expect("failed to get serial string"),
         cstr16!("89126-0000:00:1d.7-1")
+    );
+    assert_eq!(
+        &*usb_io
+            .get_string_descriptor(bt, supported_languages[0], cd.configuration)
+            .expect("failed to get configuration string"),
+        cstr16!("HID Mouse")
     );
 
     usb_io.port_reset().expect("failed to reset port");
