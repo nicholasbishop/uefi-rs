@@ -197,12 +197,14 @@ impl SystemTable<Boot> {
     /// allocator were initialized with [`uefi_services::init`], they will be
     /// disabled automatically when `exit_boot_services` is called.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// This function panics if:
+    /// This returns an error if:
     /// * Allocating memory to hold the memory map fails.
     /// * Retrieving the memory map fails.
     /// * Exiting boot services fails.
+    ///
+    /// The system table will no longer be accessible
     ///
     /// [`global_allocator::exit_boot_services`]: crate::global_allocator::exit_boot_services
     /// [`Logger::disable`]: crate::logger::Logger::disable
