@@ -5,7 +5,7 @@ use core::ptr::NonNull;
 use core::{ptr, slice};
 
 use crate::proto::console::text;
-use crate::{CStr16, Char16, Handle, Result, Status};
+use crate::{CStr16, Char16, Error, Handle, Result, Status};
 
 use super::boot::{BootServices, MemoryDescriptor, MemoryMapIter, MemoryType};
 use super::runtime::RuntimeServices;
@@ -136,6 +136,14 @@ impl SystemTable<Boot> {
         unsafe { &*self.table.boot }
     }
 
+    /// Convert `SystemTable<Boot>` to `SystemTable<Runtime>`.
+    fn into_runtime(self) -> SystemTable<Runtime> {
+        SystemTable {
+            table: self.table,
+            _marker: PhantomData,
+        }
+    }
+
     /// Get the size in bytes of the buffer to allocate for storing the memory
     /// map in `exit_boot_services`.
     ///
@@ -154,6 +162,7 @@ impl SystemTable<Boot> {
         memory_map_size.map_size.checked_add(extra_size)
     }
 
+    /// Get the current memory map and exit boot services.
     unsafe fn get_memory_map_and_exit_boot_services(
         &self,
         buf: &'static mut [u8],
@@ -197,10 +206,19 @@ impl SystemTable<Boot> {
     /// allocator were initialized with [`uefi_services::init`], they will be
     /// disabled automatically when `exit_boot_services` is called.
     ///
+    /// # Panics
+    ///
+    /// Panics if the memory map size calculation overflows.
+    ///
     /// # Errors
     ///
-    /// This returns an error if:
-    /// * Allocating memory to hold the memory map fails.
+    /// If allocating memory to hold the memory map fails then the error will be
+    /// propgated, and `self` will be passed back to the caller in the error
+    /// data.
+    ///
+    /// If retrieving the memory map or exiting boot services fails (with up to
+    /// one retry), the error will be returned to the caller but `self` will not
+    /// be. The system is not in a good state at that point
     /// * Retrieving the memory map fails.
     /// * Exiting boot services fails.
     ///
@@ -210,7 +228,9 @@ impl SystemTable<Boot> {
     /// [`Logger::disable`]: crate::logger::Logger::disable
     /// [`uefi_services::init`]: https://docs.rs/uefi-services/latest/uefi_services/fn.init.html
     #[must_use]
-    pub fn exit_boot_services(self) -> Result<(SystemTable<Runtime>, MemoryMapIter<'static>)> {
+    pub fn exit_boot_services(
+        self,
+    ) -> Result<(SystemTable<Runtime>, MemoryMapIter<'static>), Option<Self>> {
         let boot_services = self.boot_services();
 
         let buf_size = self
@@ -218,7 +238,12 @@ impl SystemTable<Boot> {
             .expect("overflow in memory map size calculation");
 
         // Allocate a byte slice to hold the memory map.
-        let buf: *mut u8 = boot_services.allocate_pool(MemoryType::LOADER_DATA, buf_size)?;
+        let buf: *mut u8 = match boot_services.allocate_pool(MemoryType::LOADER_DATA, buf_size) {
+            Ok(buf) => buf,
+            Err(err) => {
+                return Err(Error::new(err.status(), Some(self)));
+            }
+        };
 
         // Calling `exit_boot_services` can fail if the memory map key is not
         // current. Retry a second time if that occurs. This matches the
@@ -229,17 +254,13 @@ impl SystemTable<Boot> {
             let buf: &mut [u8] = unsafe { slice::from_raw_parts_mut(buf, buf_size) };
             match unsafe { self.get_memory_map_and_exit_boot_services(buf) } {
                 Ok(memory_map) => {
-                    let st = SystemTable {
-                        table: self.table,
-                        _marker: PhantomData,
-                    };
-                    return Ok((st, memory_map));
+                    return Ok((self.into_runtime(), memory_map));
                 }
                 Err(err) => status = err.status(),
             }
         }
 
-        Err(status.into())
+        Err(Error::new(status, None))
     }
 
     /// Clone this boot-time UEFI system table interface
@@ -258,6 +279,14 @@ impl SystemTable<Boot> {
         }
     }
 }
+
+// TODO
+enum ExitBootServicesResult {
+    Ok((SystemTable<Runtime>, MemoryMapIter<'static>)),
+    AllocationFailed(Self, Status),
+
+
+) -> Result<(SystemTable<Runtime>, MemoryMapIter<'static>), Option<Self>> {
 
 impl Debug for SystemTable<Boot> {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
