@@ -1150,27 +1150,27 @@ impl BootServices {
         (self.exit)(image_handle, exit_status, exit_data_size, exit_data)
     }
 
-    /// Exits the UEFI boot services
+    /// Exit UEFI boot services.
     ///
-    /// This unsafe method is meant to be an implementation detail of the safe
-    /// `SystemTable<Boot>::exit_boot_services()` method, which is why it is not
-    /// public.
+    /// If successful, boot services are no longer available and only runtime
+    /// services can be used. If an error occurs, only a limited set of
+    /// functionality may be used:
+    /// * In UEFI 2.8 and earlier, only getting the memory map and calling exit
+    ///   boot services again are allowed.
+    /// * In UEFI 2.9 and later, only calling boot services memory functions and
+    ///   calling exit boot services again are allowed.
     ///
-    /// Everything that is explained in the documentation of the high-level
-    /// `SystemTable<Boot>` method is also true here, except that this function
-    /// is one-shot (no automatic retry) and does not prevent you from shooting
-    /// yourself in the foot by calling invalid boot services after a failure.
+    /// # Safety
+    ///
+    /// This function is unsafe because of restrictions on what boot service
+    /// functions may be called after this function returns, as described above.
     ///
     /// # Errors
     ///
     /// See section `EFI_BOOT_SERVICES.ExitBootServices()` in the UEFI Specification for more details.
     ///
     /// * [`uefi::Status::INVALID_PARAMETER`]
-    pub(super) unsafe fn exit_boot_services(
-        &self,
-        image: Handle,
-        mmap_key: MemoryMapKey,
-    ) -> Result {
+    pub unsafe fn exit_boot_services(&self, image: Handle, mmap_key: MemoryMapKey) -> Result {
         (self.exit_boot_services)(image, mmap_key).into()
     }
 
