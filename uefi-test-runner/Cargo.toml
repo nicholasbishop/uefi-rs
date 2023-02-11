@@ -11,8 +11,8 @@ uefi = { path = "../uefi", features = ["alloc", "unstable"] }
 uefi-services = { path = "../uefi-services" }
 
 log = { version = "0.4.17", default-features = false }
-
 qemu-exit = "3.0.0"
+serde_json = { version = "1.0.93", default-features = false, features = ["alloc"] }
 
 [features]
 # Enable the multiprocessor test. This only works if KVM is enabled.
