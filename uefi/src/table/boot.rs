@@ -1160,6 +1160,9 @@ impl BootServices {
     /// * In UEFI 2.9 and later, only calling boot services memory functions and
     ///   calling exit boot services again are allowed.
     ///
+    /// Usually it is preferable to use the safe
+    /// `SystemTable<Boot>::exit_boot_services` function instead.
+    ///
     /// # Safety
     ///
     /// This function is unsafe because of restrictions on what boot service

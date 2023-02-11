@@ -2,6 +2,10 @@
 
 ## uefi - [Unreleased]
 
+### Added
+
+- Added `BootServices::exit_boot_services`.
+
 ## uefi-macros - [Unreleased]
 
 ## uefi-services - [Unreleased]
