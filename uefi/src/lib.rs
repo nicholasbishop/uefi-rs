@@ -93,6 +93,8 @@ pub mod proto;
 
 pub mod prelude;
 
+#[cfg(any(test, feature = "global_allocator"))]
+mod allocator_impl;
 #[cfg(feature = "global_allocator")]
 pub mod global_allocator;
 

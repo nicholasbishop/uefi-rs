@@ -12,9 +12,10 @@
 //! Failure to do so will turn subsequent allocation into undefined behaviour.
 
 use core::alloc::{GlobalAlloc, Layout};
-use core::ptr::{self, NonNull};
+use core::ptr::NonNull;
 
-use crate::table::boot::{BootServices, MemoryType};
+use super::allocator_impl;
+use crate::table::boot::BootServices;
 
 /// Reference to the boot services table, used to call the pool memory allocation functions.
 ///
@@ -53,40 +54,13 @@ pub struct Allocator;
 
 unsafe impl GlobalAlloc for Allocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        let mem_ty = MemoryType::LOADER_DATA;
-        let size = layout.size();
-        let align = layout.align();
-
-        if align > 8 {
-            // allocate more space for alignment
-            let ptr = if let Ok(ptr) = boot_services().as_ref().allocate_pool(mem_ty, size + align)
-            {
-                ptr
-            } else {
-                return ptr::null_mut();
-            };
-            // calculate align offset
-            let mut offset = ptr.align_offset(align);
-            if offset == 0 {
-                offset = align;
-            }
-            let return_ptr = ptr.add(offset);
-            // store allocated pointer before the struct
-            (return_ptr.cast::<*mut u8>()).sub(1).write(ptr);
-            return_ptr
-        } else {
-            boot_services()
-                .as_ref()
-                .allocate_pool(mem_ty, size)
-                .unwrap_or(ptr::null_mut())
-        }
+        allocator_impl::alloc(layout, |mem_ty, size| {
+            boot_services().as_ref().allocate_pool(mem_ty, size)
+        })
     }
 
-    unsafe fn dealloc(&self, mut ptr: *mut u8, layout: Layout) {
-        if layout.align() > 8 {
-            ptr = (ptr as *const *mut u8).sub(1).read();
-        }
-        boot_services().as_ref().free_pool(ptr).unwrap();
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        allocator_impl::dealloc(ptr, layout, |ptr| boot_services().as_ref().free_pool(ptr))
     }
 }
 
