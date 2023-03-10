@@ -158,6 +158,7 @@ bitflags! {
     ///
     /// [RS-232]: https://en.wikipedia.org/wiki/RS-232
     #[derive(Default)]
+    #[repr(transparent)]
     pub struct ControlBits: u32 {
         /// Clear to send
         const CLEAR_TO_SEND = 0x10;

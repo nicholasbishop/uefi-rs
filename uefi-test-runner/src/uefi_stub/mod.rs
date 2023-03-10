@@ -14,6 +14,7 @@ use boot::{install_protocol, open_protocol};
 use core::ffi::c_void;
 use core::marker::PhantomData;
 use std::{mem, ptr};
+use uefi::proto::console::serial::Serial;
 use uefi::proto::console::text::{Output, OutputData};
 use uefi::proto::device_path::text::{DevicePathFromText, DevicePathToText};
 use uefi::proto::device_path::{DevicePath, DevicePathHeader, DeviceSubType, DeviceType};
@@ -239,6 +240,8 @@ where
         )
         .unwrap();
     }
+
+    install_protocol(None, Serial::GUID, console::make_serial_protocol().cast()).unwrap();
 
     let mut stdout_ptr = ptr::null_mut();
     assert_eq!(
