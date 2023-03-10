@@ -1,5 +1,6 @@
 use super::boot::STATE;
 use super::leak_proto;
+use core::marker::PhantomData;
 use std::collections::HashMap;
 use std::ffi::c_void;
 use std::{mem, ptr};
@@ -21,6 +22,7 @@ pub fn make_simple_file_system() -> *mut SimpleFileSystem {
         let sfs = leak_proto(SimpleFileSystem {
             revision: 0,
             open_volume,
+            _no_send_or_sync: PhantomData,
         });
 
         state.fs_db.insert(

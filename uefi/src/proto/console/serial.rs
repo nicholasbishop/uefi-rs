@@ -14,8 +14,8 @@ use bitflags::bitflags;
 /// Since UEFI drivers are implemented through polling, if you fail to regularly
 /// check for input/output, some data might be lost.
 #[repr(C)]
-#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 #[unsafe_protocol("bb25cf6f-f1d4-11d2-9a0c-0090273fc1fd")]
+#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 pub struct Serial {
     // Revision of this protocol, only 1.0 is currently defined.
     // Future versions will be backwards compatible.

@@ -72,7 +72,6 @@ thread_local! {
         // Stub in some data to get past the memory test.
         memory_descriptors: vec![MemoryDescriptor {
             ty: MemoryType::LOADER_CODE,
-            padding: 0,
             phys_start: 0,
             virt_start: 0,
             page_count: 1,

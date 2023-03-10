@@ -1,4 +1,5 @@
-use crate::uefi_stub::{leak_proto, make_and_leak};
+use crate::uefi_stub::make_and_leak;
+use core::marker::PhantomData;
 use uefi::proto::console::serial::{ControlBits, IoMode, Parity, Serial, StopBits};
 use uefi::Status;
 
@@ -43,6 +44,7 @@ fn make_serial_protocol() -> *mut Serial<'static> {
             write,
             read,
             io_mode: &*make_and_leak(IoMode::default()),
+            _no_send_or_sync: PhantomData,
         })
     }
 }

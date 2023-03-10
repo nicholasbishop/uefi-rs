@@ -19,9 +19,9 @@ use core::ptr;
 ///
 /// [`BootServices::get_image_file_system`]: crate::table::boot::BootServices::get_image_file_system
 /// [`BootServices`]: crate::table::boot::BootServices#accessing-protocols
-#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 #[repr(C)]
 #[unsafe_protocol("964e5b22-6459-11d2-8e39-00a0c969723b")]
+#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 pub struct SimpleFileSystem {
     revision: u64,
     open_volume:

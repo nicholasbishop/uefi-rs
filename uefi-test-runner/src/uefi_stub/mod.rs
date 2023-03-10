@@ -12,6 +12,7 @@ mod text;
 
 use boot::{install_protocol, open_protocol};
 use core::ffi::c_void;
+use core::marker::PhantomData;
 use std::{mem, ptr};
 use uefi::proto::console::text::{Output, OutputData};
 use uefi::proto::device_path::text::{DevicePathFromText, DevicePathToText};
@@ -163,6 +164,7 @@ where
             enable_cursor,
             // TODO
             data: unsafe { &*(&output_data as *const OutputData) },
+            _no_send_or_sync: PhantomData,
         })
     };
 
@@ -207,6 +209,8 @@ where
             image_code_type: MemoryType::LOADER_CODE,
             image_data_type: MemoryType::LOADER_DATA,
             unload: loaded_image::unload,
+
+            _no_send_or_sync: PhantomData,
         }),
     )
     .unwrap();
@@ -219,6 +223,7 @@ where
             leak_proto(DevicePathToText {
                 convert_device_node_to_text,
                 convert_device_path_to_text,
+                _no_send_or_sync: PhantomData,
             }),
         )
         .unwrap();
@@ -229,6 +234,7 @@ where
             leak_proto(DevicePathFromText {
                 convert_text_to_device_node,
                 convert_text_to_device_path,
+                _no_send_or_sync: PhantomData,
             }),
         )
         .unwrap();

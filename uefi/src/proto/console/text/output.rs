@@ -20,9 +20,9 @@ use core::fmt::{Debug, Formatter};
 /// [`SystemTable::stdout`]: crate::table::SystemTable::stdout
 /// [`SystemTable::stderr`]: crate::table::SystemTable::stderr
 /// [`BootServices`]: crate::table::boot::BootServices#accessing-protocols
-#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 #[repr(C)]
 #[unsafe_protocol("387477c2-69c7-11d2-8e39-00a0c969723b")]
+#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 pub struct Output {
     reset: extern "efiapi" fn(this: &Output, extended: bool) -> Status,
     output_string: unsafe extern "efiapi" fn(this: &Output, string: *const Char16) -> Status,
