@@ -487,7 +487,8 @@ pub unsafe extern "efiapi" fn connect_controller(
     remaining_device_path: *const FfiDevicePath,
     recursive: bool,
 ) -> Status {
-    todo!()
+    // TODO
+    Status::SUCCESS
 }
 
 pub unsafe extern "efiapi" fn disconnect_controller(
@@ -495,7 +496,8 @@ pub unsafe extern "efiapi" fn disconnect_controller(
     driver_image: Option<Handle>,
     child: Option<Handle>,
 ) -> Status {
-    todo!()
+    // TODO
+    Status::SUCCESS
 }
 
 pub extern "efiapi" fn open_protocol(
