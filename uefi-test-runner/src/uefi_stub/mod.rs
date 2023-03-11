@@ -16,7 +16,6 @@ use boot::{
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
 use std::{mem, ptr};
-use uefi::proto::console::serial::Serial;
 use uefi::proto::console::text::Output;
 use uefi::proto::device_path::build::DevicePathBuilder;
 use uefi::proto::device_path::text::{DevicePathFromText, DevicePathToText};
@@ -38,12 +37,6 @@ macro_rules! try_status {
             }
         }
     };
-}
-
-fn make_and_leak<T>(val: T) -> *mut T {
-    let b = Box::new(val);
-    let r: *mut _ = Box::leak(b);
-    r.cast()
 }
 
 pub fn launch<E>(entry: E) -> Status
@@ -163,10 +156,8 @@ where
     )
     .unwrap();
 
-    let image = install_protocol(
-        None,
-        LoadedImage::GUID,
-        store_object(LoadedImage {
+    let image = {
+        let mut data = SharedAnyBox::new(LoadedImage {
             revision: 1,
             parent_handle: bad_handle,
             system_table: ptr::null(),
@@ -184,10 +175,10 @@ where
             unload: loaded_image::unload,
 
             _no_send_or_sync: PhantomData,
-        })
-        .cast(),
-    )
-    .unwrap();
+        });
+
+        install_owned_protocol(None, LoadedImage::GUID, data.as_mut_ptr().cast(), data).unwrap()
+    };
 
     {
         let mut data = SharedAnyBox::new(text::make_device_path_to_text());
@@ -203,7 +194,7 @@ where
         install_owned_protocol(None, DevicePathFromText::GUID, interface.cast(), data).unwrap();
     }
 
-    install_protocol(None, Serial::GUID, console::make_serial_protocol().cast()).unwrap();
+    console::install_serial_protocol().unwrap();
 
     let mut stdout_ptr = ptr::null_mut();
     assert_eq!(

@@ -1,8 +1,8 @@
-use crate::uefi_stub::make_and_leak;
+use crate::uefi_stub::{install_owned_protocol, SharedAnyBox};
 use core::marker::PhantomData;
-use core::slice;
+use core::{ptr, slice};
 use uefi::proto::console::serial::{ControlBits, IoMode, Parity, Serial, StopBits};
-use uefi::Status;
+use uefi::{Handle, Identify, Result, Status};
 
 extern "efiapi" fn reset(this: &mut Serial) -> Status {
     // TODO
@@ -45,9 +45,9 @@ extern "efiapi" fn read(this: &mut Serial, size: &mut usize, buf: *mut u8) -> St
     Status::SUCCESS
 }
 
-pub fn make_serial_protocol() -> *mut Serial {
-    unsafe {
-        make_and_leak(Serial {
+pub fn install_serial_protocol() -> Result<Handle> {
+    let mut data = SharedAnyBox::new((
+        Serial {
             // TODO
             revision: 1,
 
@@ -57,8 +57,13 @@ pub fn make_serial_protocol() -> *mut Serial {
             get_control_bits,
             write,
             read,
-            io_mode: &*make_and_leak(IoMode::default()),
+            // TODO
+            io_mode: ptr::null(),
             _no_send_or_sync: PhantomData,
-        })
-    }
+        },
+        IoMode::default(),
+    ));
+    let tmp = data.downcast_mut::<(Serial, IoMode)>().unwrap();
+    let interface = data.as_mut_ptr();
+    install_owned_protocol(None, Serial::GUID, interface.cast(), data)
 }
