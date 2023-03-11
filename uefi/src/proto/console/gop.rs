@@ -63,6 +63,7 @@ use core::ptr;
 /// and also allows the app to access the in-memory buffer.
 #[repr(C)]
 #[unsafe_protocol("9042a9de-23dc-4a38-96fb-7aded080516a")]
+#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 pub struct GraphicsOutput {
     query_mode: extern "efiapi" fn(
         &GraphicsOutput,
@@ -318,6 +319,7 @@ impl GraphicsOutput {
 }
 
 #[repr(C)]
+#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 struct ModeData {
     // Number of modes which the GOP supports.
     max_mode: u32,
@@ -400,6 +402,7 @@ impl Mode {
 /// Information about a graphics output mode.
 #[derive(Debug, Copy, Clone)]
 #[repr(C)]
+#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 pub struct ModeInfo {
     // The only known version, associated with the current spec, is 0.
     version: u32,
