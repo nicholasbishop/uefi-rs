@@ -50,19 +50,8 @@ extern "efiapi" fn enable_cursor(this: &mut Output, visible: bool) -> Status {
 }
 
 pub fn install_output_protocol() -> Result<Handle> {
-    let mut output_data = SharedAnyBox::new(OutputData {
-        max_mode: 1,
-        mode: 0,
-        attribute: 0,
-        cursor_column: 0,
-        cursor_row: 0,
-        cursor_visible: false,
-    });
-
-    install_owned_protocol(
-        None,
-        Output::GUID,
-        SharedAnyBox::new(Output {
+    let mut data = SharedAnyBox::new((
+        Output {
             reset,
             output_string,
             test_string,
@@ -72,11 +61,23 @@ pub fn install_output_protocol() -> Result<Handle> {
             clear_screen,
             set_cursor_position,
             enable_cursor,
-            data: output_data.as_mut_ptr().cast(),
+            data: ptr::null(),
             _no_send_or_sync: PhantomData,
-        }),
-        Some(output_data),
-    )
+        },
+        OutputData {
+            max_mode: 1,
+            mode: 0,
+            attribute: 0,
+            cursor_column: 0,
+            cursor_row: 0,
+            cursor_visible: false,
+        },
+    ));
+    let tmp = data.downcast_mut::<(Output, OutputData)>().unwrap();
+    tmp.0.data = &tmp.1;
+    let interface: *mut Output = &mut tmp.0;
+
+    install_owned_protocol(None, Output::GUID, interface.cast(), data)
 }
 
 pub extern "efiapi" fn convert_device_node_to_text(

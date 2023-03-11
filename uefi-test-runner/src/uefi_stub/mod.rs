@@ -189,21 +189,19 @@ where
     )
     .unwrap();
 
-    install_owned_protocol(
-        None,
-        DevicePathToText::GUID,
-        SharedAnyBox::new(text::make_device_path_to_text()),
-        None,
-    )
-    .unwrap();
+    {
+        let mut data = SharedAnyBox::new(text::make_device_path_to_text());
+        let interface = data.as_mut_ptr();
 
-    install_owned_protocol(
-        None,
-        DevicePathFromText::GUID,
-        SharedAnyBox::new(text::make_device_path_from_text()),
-        None,
-    )
-    .unwrap();
+        install_owned_protocol(None, DevicePathToText::GUID, interface.cast(), data).unwrap();
+    }
+
+    {
+        let mut data = SharedAnyBox::new(text::make_device_path_from_text());
+        let interface = data.as_mut_ptr();
+
+        install_owned_protocol(None, DevicePathFromText::GUID, interface.cast(), data).unwrap();
+    }
 
     install_protocol(None, Serial::GUID, console::make_serial_protocol().cast()).unwrap();
 

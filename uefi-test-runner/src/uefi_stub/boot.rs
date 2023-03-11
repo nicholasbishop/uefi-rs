@@ -20,8 +20,8 @@ use uefi::{Char16, Event, Guid, Handle, Identify, Result, Status};
 
 enum ProtocolInterface {
     Owned {
-        interface: SharedAnyBox,
-        data: Option<SharedAnyBox>,
+        data: SharedAnyBox,
+        ptr: *mut c_void,
     },
     Raw(*mut c_void),
 }
@@ -29,7 +29,7 @@ enum ProtocolInterface {
 impl ProtocolInterface {
     fn as_mut_ptr(&mut self) -> *mut c_void {
         match self {
-            Self::Owned { interface, .. } => interface.as_mut_ptr().cast(),
+            Self::Owned { ptr, .. } => *ptr,
             Self::Raw(ptr) => *ptr,
         }
     }
@@ -90,6 +90,10 @@ impl SharedAnyBox {
 
     pub fn as_mut_ptr(&mut self) -> *mut dyn Any {
         self.ptr
+    }
+
+    pub fn downcast_mut<T: 'static>(&mut self) -> Option<&mut T> {
+        unsafe { (*self.ptr).downcast_mut() }
     }
 }
 
@@ -367,8 +371,8 @@ pub fn install_protocol(
 pub fn install_owned_protocol(
     handle: Option<Handle>,
     guid: Guid,
-    interface: SharedAnyBox,
-    data: Option<SharedAnyBox>,
+    interface: *mut c_void,
+    data: SharedAnyBox,
 ) -> Result<Handle> {
     STATE.with(|state| {
         let mut state = state.borrow_mut();
@@ -397,7 +401,10 @@ pub fn install_owned_protocol(
         group.insert(
             guid,
             ProtocolWrapper {
-                interface: ProtocolInterface::Owned { interface, data },
+                interface: ProtocolInterface::Owned {
+                    ptr: interface,
+                    data,
+                },
                 in_use: false,
             },
         );
