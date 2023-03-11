@@ -1,4 +1,4 @@
-use crate::uefi_stub::{install_owned_protocol, store_object, SharedAnyBox};
+use crate::uefi_stub::{install_owned_protocol, SharedAnyBox};
 use std::marker::PhantomData;
 use std::ptr;
 use uefi::proto::console::text::{Output, OutputData};
@@ -111,12 +111,12 @@ pub extern "efiapi" fn convert_text_to_device_path(
     ptr::null()
 }
 
-pub fn make_device_path_to_text() -> *mut DevicePathToText {
-    store_object(DevicePathToText {
+pub fn make_device_path_to_text() -> DevicePathToText {
+    DevicePathToText {
         convert_device_node_to_text,
         convert_device_path_to_text,
         _no_send_or_sync: PhantomData,
-    })
+    }
 }
 
 pub fn make_device_path_from_text() -> DevicePathFromText {

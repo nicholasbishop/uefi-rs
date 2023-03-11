@@ -189,10 +189,11 @@ where
     )
     .unwrap();
 
-    install_protocol(
+    install_owned_protocol(
         None,
         DevicePathToText::GUID,
-        text::make_device_path_to_text().cast(),
+        SharedAnyBox::new(text::make_device_path_to_text()),
+        None,
     )
     .unwrap();
 
