@@ -191,30 +191,19 @@ where
     )
     .unwrap();
 
-    {
-        use text::*;
-        install_protocol(
-            None,
-            DevicePathToText::GUID,
-            leak_proto(DevicePathToText {
-                convert_device_node_to_text,
-                convert_device_path_to_text,
-                _no_send_or_sync: PhantomData,
-            }),
-        )
-        .unwrap();
+    install_protocol(
+        None,
+        DevicePathToText::GUID,
+        text::make_device_path_to_text().cast(),
+    )
+    .unwrap();
 
-        install_protocol(
-            None,
-            DevicePathFromText::GUID,
-            leak_proto(DevicePathFromText {
-                convert_text_to_device_node,
-                convert_text_to_device_path,
-                _no_send_or_sync: PhantomData,
-            }),
-        )
-        .unwrap();
-    }
+    install_protocol(
+        None,
+        DevicePathFromText::GUID,
+        text::make_device_path_from_text().cast(),
+    )
+    .unwrap();
 
     install_protocol(None, Serial::GUID, console::make_serial_protocol().cast()).unwrap();
 

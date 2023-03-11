@@ -2,6 +2,7 @@ use crate::uefi_stub::store_object;
 use std::marker::PhantomData;
 use std::ptr;
 use uefi::proto::console::text::{Output, OutputData};
+use uefi::proto::device_path::text::{DevicePathFromText, DevicePathToText};
 use uefi::proto::device_path::FfiDevicePath;
 use uefi::{Char16, Status};
 
@@ -103,4 +104,20 @@ pub extern "efiapi" fn convert_text_to_device_path(
 ) -> *const FfiDevicePath {
     // TODO
     ptr::null()
+}
+
+pub fn make_device_path_to_text() -> *mut DevicePathToText {
+    store_object(DevicePathToText {
+        convert_device_node_to_text,
+        convert_device_path_to_text,
+        _no_send_or_sync: PhantomData,
+    })
+}
+
+pub fn make_device_path_from_text() -> *mut DevicePathFromText {
+    store_object(DevicePathFromText {
+        convert_text_to_device_node,
+        convert_text_to_device_path,
+        _no_send_or_sync: PhantomData,
+    })
 }
