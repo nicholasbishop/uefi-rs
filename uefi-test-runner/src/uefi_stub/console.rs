@@ -45,8 +45,7 @@ extern "efiapi" fn read(this: &mut Serial, size: &mut usize, buf: *mut u8) -> St
     Status::SUCCESS
 }
 
-// TODO: shouldn't be a lifetime on this proto.
-pub fn make_serial_protocol() -> *mut Serial<'static> {
+pub fn make_serial_protocol() -> *mut Serial {
     unsafe {
         make_and_leak(Serial {
             // TODO
