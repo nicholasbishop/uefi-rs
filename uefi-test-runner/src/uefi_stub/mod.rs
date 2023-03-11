@@ -10,7 +10,9 @@ mod loaded_image;
 mod runtime;
 mod text;
 
-use boot::{install_protocol, open_protocol, store_object, SharedBox};
+use boot::{
+    install_owned_protocol, install_protocol, open_protocol, store_object, SharedAnyBox, SharedBox,
+};
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
 use std::{mem, ptr};
@@ -196,10 +198,11 @@ where
     )
     .unwrap();
 
-    install_protocol(
+    install_owned_protocol(
         None,
         DevicePathFromText::GUID,
-        text::make_device_path_from_text().cast(),
+        SharedAnyBox::new(text::make_device_path_from_text()),
+        None,
     )
     .unwrap();
 

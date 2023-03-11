@@ -18,8 +18,25 @@ use uefi::table::boot::{
 };
 use uefi::{Char16, Event, Guid, Handle, Identify, Result, Status};
 
+enum ProtocolInterface {
+    Owned {
+        interface: SharedAnyBox,
+        data: Option<SharedAnyBox>,
+    },
+    Raw(*mut c_void),
+}
+
+impl ProtocolInterface {
+    fn as_mut_ptr(&mut self) -> *mut c_void {
+        match self {
+            Self::Owned { interface, .. } => interface.as_mut_ptr().cast(),
+            Self::Raw(ptr) => *ptr,
+        }
+    }
+}
+
 struct ProtocolWrapper {
-    protocol: *mut c_void,
+    interface: ProtocolInterface,
     in_use: bool,
 }
 
@@ -169,23 +186,6 @@ pub fn store_object<T: 'static>(object: T) -> *mut T {
         state.objects.push(object);
         ptr.cast()
     })
-}
-
-pub fn install_protocol(
-    mut handle: Option<Handle>,
-    guid: Guid,
-    interface: *mut c_void,
-) -> Result<Handle> {
-    // TODO: just make install_protocol unsafe, or remove entirely
-    unsafe {
-        install_protocol_interface(
-            &mut handle,
-            &guid,
-            InterfaceType::NATIVE_INTERFACE,
-            interface,
-        )
-        .into_with_val(|| handle.unwrap())
-    }
 }
 
 // TODO: copied from boot.rs
@@ -346,6 +346,66 @@ pub unsafe extern "efiapi" fn check_event(event: Event) -> Status {
     })
 }
 
+pub fn install_protocol(
+    mut handle: Option<Handle>,
+    guid: Guid,
+    interface: *mut c_void,
+) -> Result<Handle> {
+    // TODO: just make install_protocol unsafe, or remove entirely
+    unsafe {
+        install_protocol_interface(
+            &mut handle,
+            &guid,
+            InterfaceType::NATIVE_INTERFACE,
+            interface,
+        )
+        .into_with_val(|| handle.unwrap())
+    }
+}
+
+// TODO: dedup
+pub fn install_owned_protocol(
+    handle: Option<Handle>,
+    guid: Guid,
+    interface: SharedAnyBox,
+    data: Option<SharedAnyBox>,
+) -> Result<Handle> {
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let db = &mut state.handle_db;
+
+        let handle = if let Some(handle) = handle {
+            handle
+        } else {
+            // Create a new handle.
+
+            let mut handle_impl = Box::new(HandleImpl::default());
+            let handle_impl_ptr = handle_impl.as_mut() as *mut HandleImpl;
+            let handle = unsafe { Handle::from_ptr(handle_impl_ptr.cast()) }.unwrap();
+
+            db.insert(handle, handle_impl);
+            handle
+        };
+
+        let group = db.get_mut(&handle).unwrap();
+
+        // Not allowed to have Duplicate protocols on a handle.
+        if group.contains_key(&guid) {
+            return Err(Status::INVALID_PARAMETER.into());
+        }
+
+        group.insert(
+            guid,
+            ProtocolWrapper {
+                interface: ProtocolInterface::Owned { interface, data },
+                in_use: false,
+            },
+        );
+
+        Ok(handle)
+    })
+}
+
 pub unsafe extern "efiapi" fn install_protocol_interface(
     in_out_handle: &mut Option<Handle>,
     guid: &Guid,
@@ -380,7 +440,7 @@ pub unsafe extern "efiapi" fn install_protocol_interface(
         group.insert(
             *guid,
             ProtocolWrapper {
-                protocol: interface,
+                interface: ProtocolInterface::Raw(interface),
                 in_use: false,
             },
         );
@@ -609,7 +669,7 @@ pub extern "efiapi" fn open_protocol(
                 assert!(!pw.in_use);
 
                 pw.in_use = true;
-                *interface = pw.protocol;
+                *interface = pw.interface.as_mut_ptr();
 
                 Status::SUCCESS
             } else {
@@ -729,7 +789,7 @@ pub extern "efiapi" fn locate_protocol(
         // Look for any handle that implements the protocol.
         for handle_impl in state.handle_db.values_mut() {
             if let Some(pw) = handle_impl.get_mut(protocol_guid) {
-                *out_proto = pw.protocol;
+                *out_proto = pw.interface.as_mut_ptr();
                 return Status::SUCCESS;
             }
         }

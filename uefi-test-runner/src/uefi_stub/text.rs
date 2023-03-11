@@ -114,10 +114,10 @@ pub fn make_device_path_to_text() -> *mut DevicePathToText {
     })
 }
 
-pub fn make_device_path_from_text() -> *mut DevicePathFromText {
-    store_object(DevicePathFromText {
+pub fn make_device_path_from_text() -> DevicePathFromText {
+    DevicePathFromText {
         convert_text_to_device_node,
         convert_text_to_device_path,
         _no_send_or_sync: PhantomData,
-    })
+    }
 }
