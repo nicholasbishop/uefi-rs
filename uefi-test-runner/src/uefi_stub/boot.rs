@@ -55,9 +55,12 @@ impl Pages {
     }
 }
 
-pub struct SharedBox(*mut dyn Any);
+pub struct SharedAnyBox {
+    ptr: *mut dyn Any,
+    layout: Layout,
+}
 
-impl SharedBox {
+impl SharedAnyBox {
     pub fn new<T: 'static>(val: T) -> Self {
         let layout = Layout::for_value(&val);
         let ptr = unsafe {
@@ -65,11 +68,21 @@ impl SharedBox {
             (*ptr) = val;
             ptr
         };
-        Self(ptr)
+        Self { ptr, layout }
     }
 
     pub fn as_mut_ptr(&mut self) -> *mut dyn Any {
-        self.0
+        self.ptr
+    }
+}
+
+impl Drop for SharedAnyBox {
+    fn drop(&mut self) {
+        // TODO: is this right? should test
+        unsafe {
+            ptr::drop_in_place(self.ptr);
+            alloc::dealloc(self.ptr.cast(), self.layout);
+        }
     }
 }
 
@@ -84,7 +97,7 @@ pub struct State {
     /// here as well. This allows for proper clean up of protocols we allocate,
     /// which install_protocol_interface doesn't really support.
     #[allow(dead_code)]
-    objects: Vec<SharedBox>,
+    objects: Vec<SharedAnyBox>,
     pages: Vec<Pages>,
     memory_descriptors: Vec<MemoryDescriptor>,
     pub fs_db: FsDb,
@@ -114,7 +127,7 @@ thread_local! {
 pub fn store_object<T: 'static>(object: T) -> *mut T {
     STATE.with(|state| {
         let mut state = state.borrow_mut();
-        let mut object = SharedBox::new(object);
+        let mut object = SharedAnyBox::new(object);
         let ptr: *mut dyn Any = object.as_mut_ptr();
         state.objects.push(object);
         ptr.cast()
