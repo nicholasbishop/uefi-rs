@@ -21,7 +21,6 @@ use uefi::proto::device_path::build::DevicePathBuilder;
 use uefi::proto::device_path::text::{DevicePathFromText, DevicePathToText};
 use uefi::proto::device_path::DevicePath;
 use uefi::proto::loaded_image::LoadedImage;
-use uefi::proto::media::fs::SimpleFileSystem;
 use uefi::table::boot::{BootServices, MemoryType};
 use uefi::table::runtime::RuntimeServices;
 use uefi::table::{Boot, Header, Revision, SystemTable, SystemTableImpl};
@@ -148,12 +147,8 @@ where
 
         install_owned_protocol(None, DevicePath::GUID, interface.cast(), data).unwrap()
     };
-    install_protocol(
-        Some(boot_fs_handle),
-        SimpleFileSystem::GUID,
-        fs::make_simple_file_system().cast(),
-    )
-    .unwrap();
+
+    fs::install_simple_file_system(boot_fs_handle).unwrap();
 
     let image = {
         let mut data = SharedAnyBox::new(LoadedImage {

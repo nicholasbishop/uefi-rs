@@ -1,5 +1,5 @@
 use super::boot::STATE;
-use crate::uefi_stub::store_object;
+use crate::uefi_stub::{install_protocol, store_object};
 use core::marker::PhantomData;
 use std::collections::HashMap;
 use std::ffi::c_void;
@@ -7,7 +7,7 @@ use std::{mem, ptr};
 use uefi::proto::media::file::{FileAttribute, FileImpl, FileInfo, FileMode};
 use uefi::proto::media::fs::SimpleFileSystem;
 use uefi::table::runtime::Time;
-use uefi::{CString16, Char16, Guid, Status};
+use uefi::{CString16, Char16, Guid, Handle, Identify, Result, Status};
 
 pub struct FsImpl {
     root: FileImpl,
@@ -15,7 +15,7 @@ pub struct FsImpl {
 
 pub type FsDb = HashMap<*const SimpleFileSystem, Box<FsImpl>>;
 
-pub fn make_simple_file_system() -> *mut SimpleFileSystem {
+pub fn install_simple_file_system(handle: Handle) -> Result {
     let sfs = store_object(SimpleFileSystem {
         revision: 0,
         open_volume,
@@ -43,9 +43,11 @@ pub fn make_simple_file_system() -> *mut SimpleFileSystem {
                 },
             }),
         );
+    });
 
-        sfs.cast()
-    })
+    install_protocol(Some(handle), SimpleFileSystem::GUID, sfs.cast())?;
+
+    Ok(())
 }
 
 unsafe extern "efiapi" fn open_volume(
