@@ -86,6 +86,43 @@ impl Drop for SharedAnyBox {
     }
 }
 
+pub struct SharedBox<T: ?Sized> {
+    ptr: *mut T,
+    layout: Layout,
+}
+
+impl<T: ?Sized + ptr_meta::Pointee> SharedBox<T> {
+    pub fn new(val: &T) -> Self {
+        let layout = Layout::for_value(val);
+        let ptr = unsafe {
+            let alloc_ptr: *mut u8 = alloc::alloc(layout).cast();
+            let out_ptr: *mut T =
+                ptr_meta::from_raw_parts_mut(alloc_ptr.cast(), ptr_meta::metadata(val));
+            // TODO: pretty sure this is wrong since `val` could have
+            // uninitialized padding bytes, but I'm not sure what the right way
+            // to do it is.
+            let src_ptr: *const T = val;
+            alloc_ptr.copy_from_nonoverlapping(src_ptr.cast(), mem::size_of_val(val));
+            out_ptr
+        };
+        Self { ptr, layout }
+    }
+
+    pub fn as_mut_ptr(&mut self) -> *mut T {
+        self.ptr
+    }
+}
+
+impl<T: ?Sized> Drop for SharedBox<T> {
+    fn drop(&mut self) {
+        // TODO: is this right? should test
+        unsafe {
+            ptr::drop_in_place(self.ptr);
+            alloc::dealloc(self.ptr.cast(), self.layout);
+        }
+    }
+}
+
 pub struct State {
     handle_db: HashMap<Handle, Box<HandleImpl>>,
     events: HashMap<Event, Box<EventImpl>>,

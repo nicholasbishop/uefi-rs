@@ -11,6 +11,7 @@ uefi = { path = "../uefi", features = ["alloc", "unstable"] }
 
 log = { version = "0.4.11", default-features = false }
 env_logger = { version = "0.9.0", optional = true }
+ptr_meta = { version = "0.2.0", optional = true }
 qemu-exit = "3.0.0"
 
 # TODO
@@ -23,7 +24,7 @@ multi_processor = []
 
 # Build for the host with a stub UEFI implementation instead of a real
 # UEFI target.
-native = ["uefi/platform", "dep:env_logger"]
+native = ["uefi/platform", "dep:env_logger", "dep:ptr_meta"]
 
 # Enable the PXE test.
 pxe = []
