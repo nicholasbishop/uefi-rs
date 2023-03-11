@@ -15,7 +15,7 @@ use core::ffi::c_void;
 use core::marker::PhantomData;
 use std::{mem, ptr};
 use uefi::proto::console::serial::Serial;
-use uefi::proto::console::text::{Output, OutputData};
+use uefi::proto::console::text::Output;
 use uefi::proto::device_path::text::{DevicePathFromText, DevicePathToText};
 use uefi::proto::device_path::{DevicePath, DevicePathHeader, DeviceSubType, DeviceType};
 use uefi::proto::loaded_image::LoadedImage;
@@ -142,34 +142,9 @@ where
 
     let fw_vendor = CString16::try_from("uefi_stub").unwrap();
 
-    let stdout = {
-        use text::*;
+    let stdout = text::make_output();
 
-        let output_data = store_object(OutputData {
-            max_mode: 1,
-            mode: 0,
-            attribute: 0,
-            cursor_column: 0,
-            cursor_row: 0,
-            cursor_visible: false,
-        });
-
-        leak_proto(Output {
-            reset,
-            output_string,
-            test_string,
-            query_mode,
-            set_mode,
-            set_attribute,
-            clear_screen,
-            set_cursor_position,
-            enable_cursor,
-            data: output_data,
-            _no_send_or_sync: PhantomData,
-        })
-    };
-
-    let stdout_handle = install_protocol(None, Output::GUID, stdout).unwrap();
+    let stdout_handle = install_protocol(None, Output::GUID, stdout.cast()).unwrap();
 
     let boot_fs_handle = install_protocol(
         None,
