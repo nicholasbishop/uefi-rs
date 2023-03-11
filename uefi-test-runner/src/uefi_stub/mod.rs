@@ -138,9 +138,7 @@ where
 
     let fw_vendor = CString16::try_from("uefi_stub").unwrap();
 
-    let stdout = text::make_output();
-
-    let stdout_handle = install_protocol(None, Output::GUID, stdout.cast()).unwrap();
+    let stdout_handle = text::install_output_protocol().unwrap();
 
     let boot_fs_handle = {
         let mut buf = [MaybeUninit::uninit(); 256];

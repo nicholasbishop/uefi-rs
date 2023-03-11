@@ -1,10 +1,10 @@
-use crate::uefi_stub::store_object;
+use crate::uefi_stub::{install_owned_protocol, store_object, SharedAnyBox};
 use std::marker::PhantomData;
 use std::ptr;
 use uefi::proto::console::text::{Output, OutputData};
 use uefi::proto::device_path::text::{DevicePathFromText, DevicePathToText};
 use uefi::proto::device_path::FfiDevicePath;
-use uefi::{Char16, Status};
+use uefi::{Char16, Handle, Identify, Result, Status};
 
 extern "efiapi" fn reset(this: &Output, extended: bool) -> Status {
     Status::SUCCESS
@@ -49,8 +49,8 @@ extern "efiapi" fn enable_cursor(this: &mut Output, visible: bool) -> Status {
     Status::SUCCESS
 }
 
-pub fn make_output() -> *mut Output {
-    let output_data = store_object(OutputData {
+pub fn install_output_protocol() -> Result<Handle> {
+    let mut output_data = SharedAnyBox::new(OutputData {
         max_mode: 1,
         mode: 0,
         attribute: 0,
@@ -59,19 +59,24 @@ pub fn make_output() -> *mut Output {
         cursor_visible: false,
     });
 
-    store_object(Output {
-        reset,
-        output_string,
-        test_string,
-        query_mode,
-        set_mode,
-        set_attribute,
-        clear_screen,
-        set_cursor_position,
-        enable_cursor,
-        data: output_data,
-        _no_send_or_sync: PhantomData,
-    })
+    install_owned_protocol(
+        None,
+        Output::GUID,
+        SharedAnyBox::new(Output {
+            reset,
+            output_string,
+            test_string,
+            query_mode,
+            set_mode,
+            set_attribute,
+            clear_screen,
+            set_cursor_position,
+            enable_cursor,
+            data: output_data.as_mut_ptr().cast(),
+            _no_send_or_sync: PhantomData,
+        }),
+        Some(output_data),
+    )
 }
 
 pub extern "efiapi" fn convert_device_node_to_text(
