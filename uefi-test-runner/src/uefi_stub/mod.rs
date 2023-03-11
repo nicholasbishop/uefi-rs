@@ -142,12 +142,11 @@ where
         // it in a SharedAnyBox.
         #[repr(transparent)]
         struct DevicePathWrapper(SharedBox<DevicePath>);
-        let dpw = store_object(DevicePathWrapper(SharedBox::new(path)));
+        let mut data = SharedAnyBox::new(DevicePathWrapper(SharedBox::new(path)));
+        let tmp = data.downcast_mut::<DevicePathWrapper>().unwrap();
+        let interface = tmp.0.as_mut_ptr();
 
-        unsafe {
-            let dp: *mut DevicePath = (*dpw).0.as_mut_ptr();
-            install_protocol(None, DevicePath::GUID, dp.cast()).unwrap()
-        }
+        install_owned_protocol(None, DevicePath::GUID, interface.cast(), data).unwrap()
     };
     install_protocol(
         Some(boot_fs_handle),
