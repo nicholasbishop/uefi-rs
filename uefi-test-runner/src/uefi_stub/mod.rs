@@ -11,7 +11,6 @@ mod runtime;
 mod text;
 
 use boot::{install_protocol, open_protocol, store_object, SharedBox};
-use core::ffi::c_void;
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
 use std::{mem, ptr};
@@ -40,13 +39,6 @@ macro_rules! try_status {
 }
 
 fn make_and_leak<T>(val: T) -> *mut T {
-    let b = Box::new(val);
-    let r: *mut _ = Box::leak(b);
-    r.cast()
-}
-
-// TODO: dedup with above
-fn leak_proto<T>(val: T) -> *mut c_void {
     let b = Box::new(val);
     let r: *mut _ = Box::leak(b);
     r.cast()
@@ -174,7 +166,7 @@ where
     let image = install_protocol(
         None,
         LoadedImage::GUID,
-        leak_proto(LoadedImage {
+        store_object(LoadedImage {
             revision: 1,
             parent_handle: bad_handle,
             system_table: ptr::null(),
@@ -192,7 +184,8 @@ where
             unload: loaded_image::unload,
 
             _no_send_or_sync: PhantomData,
-        }),
+        })
+        .cast(),
     )
     .unwrap();
 

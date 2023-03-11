@@ -1,5 +1,5 @@
 use super::boot::STATE;
-use super::leak_proto;
+use crate::uefi_stub::store_object;
 use core::marker::PhantomData;
 use std::collections::HashMap;
 use std::ffi::c_void;
@@ -16,14 +16,14 @@ pub struct FsImpl {
 pub type FsDb = HashMap<*const SimpleFileSystem, Box<FsImpl>>;
 
 pub fn make_simple_file_system() -> *mut SimpleFileSystem {
+    let sfs = store_object(SimpleFileSystem {
+        revision: 0,
+        open_volume,
+        _no_send_or_sync: PhantomData,
+    });
+
     STATE.with(|state| {
         let mut state = state.borrow_mut();
-
-        let sfs = leak_proto(SimpleFileSystem {
-            revision: 0,
-            open_volume,
-            _no_send_or_sync: PhantomData,
-        });
 
         state.fs_db.insert(
             sfs.cast(),
