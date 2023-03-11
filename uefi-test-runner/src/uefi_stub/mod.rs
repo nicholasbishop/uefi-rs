@@ -10,9 +10,7 @@ mod loaded_image;
 mod runtime;
 mod text;
 
-use boot::{
-    install_owned_protocol, install_protocol, open_protocol, store_object, SharedAnyBox, SharedBox,
-};
+use boot::{install_owned_protocol, open_protocol, SharedAnyBox, SharedBox};
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
 use std::{mem, ptr};

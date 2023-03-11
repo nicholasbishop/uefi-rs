@@ -1,5 +1,5 @@
 use super::boot::STATE;
-use crate::uefi_stub::{install_protocol, store_object};
+use crate::uefi_stub::{install_owned_protocol, SharedAnyBox};
 use core::marker::PhantomData;
 use std::collections::HashMap;
 use std::ffi::c_void;
@@ -16,15 +16,17 @@ pub struct FsImpl {
 pub type FsDb = HashMap<*const SimpleFileSystem, Box<FsImpl>>;
 
 pub fn install_simple_file_system(handle: Handle) -> Result {
-    let sfs = store_object(SimpleFileSystem {
+    let mut data = SharedAnyBox::new(SimpleFileSystem {
         revision: 0,
         open_volume,
         _no_send_or_sync: PhantomData,
     });
+    let sfs = data.as_mut_ptr();
 
     STATE.with(|state| {
         let mut state = state.borrow_mut();
 
+        // TODO: move fs_db into protocol owned data?
         state.fs_db.insert(
             sfs.cast(),
             Box::new(FsImpl {
@@ -45,7 +47,7 @@ pub fn install_simple_file_system(handle: Handle) -> Result {
         );
     });
 
-    install_protocol(Some(handle), SimpleFileSystem::GUID, sfs.cast())?;
+    install_owned_protocol(Some(handle), SimpleFileSystem::GUID, sfs.cast(), data)?;
 
     Ok(())
 }

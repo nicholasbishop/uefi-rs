@@ -148,15 +148,6 @@ impl<T: ?Sized> Drop for SharedBox<T> {
 pub struct State {
     handle_db: HashMap<Handle, Box<HandleImpl>>,
     events: HashMap<Event, Box<EventImpl>>,
-    /// TODO: not sure what the right interface here is yet.
-    ///
-    /// The idea is that this is a generic object store. Example: each protocol
-    /// can allocate itself into this array as a Box<Any>. If the protocol
-    /// itself has an interior pointer to some additional data, it can be stored
-    /// here as well. This allows for proper clean up of protocols we allocate,
-    /// which install_protocol_interface doesn't really support.
-    #[allow(dead_code)]
-    objects: Vec<SharedAnyBox>,
     pages: Vec<Pages>,
     memory_descriptors: Vec<MemoryDescriptor>,
     pub fs_db: FsDb,
@@ -169,7 +160,6 @@ thread_local! {
     pub static STATE: Rc<RefCell<State>> = Rc::new(RefCell::new(State {
         handle_db: HashMap::new(),
         events: HashMap::new(),
-        objects: Vec::new(),
         pages: Vec::new(),
         // Stub in some data to get past the memory test.
         memory_descriptors: vec![MemoryDescriptor {
@@ -181,16 +171,6 @@ thread_local! {
         }],
         fs_db: FsDb::default(),
     }));
-}
-
-pub fn store_object<T: 'static>(object: T) -> *mut T {
-    STATE.with(|state| {
-        let mut state = state.borrow_mut();
-        let mut object = SharedAnyBox::new(object);
-        let ptr: *mut dyn Any = object.as_mut_ptr();
-        state.objects.push(object);
-        ptr.cast()
-    })
 }
 
 // TODO: copied from boot.rs
@@ -349,23 +329,6 @@ pub unsafe extern "efiapi" fn check_event(event: Event) -> Status {
         // TODO
         Status::SUCCESS
     })
-}
-
-pub fn install_protocol(
-    mut handle: Option<Handle>,
-    guid: Guid,
-    interface: *mut c_void,
-) -> Result<Handle> {
-    // TODO: just make install_protocol unsafe, or remove entirely
-    unsafe {
-        install_protocol_interface(
-            &mut handle,
-            &guid,
-            InterfaceType::NATIVE_INTERFACE,
-            interface,
-        )
-        .into_with_val(|| handle.unwrap())
-    }
 }
 
 // TODO: dedup
