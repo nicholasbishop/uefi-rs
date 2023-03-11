@@ -10,7 +10,7 @@ mod loaded_image;
 mod runtime;
 mod text;
 
-use boot::{install_protocol, open_protocol};
+use boot::{install_protocol, open_protocol, store_object};
 use core::ffi::c_void;
 use core::marker::PhantomData;
 use std::{mem, ptr};
@@ -142,17 +142,18 @@ where
 
     let fw_vendor = CString16::try_from("uefi_stub").unwrap();
 
-    let output_data = OutputData {
-        max_mode: 1,
-        mode: 0,
-        attribute: 0,
-        cursor_column: 0,
-        cursor_row: 0,
-        cursor_visible: false,
-    };
-
     let stdout = {
         use text::*;
+
+        let output_data = store_object(OutputData {
+            max_mode: 1,
+            mode: 0,
+            attribute: 0,
+            cursor_column: 0,
+            cursor_row: 0,
+            cursor_visible: false,
+        });
+
         leak_proto(Output {
             reset,
             output_string,
@@ -163,8 +164,7 @@ where
             clear_screen,
             set_cursor_position,
             enable_cursor,
-            // TODO
-            data: unsafe { &*(&output_data as *const OutputData) },
+            data: output_data,
             _no_send_or_sync: PhantomData,
         })
     };

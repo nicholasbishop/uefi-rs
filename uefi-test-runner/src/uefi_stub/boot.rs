@@ -1,6 +1,8 @@
 use super::fs::FsDb;
 use crate::try_status;
 use log::debug;
+use std::alloc::{self, Layout};
+use std::any::Any;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ffi::c_void;
@@ -53,9 +55,36 @@ impl Pages {
     }
 }
 
+pub struct SharedBox(*mut dyn Any);
+
+impl SharedBox {
+    pub fn new<T: 'static>(val: T) -> Self {
+        let layout = Layout::for_value(&val);
+        let ptr = unsafe {
+            let ptr: *mut T = alloc::alloc(layout).cast();
+            (*ptr) = val;
+            ptr
+        };
+        Self(ptr)
+    }
+
+    pub fn as_mut_ptr(&mut self) -> *mut dyn Any {
+        self.0
+    }
+}
+
 pub struct State {
     handle_db: HashMap<Handle, Box<HandleImpl>>,
     events: HashMap<Event, Box<EventImpl>>,
+    /// TODO: not sure what the right interface here is yet.
+    ///
+    /// The idea is that this is a generic object store. Example: each protocol
+    /// can allocate itself into this array as a Box<Any>. If the protocol
+    /// itself has an interior pointer to some additional data, it can be stored
+    /// here as well. This allows for proper clean up of protocols we allocate,
+    /// which install_protocol_interface doesn't really support.
+    #[allow(dead_code)]
+    objects: Vec<SharedBox>,
     pages: Vec<Pages>,
     memory_descriptors: Vec<MemoryDescriptor>,
     pub fs_db: FsDb,
@@ -68,6 +97,7 @@ thread_local! {
     pub static STATE: Rc<RefCell<State>> = Rc::new(RefCell::new(State {
         handle_db: HashMap::new(),
         events: HashMap::new(),
+        objects: Vec::new(),
         pages: Vec::new(),
         // Stub in some data to get past the memory test.
         memory_descriptors: vec![MemoryDescriptor {
@@ -79,6 +109,16 @@ thread_local! {
         }],
         fs_db: FsDb::default(),
     }));
+}
+
+pub fn store_object<T: 'static>(object: T) -> *mut T {
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let mut object = SharedBox::new(object);
+        let ptr: *mut dyn Any = object.as_mut_ptr();
+        state.objects.push(object);
+        ptr.cast()
+    })
 }
 
 pub fn install_protocol(
