@@ -20,6 +20,7 @@ use uefi::{Char16, Event, Guid, Handle, Identify, Result, Status};
 
 enum ProtocolInterface {
     Owned {
+        #[allow(dead_code)]
         data: SharedAnyBox,
         ptr: *mut c_void,
     },
