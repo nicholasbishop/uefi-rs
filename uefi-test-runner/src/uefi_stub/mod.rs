@@ -10,14 +10,16 @@ mod loaded_image;
 mod runtime;
 mod text;
 
-use boot::{install_protocol, open_protocol, store_object};
+use boot::{install_protocol, open_protocol, store_object, SharedBox};
 use core::ffi::c_void;
 use core::marker::PhantomData;
+use core::mem::MaybeUninit;
 use std::{mem, ptr};
 use uefi::proto::console::serial::Serial;
 use uefi::proto::console::text::Output;
+use uefi::proto::device_path::build::DevicePathBuilder;
 use uefi::proto::device_path::text::{DevicePathFromText, DevicePathToText};
-use uefi::proto::device_path::{DevicePath, DevicePathHeader, DeviceSubType, DeviceType};
+use uefi::proto::device_path::DevicePath;
 use uefi::proto::loaded_image::LoadedImage;
 use uefi::proto::media::fs::SimpleFileSystem;
 use uefi::table::boot::{BootServices, MemoryType};
@@ -146,19 +148,22 @@ where
 
     let stdout_handle = install_protocol(None, Output::GUID, stdout.cast()).unwrap();
 
-    let boot_fs_handle = install_protocol(
-        None,
-        DevicePath::GUID,
-        leak_proto(
-            // TODO: not at all valid
-            DevicePathHeader {
-                device_type: DeviceType::END,
-                sub_type: DeviceSubType::END_ENTIRE,
-                length: 4,
-            },
-        ),
-    )
-    .unwrap();
+    let boot_fs_handle = {
+        let mut buf = [MaybeUninit::uninit(); 256];
+        // TODO: make a real path
+        let path = DevicePathBuilder::with_buf(&mut buf).finalize().unwrap();
+
+        // Wrap the DST device path in an intermediate struct so that we can store
+        // it in a SharedAnyBox.
+        #[repr(transparent)]
+        struct DevicePathWrapper(SharedBox<DevicePath>);
+        let dpw = store_object(DevicePathWrapper(SharedBox::new(path)));
+
+        unsafe {
+            let dp: *mut DevicePath = (*dpw).0.as_mut_ptr();
+            install_protocol(None, DevicePath::GUID, dp.cast()).unwrap()
+        }
+    };
     install_protocol(
         Some(boot_fs_handle),
         SimpleFileSystem::GUID,

@@ -65,7 +65,7 @@ impl SharedAnyBox {
         let layout = Layout::for_value(&val);
         let ptr = unsafe {
             let ptr: *mut T = alloc::alloc(layout).cast();
-            (*ptr) = val;
+            ptr.write(val);
             ptr
         };
         Self { ptr, layout }
