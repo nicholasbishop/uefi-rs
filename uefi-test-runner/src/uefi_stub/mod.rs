@@ -8,6 +8,7 @@ mod console;
 mod fs;
 mod gop;
 mod loaded_image;
+mod pointer;
 mod runtime;
 mod text;
 
@@ -215,6 +216,7 @@ where
 
     console::install_serial_protocol().unwrap();
     gop::install_gop_protocol().unwrap();
+    pointer::install_pointer_protocol().unwrap();
 
     let mut stdout_ptr = ptr::null_mut();
     assert_eq!(

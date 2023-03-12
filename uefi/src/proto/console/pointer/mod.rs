@@ -7,6 +7,7 @@ use core::mem::MaybeUninit;
 /// Provides information about a pointer device.
 #[repr(C)]
 #[unsafe_protocol("31878c87-0b75-11d5-9a4f-0090273fc14d")]
+#[cfg_attr(feature = "platform", uefi_macros::platform_struct)]
 pub struct Pointer {
     reset: extern "efiapi" fn(this: &mut Pointer, ext_verif: bool) -> Status,
     get_state: extern "efiapi" fn(this: &Pointer, state: *mut PointerState) -> Status,
