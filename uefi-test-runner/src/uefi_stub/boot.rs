@@ -633,7 +633,8 @@ pub unsafe extern "efiapi" fn exit_boot_services(
     image_handle: Handle,
     map_key: MemoryMapKey,
 ) -> Status {
-    todo!()
+    // Very TODO
+    Status::SUCCESS
 }
 
 pub extern "efiapi" fn stall(microseconds: usize) -> Status {

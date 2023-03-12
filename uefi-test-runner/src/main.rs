@@ -186,7 +186,7 @@ fn shutdown(mut st: SystemTable<Boot>) -> ! {
     // Exit boot services as a proof that it works :)
     let (st, _iter) = st.exit_boot_services();
 
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(all(target_arch = "x86_64", not(feature = "native")))]
     {
         // Prevent unused variable warning.
         let _ = st;
@@ -197,7 +197,7 @@ fn shutdown(mut st: SystemTable<Boot>) -> ! {
         qemu_exit_handle.exit_success();
     }
 
-    #[cfg(not(target_arch = "x86_64"))]
+    #[cfg(any(not(target_arch = "x86_64"), feature = "native"))]
     {
         // Shut down the system
         let rt = unsafe { st.runtime_services() };

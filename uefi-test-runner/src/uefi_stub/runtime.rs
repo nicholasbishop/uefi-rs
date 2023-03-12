@@ -105,12 +105,11 @@ pub unsafe extern "efiapi" fn set_variable(
 
 pub unsafe extern "efiapi" fn reset(
     rt: ResetType,
-
     status: Status,
     data_size: usize,
     data: *const u8,
 ) -> ! {
-    todo!()
+    std::process::exit(status.0.try_into().unwrap())
 }
 
 // Miscellaneous UEFI 2.0 Service.
