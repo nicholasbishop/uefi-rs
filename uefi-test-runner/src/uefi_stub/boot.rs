@@ -133,6 +133,10 @@ impl<T: ?Sized + ptr_meta::Pointee> SharedBox<T> {
         Self { ptr, layout }
     }
 
+    pub fn as_mut(&mut self) -> &mut T {
+        unsafe { &mut *self.ptr }
+    }
+
     pub fn as_mut_ptr(&mut self) -> *mut T {
         self.ptr
     }
@@ -602,8 +606,20 @@ pub unsafe extern "efiapi" fn exit_boot_services(
     image_handle: Handle,
     map_key: MemoryMapKey,
 ) -> Status {
-    // Very TODO
-    Status::SUCCESS
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+
+        // TODO: clear more state, including the std handles
+        let system_table = state.system_table.as_mut().unwrap().as_mut();
+        system_table.stdin = ptr::null_mut();
+        system_table.stdout = ptr::null_mut();
+        system_table.stderr = ptr::null_mut();
+        system_table.boot = ptr::null_mut();
+        // TODO: update CRC
+
+        // Very TODO
+        Status::SUCCESS
+    })
 }
 
 pub extern "efiapi" fn stall(microseconds: usize) -> Status {
