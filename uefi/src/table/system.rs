@@ -46,7 +46,7 @@ impl SystemTableView for Runtime {}
 #[repr(transparent)]
 #[derive(Debug)]
 pub struct SystemTable<View: SystemTableView> {
-    table: &'static SystemTableImpl,
+    table: NonNull<SystemTableImpl>,
     _marker: PhantomData<View>,
 }
 
@@ -55,20 +55,20 @@ impl<View: SystemTableView> SystemTable<View> {
     /// Return the firmware vendor string
     #[must_use]
     pub fn firmware_vendor(&self) -> &CStr16 {
-        unsafe { CStr16::from_ptr(self.table.fw_vendor) }
+        unsafe { CStr16::from_ptr(self.table().fw_vendor) }
     }
 
     /// Return the firmware revision
     #[must_use]
-    pub const fn firmware_revision(&self) -> u32 {
-        self.table.fw_revision
+    pub fn firmware_revision(&self) -> u32 {
+        self.table().fw_revision
     }
 
     /// Returns the revision of this table, which is defined to be
     /// the revision of the UEFI specification implemented by the firmware.
     #[must_use]
-    pub const fn uefi_revision(&self) -> Revision {
-        self.table.header.revision
+    pub fn uefi_revision(&self) -> Revision {
+        self.table().header.revision
     }
 
     /// Returns the config table entries, a linear array of structures
@@ -76,7 +76,7 @@ impl<View: SystemTableView> SystemTable<View> {
     #[allow(clippy::missing_const_for_fn)] // Required until we bump the MSRV.
     #[must_use]
     pub fn config_table(&self) -> &[cfg::ConfigTableEntry] {
-        unsafe { slice::from_raw_parts(self.table.cfg_table, self.table.nr_cfg) }
+        unsafe { slice::from_raw_parts(self.table().cfg_table, self.table().nr_cfg) }
     }
 
     /// Creates a new `SystemTable<View>` from a raw address. The address might
@@ -100,9 +100,13 @@ impl<View: SystemTableView> SystemTable<View> {
     /// undefined behaviour, even if the methods aren't marked as unsafe.
     pub unsafe fn from_ptr(ptr: *mut c_void) -> Option<Self> {
         NonNull::new(ptr.cast()).map(|ptr| Self {
-            table: ptr.as_ref(),
+            table: ptr,
             _marker: PhantomData,
         })
+    }
+
+    fn table(&self) -> &SystemTableImpl {
+        unsafe { self.table.as_ref() }
     }
 }
 
@@ -111,29 +115,29 @@ impl<View: SystemTableView> SystemTable<View> {
 impl SystemTable<Boot> {
     /// Returns the standard input protocol.
     pub fn stdin(&mut self) -> &mut text::Input {
-        unsafe { &mut *self.table.stdin }
+        unsafe { &mut *self.table().stdin }
     }
 
     /// Returns the standard output protocol.
     pub fn stdout(&mut self) -> &mut text::Output {
-        unsafe { &mut *self.table.stdout.cast() }
+        unsafe { &mut *self.table().stdout.cast() }
     }
 
     /// Returns the standard error protocol.
     pub fn stderr(&mut self) -> &mut text::Output {
-        unsafe { &mut *self.table.stderr.cast() }
+        unsafe { &mut *self.table().stderr.cast() }
     }
 
     /// Access runtime services
     #[must_use]
-    pub const fn runtime_services(&self) -> &RuntimeServices {
-        self.table.runtime
+    pub fn runtime_services(&self) -> &RuntimeServices {
+        self.table().runtime
     }
 
     /// Access boot services
     #[must_use]
-    pub const fn boot_services(&self) -> &BootServices {
-        unsafe { &*self.table.boot }
+    pub fn boot_services(&self) -> &BootServices {
+        unsafe { &*self.table().boot }
     }
 
     /// Get the size in bytes of the buffer to allocate for storing the memory
@@ -290,8 +294,8 @@ impl SystemTable<Runtime> {
     /// CPU configuration which may not be preserved by OS loaders. See the
     /// "Calling Conventions" chapter of the UEFI specification for details.
     #[must_use]
-    pub const unsafe fn runtime_services(&self) -> &RuntimeServices {
-        self.table.runtime
+    pub unsafe fn runtime_services(&self) -> &RuntimeServices {
+        self.table().runtime
     }
 
     /// Changes the runtime addressing mode of EFI firmware from physical to virtual.
@@ -317,12 +321,11 @@ impl SystemTable<Runtime> {
         let entry_size = core::mem::size_of::<MemoryDescriptor>();
         let entry_version = crate::table::boot::MEMORY_DESCRIPTOR_VERSION;
         let map_ptr = map.as_mut_ptr();
-        (self.table.runtime.set_virtual_address_map)(map_size, entry_size, entry_version, map_ptr)
+        (self.table().runtime.set_virtual_address_map)(map_size, entry_size, entry_version, map_ptr)
             .into_with_val(|| {
-                let new_table_ref =
-                    &mut *(new_system_table_virtual_addr as usize as *mut SystemTableImpl);
+                let new_table_ref = new_system_table_virtual_addr as usize as *mut SystemTableImpl;
                 Self {
-                    table: new_table_ref,
+                    table: NonNull::new(new_table_ref).unwrap(),
                     _marker: PhantomData,
                 }
             })
@@ -332,7 +335,7 @@ impl SystemTable<Runtime> {
     /// memory region.
     #[must_use]
     pub fn get_current_system_table_addr(&self) -> u64 {
-        self.table as *const _ as usize as u64
+        self.table.as_ptr() as usize as u64
     }
 }
 
