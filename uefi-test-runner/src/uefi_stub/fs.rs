@@ -16,12 +16,12 @@ pub struct FsImpl {
 pub type FsDb = HashMap<*const SimpleFileSystem, Box<FsImpl>>;
 
 pub fn install_simple_file_system(handle: Handle) -> Result {
-    let mut data = SharedAnyBox::new(SimpleFileSystem {
+    let mut interface = SharedAnyBox::new(SimpleFileSystem {
         revision: 0,
         open_volume,
         _no_send_or_sync: PhantomData,
     });
-    let sfs = data.as_mut_ptr();
+    let sfs = interface.as_mut_ptr();
 
     STATE.with(|state| {
         let mut state = state.borrow_mut();
@@ -47,7 +47,13 @@ pub fn install_simple_file_system(handle: Handle) -> Result {
         );
     });
 
-    install_owned_protocol(Some(handle), SimpleFileSystem::GUID, sfs.cast(), data)?;
+    install_owned_protocol(
+        Some(handle),
+        SimpleFileSystem::GUID,
+        sfs.cast(),
+        interface,
+        None,
+    )?;
 
     Ok(())
 }

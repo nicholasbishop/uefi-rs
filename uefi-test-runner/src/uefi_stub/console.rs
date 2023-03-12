@@ -1,6 +1,6 @@
 use crate::uefi_stub::{install_owned_protocol, SharedAnyBox};
 use core::marker::PhantomData;
-use core::{ptr, slice};
+use core::slice;
 use uefi::proto::console::serial::{ControlBits, IoMode, Parity, Serial, StopBits};
 use uefi::{Handle, Identify, Result, Status};
 
@@ -46,24 +46,25 @@ extern "efiapi" fn read(this: &mut Serial, size: &mut usize, buf: *mut u8) -> St
 }
 
 pub fn install_serial_protocol() -> Result<Handle> {
-    let mut data = SharedAnyBox::new((
-        Serial {
-            // TODO
-            revision: 1,
+    let mut data = SharedAnyBox::new(IoMode::default());
+    let mut interface = SharedAnyBox::new(Serial {
+        // TODO
+        revision: 1,
 
-            reset,
-            set_attributes,
-            set_control_bits,
-            get_control_bits,
-            write,
-            read,
-            // TODO
-            io_mode: ptr::null(),
-            _no_send_or_sync: PhantomData,
-        },
-        IoMode::default(),
-    ));
-    let tmp = data.downcast_mut::<(Serial, IoMode)>().unwrap();
-    let interface = data.as_mut_ptr();
-    install_owned_protocol(None, Serial::GUID, interface.cast(), data)
+        reset,
+        set_attributes,
+        set_control_bits,
+        get_control_bits,
+        write,
+        read,
+        io_mode: data.as_mut_ptr().cast(),
+        _no_send_or_sync: PhantomData,
+    });
+    install_owned_protocol(
+        None,
+        Serial::GUID,
+        interface.as_mut_ptr().cast(),
+        interface,
+        Some(data),
+    )
 }

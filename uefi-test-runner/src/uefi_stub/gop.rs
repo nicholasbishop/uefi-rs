@@ -1,12 +1,13 @@
 use crate::uefi_stub::{install_owned_protocol, with_owned_protocol_data, SharedAnyBox};
 use core::marker::PhantomData;
+use core::ptr::addr_of;
 use core::{mem, ptr};
 use uefi::proto::console::gop::{
     BltPixel, GraphicsOutput, ModeData, ModeInfo, PixelBitmask, PixelFormat,
 };
 use uefi::{Handle, Identify, Result, Status};
 
-type ProtocolData = (GraphicsOutput, ModeData, ModeInfo);
+type ProtocolData = (ModeData, ModeInfo, Vec<u8>);
 
 extern "efiapi" fn query_mode(
     this: &GraphicsOutput,
@@ -17,7 +18,7 @@ extern "efiapi" fn query_mode(
     *info_sz = mem::size_of::<ModeInfo>();
     // TODO: assuming just one mode
     with_owned_protocol_data::<ProtocolData, _, _>(this, |data| {
-        *info = &data.2;
+        *info = &data.1;
     })
     .unwrap();
 
@@ -47,13 +48,6 @@ unsafe extern "efiapi" fn blt(
 
 pub fn install_gop_protocol() -> Result<Handle> {
     let mut data = SharedAnyBox::new((
-        GraphicsOutput {
-            query_mode,
-            set_mode,
-            blt,
-            mode: ptr::null(),
-            _no_send_or_sync: PhantomData,
-        },
         ModeData {
             // TODO
             max_mode: 1,
@@ -61,13 +55,13 @@ pub fn install_gop_protocol() -> Result<Handle> {
             info: ptr::null(),
             info_sz: mem::size_of::<ModeInfo>(),
             fb_address: 0,
-            fb_size: 0,
+            fb_size: 1024 * 768 * 4,
         },
         ModeInfo {
             // TODO
             version: 1,
-            hor_res: 1,
-            ver_res: 1,
+            hor_res: 1024,
+            ver_res: 768,
             format: PixelFormat::Rgb,
             mask: PixelBitmask {
                 // TODO
@@ -78,11 +72,25 @@ pub fn install_gop_protocol() -> Result<Handle> {
             },
             stride: 0,
         },
+        // Framebuffer
+        vec![0u8; 1024 * 768 * 4],
     ));
     let tmp = data.downcast_mut::<ProtocolData>().unwrap();
-    tmp.1.info = &tmp.2;
-    tmp.0.mode = &tmp.1;
-    let interface = data.as_mut_ptr();
+    tmp.0.info = &tmp.1;
+    tmp.0.fb_address = tmp.2.as_ptr() as u64;
+    let mut interface = SharedAnyBox::new(GraphicsOutput {
+        query_mode,
+        set_mode,
+        blt,
+        mode: addr_of!(tmp.0),
+        _no_send_or_sync: PhantomData,
+    });
 
-    install_owned_protocol(None, GraphicsOutput::GUID, interface.cast(), data)
+    install_owned_protocol(
+        None,
+        GraphicsOutput::GUID,
+        interface.as_mut_ptr().cast(),
+        interface,
+        Some(data),
+    )
 }

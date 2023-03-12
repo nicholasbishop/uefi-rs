@@ -22,7 +22,8 @@ use uefi::{Char16, Event, Guid, Handle, Identify, Result, Status};
 enum ProtocolInterface {
     Owned {
         #[allow(dead_code)]
-        data: SharedAnyBox,
+        interface: SharedAnyBox,
+        data: Option<SharedAnyBox>,
         ptr: *mut c_void,
     },
     Raw(*mut c_void),
@@ -92,6 +93,10 @@ impl SharedAnyBox {
 
     pub fn as_mut_ptr(&mut self) -> *mut dyn Any {
         self.ptr
+    }
+
+    pub fn downcast<T: 'static>(&self) -> Option<&T> {
+        unsafe { (*self.ptr).downcast_ref() }
     }
 
     pub fn downcast_mut<T: 'static>(&mut self) -> Option<&mut T> {
@@ -339,7 +344,7 @@ pub unsafe extern "efiapi" fn check_event(event: Event) -> Status {
 pub fn with_owned_protocol_data<D: 'static, P, F>(key: &P, f: F) -> Result
 where
     P: Protocol,
-    F: FnOnce(&mut D),
+    F: FnOnce(&D),
 {
     let key: *const _ = key;
     STATE.with(|state| {
@@ -347,13 +352,17 @@ where
         let db = &mut state.handle_db;
 
         for handle_data in db.values_mut() {
-            if let Some(protocol_wrapper) = handle_data.get_mut(&P::GUID) {
-                match &mut protocol_wrapper.interface {
-                    ProtocolInterface::Owned { ptr, data } => {
+            if let Some(protocol_wrapper) = handle_data.get(&P::GUID) {
+                match &protocol_wrapper.interface {
+                    ProtocolInterface::Owned { ptr, data, .. } => {
                         if ptr.cast_const() == key.cast() {
-                            if let Some(data) = data.downcast_mut::<D>() {
-                                f(data);
-                                return Ok(());
+                            if let Some(data) = data {
+                                if let Some(data) = data.downcast::<D>() {
+                                    f(data);
+                                    return Ok(());
+                                } else {
+                                    return Err(Status::ABORTED.into());
+                                }
                             } else {
                                 return Err(Status::ABORTED.into());
                             }
@@ -372,8 +381,9 @@ where
 pub fn install_owned_protocol(
     handle: Option<Handle>,
     guid: Guid,
-    interface: *mut c_void,
-    data: SharedAnyBox,
+    interface_ptr: *mut c_void,
+    interface: SharedAnyBox,
+    data: Option<SharedAnyBox>,
 ) -> Result<Handle> {
     STATE.with(|state| {
         let mut state = state.borrow_mut();
@@ -403,7 +413,8 @@ pub fn install_owned_protocol(
             guid,
             ProtocolWrapper {
                 interface: ProtocolInterface::Owned {
-                    ptr: interface,
+                    ptr: interface_ptr,
+                    interface,
                     data,
                 },
                 in_use: false,

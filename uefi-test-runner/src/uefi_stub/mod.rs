@@ -142,17 +142,24 @@ where
         // it in a SharedAnyBox.
         #[repr(transparent)]
         struct DevicePathWrapper(SharedBox<DevicePath>);
-        let mut data = SharedAnyBox::new(DevicePathWrapper(SharedBox::new(path)));
-        let tmp = data.downcast_mut::<DevicePathWrapper>().unwrap();
-        let interface = tmp.0.as_mut_ptr();
+        let mut interface = SharedAnyBox::new(DevicePathWrapper(SharedBox::new(path)));
+        let tmp = interface.downcast_mut::<DevicePathWrapper>().unwrap();
+        let interface_ptr = tmp.0.as_mut_ptr();
 
-        install_owned_protocol(None, DevicePath::GUID, interface.cast(), data).unwrap()
+        install_owned_protocol(
+            None,
+            DevicePath::GUID,
+            interface_ptr.cast(),
+            interface,
+            None,
+        )
+        .unwrap()
     };
 
     fs::install_simple_file_system(boot_fs_handle).unwrap();
 
     let image = {
-        let mut data = SharedAnyBox::new(LoadedImage {
+        let mut interface = SharedAnyBox::new(LoadedImage {
             revision: 1,
             parent_handle: bad_handle,
             system_table: ptr::null(),
@@ -172,21 +179,38 @@ where
             _no_send_or_sync: PhantomData,
         });
 
-        install_owned_protocol(None, LoadedImage::GUID, data.as_mut_ptr().cast(), data).unwrap()
+        install_owned_protocol(
+            None,
+            LoadedImage::GUID,
+            interface.as_mut_ptr().cast(),
+            interface,
+            None,
+        )
+        .unwrap()
     };
 
     {
-        let mut data = SharedAnyBox::new(text::make_device_path_to_text());
-        let interface = data.as_mut_ptr();
-
-        install_owned_protocol(None, DevicePathToText::GUID, interface.cast(), data).unwrap();
+        let mut interface = SharedAnyBox::new(text::make_device_path_to_text());
+        install_owned_protocol(
+            None,
+            DevicePathToText::GUID,
+            interface.as_mut_ptr().cast(),
+            interface,
+            None,
+        )
+        .unwrap();
     }
 
     {
-        let mut data = SharedAnyBox::new(text::make_device_path_from_text());
-        let interface = data.as_mut_ptr();
-
-        install_owned_protocol(None, DevicePathFromText::GUID, interface.cast(), data).unwrap();
+        let mut interface = SharedAnyBox::new(text::make_device_path_from_text());
+        install_owned_protocol(
+            None,
+            DevicePathFromText::GUID,
+            interface.as_mut_ptr().cast(),
+            interface,
+            None,
+        )
+        .unwrap();
     }
 
     console::install_serial_protocol().unwrap();
