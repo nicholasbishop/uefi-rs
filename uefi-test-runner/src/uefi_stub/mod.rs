@@ -47,6 +47,9 @@ macro_rules! try_status {
 }
 
 pub struct State {
+    // TODO: de-option?
+    system_table: Option<SharedBox<SystemTableImpl>>,
+
     // Boot state.
     handle_db: HashMap<Handle, Box<HandleImpl>>,
     events: HashMap<Event, Box<EventImpl>>,
@@ -63,6 +66,7 @@ pub struct State {
 // between threads.
 thread_local! {
     pub static STATE: Rc<RefCell<State>> = Rc::new(RefCell::new(State {
+        system_table: None,
         handle_db: HashMap::new(),
         events: HashMap::new(),
         pages: Vec::new(),
@@ -270,32 +274,34 @@ where
         Status::SUCCESS
     );
 
-    let mut system_table_impl = SystemTableImpl {
-        header: Header {
-            signature: 0x1234_5678,
-            revision: Revision::new(2, 90),
-            size: 0,
-            crc: 0,
-            _reserved: 0,
-        },
-        fw_vendor: fw_vendor.as_ptr(),
-        fw_revision: 0x1516_1718,
-        stdin_handle: bad_handle,
-        stdin: ptr::null_mut(),
-        stdout_handle: stdout_handle,
-        stdout: stdout_ptr.cast(),
-        stderr_handle: bad_handle,
-        stderr: ptr::null_mut(),
-        // TODO
-        runtime: unsafe { &*(&runtime_services as *const RuntimeServices) },
-        boot: &mut boot_services,
-        nr_cfg: 0,
-        cfg_table: ptr::null(),
-    };
+    let system_table_impl: *mut SystemTableImpl = STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        state.system_table = Some(SharedBox::new(&SystemTableImpl {
+            header: Header {
+                signature: 0x1234_5678,
+                revision: Revision::new(2, 90),
+                size: 0,
+                crc: 0,
+                _reserved: 0,
+            },
+            fw_vendor: fw_vendor.as_ptr(),
+            fw_revision: 0x1516_1718,
+            stdin_handle: bad_handle,
+            stdin: ptr::null_mut(),
+            stdout_handle: stdout_handle,
+            stdout: stdout_ptr.cast(),
+            stderr_handle: bad_handle,
+            stderr: ptr::null_mut(),
+            // TODO
+            runtime: unsafe { &*(&runtime_services as *const RuntimeServices) },
+            boot: &mut boot_services,
+            nr_cfg: 0,
+            cfg_table: ptr::null(),
+        }));
+        state.system_table.as_mut().unwrap().as_mut_ptr()
+    });
 
-    let st: SystemTable<Boot> = unsafe {
-        SystemTable::from_ptr((&mut system_table_impl as *mut SystemTableImpl).cast()).unwrap()
-    };
+    let st: SystemTable<Boot> = unsafe { SystemTable::from_ptr(system_table_impl.cast()).unwrap() };
 
     entry(image, st)
 }
