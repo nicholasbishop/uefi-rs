@@ -4,21 +4,16 @@
 pub mod uefi_services;
 
 mod boot;
-mod console;
-mod fs;
-mod gop;
-mod loaded_image;
-mod pointer;
+mod proto;
 mod runtime;
 mod shared_box;
-mod text;
 
 use boot::{
     install_owned_protocol, open_protocol, with_owned_protocol_data, EventImpl, HandleImpl, Pages,
 };
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
-use fs::FsDb;
+use proto::fs::FsDb;
 use runtime::{VariableData, VariableKey};
 use shared_box::{SharedAnyBox, SharedBox};
 use std::cell::RefCell;
@@ -176,7 +171,7 @@ where
 
     let fw_vendor = CString16::try_from("uefi_stub").unwrap();
 
-    let stdout_handle = text::install_output_protocol().unwrap();
+    let stdout_handle = proto::text::install_output_protocol().unwrap();
 
     let boot_fs_handle = {
         let mut buf = [MaybeUninit::uninit(); 256];
@@ -201,7 +196,7 @@ where
         .unwrap()
     };
 
-    fs::install_simple_file_system(boot_fs_handle).unwrap();
+    proto::fs::install_simple_file_system(boot_fs_handle).unwrap();
 
     let image = {
         let mut interface = SharedAnyBox::new(LoadedImage {
@@ -219,7 +214,7 @@ where
             image_size: 0,
             image_code_type: MemoryType::LOADER_CODE,
             image_data_type: MemoryType::LOADER_DATA,
-            unload: loaded_image::unload,
+            unload: proto::loaded_image::unload,
 
             _no_send_or_sync: PhantomData,
         });
@@ -235,7 +230,7 @@ where
     };
 
     {
-        let mut interface = SharedAnyBox::new(text::make_device_path_to_text());
+        let mut interface = SharedAnyBox::new(proto::text::make_device_path_to_text());
         install_owned_protocol(
             None,
             DevicePathToText::GUID,
@@ -247,7 +242,7 @@ where
     }
 
     {
-        let mut interface = SharedAnyBox::new(text::make_device_path_from_text());
+        let mut interface = SharedAnyBox::new(proto::text::make_device_path_from_text());
         install_owned_protocol(
             None,
             DevicePathFromText::GUID,
@@ -258,9 +253,9 @@ where
         .unwrap();
     }
 
-    console::install_serial_protocol().unwrap();
-    gop::install_gop_protocol().unwrap();
-    pointer::install_pointer_protocol().unwrap();
+    proto::console::install_serial_protocol().unwrap();
+    proto::gop::install_gop_protocol().unwrap();
+    proto::pointer::install_pointer_protocol().unwrap();
 
     let mut stdout_ptr = ptr::null_mut();
     assert_eq!(
