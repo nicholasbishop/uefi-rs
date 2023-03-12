@@ -10,16 +10,17 @@ mod gop;
 mod loaded_image;
 mod pointer;
 mod runtime;
+mod shared_box;
 mod text;
 
 use boot::{
     install_owned_protocol, open_protocol, with_owned_protocol_data, EventImpl, HandleImpl, Pages,
-    SharedAnyBox, SharedBox,
 };
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
 use fs::FsDb;
 use runtime::{VariableData, VariableKey};
+use shared_box::{SharedAnyBox, SharedBox};
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
 use std::rc::Rc;
