@@ -1,24 +1,11 @@
-use alloc::collections::BTreeMap;
-use alloc::rc::Rc;
-use core::cell::RefCell;
+use crate::uefi_stub::STATE;
 use core::slice;
 use uefi::table::boot::MemoryDescriptor;
 use uefi::table::runtime::{ResetType, Time, TimeCapabilities, VariableAttributes};
 use uefi::{CStr16, CString16, Char16, Guid, Status};
 
-type VariableKey = (Guid, CString16);
-type VariableData = (VariableAttributes, Vec<u8>);
-
-pub struct State {
-    variables: BTreeMap<VariableKey, VariableData>,
-}
-
-// TODO: this follows the pattern in the boot.rs stub.
-thread_local! {
-    pub static STATE: Rc<RefCell<State>> = Rc::new(RefCell::new(State {
-        variables: BTreeMap::new(),
-    }))
-}
+pub type VariableKey = (Guid, CString16);
+pub type VariableData = (VariableAttributes, Vec<u8>);
 
 pub unsafe extern "efiapi" fn get_time(
     time: *mut Time,

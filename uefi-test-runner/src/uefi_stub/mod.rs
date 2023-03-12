@@ -19,8 +19,9 @@ use boot::{
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
 use fs::FsDb;
+use runtime::{VariableData, VariableKey};
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::rc::Rc;
 use std::{mem, ptr};
 use uefi::proto::console::text::Output;
@@ -46,11 +47,15 @@ macro_rules! try_status {
 }
 
 pub struct State {
+    // Boot state.
     handle_db: HashMap<Handle, Box<HandleImpl>>,
     events: HashMap<Event, Box<EventImpl>>,
     pages: Vec<Pages>,
     memory_descriptors: Vec<MemoryDescriptor>,
     fs_db: FsDb,
+
+    // Runtime state.
+    variables: BTreeMap<VariableKey, VariableData>,
 }
 
 // All "global" state goes in this thread local block. UEFI is single
@@ -70,6 +75,7 @@ thread_local! {
             att: MemoryAttribute::empty(),
         }],
         fs_db: FsDb::default(),
+        variables: BTreeMap::new(),
     }));
 }
 
