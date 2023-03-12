@@ -1,4 +1,4 @@
-use crate::uefi_stub::{install_owned_protocol, SharedAnyBox};
+use crate::uefi_stub::{install_owned_protocol, with_owned_protocol_data, SharedAnyBox};
 use core::marker::PhantomData;
 use core::{mem, ptr};
 use uefi::proto::console::gop::{
@@ -6,13 +6,21 @@ use uefi::proto::console::gop::{
 };
 use uefi::{Handle, Identify, Result, Status};
 
+type ProtocolData = (GraphicsOutput, ModeData, ModeInfo);
+
 extern "efiapi" fn query_mode(
     this: &GraphicsOutput,
     mode: u32,
     info_sz: &mut usize,
     info: &mut *const ModeInfo,
 ) -> Status {
-    // TODO
+    *info_sz = mem::size_of::<ModeInfo>();
+    // TODO: assuming just one mode
+    with_owned_protocol_data::<ProtocolData, _, _>(this, |data| {
+        *info = &data.2;
+    })
+    .unwrap();
+
     Status::SUCCESS
 }
 
@@ -71,9 +79,7 @@ pub fn install_gop_protocol() -> Result<Handle> {
             stride: 0,
         },
     ));
-    let tmp = data
-        .downcast_mut::<(GraphicsOutput, ModeData, ModeInfo)>()
-        .unwrap();
+    let tmp = data.downcast_mut::<ProtocolData>().unwrap();
     tmp.1.info = &tmp.2;
     tmp.0.mode = &tmp.1;
     let interface = data.as_mut_ptr();

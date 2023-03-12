@@ -12,6 +12,7 @@ use std::ptr::NonNull;
 use std::rc::Rc;
 use uefi::data_types::Align;
 use uefi::proto::device_path::{DevicePath, FfiDevicePath};
+use uefi::proto::Protocol;
 use uefi::table::boot::{
     EventType, InterfaceType, MemoryAttribute, MemoryDescriptor, MemoryMapKey, MemoryType,
     ProtocolSearchKey, Tpl,
@@ -328,6 +329,42 @@ pub unsafe extern "efiapi" fn check_event(event: Event) -> Status {
 
         // TODO
         Status::SUCCESS
+    })
+}
+
+// TODO: what if we had some new kind of OwnedProtocol trait with associated
+// types for the protocol interface type and data type? Then maybe could avoid
+// some of this Any stuff.
+
+pub fn with_owned_protocol_data<D: 'static, P, F>(key: &P, f: F) -> Result
+where
+    P: Protocol,
+    F: FnOnce(&mut D),
+{
+    let key: *const _ = key;
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let db = &mut state.handle_db;
+
+        for handle_data in db.values_mut() {
+            if let Some(protocol_wrapper) = handle_data.get_mut(&P::GUID) {
+                match &mut protocol_wrapper.interface {
+                    ProtocolInterface::Owned { ptr, data } => {
+                        if ptr.cast_const() == key.cast() {
+                            if let Some(data) = data.downcast_mut::<D>() {
+                                f(data);
+                                return Ok(());
+                            } else {
+                                return Err(Status::ABORTED.into());
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        Err(Status::NOT_FOUND.into())
     })
 }
 
