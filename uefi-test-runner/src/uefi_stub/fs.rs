@@ -1,5 +1,4 @@
-use super::boot::STATE;
-use crate::uefi_stub::{install_owned_protocol, SharedAnyBox};
+use crate::uefi_stub::{install_owned_protocol, SharedAnyBox, STATE};
 use core::marker::PhantomData;
 use std::collections::HashMap;
 use std::ffi::c_void;

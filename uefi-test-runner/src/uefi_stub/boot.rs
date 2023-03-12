@@ -1,21 +1,18 @@
-use super::fs::FsDb;
 use crate::try_status;
+use crate::uefi_stub::STATE;
 use log::debug;
 use std::alloc::{self, Layout};
 use std::any::Any;
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ffi::c_void;
 use std::mem::{self, MaybeUninit};
 use std::ptr;
 use std::ptr::NonNull;
-use std::rc::Rc;
 use uefi::data_types::Align;
 use uefi::proto::device_path::{DevicePath, FfiDevicePath};
 use uefi::proto::Protocol;
 use uefi::table::boot::{
-    EventType, InterfaceType, MemoryAttribute, MemoryDescriptor, MemoryMapKey, MemoryType,
-    ProtocolSearchKey, Tpl,
+    EventType, InterfaceType, MemoryDescriptor, MemoryMapKey, MemoryType, ProtocolSearchKey, Tpl,
 };
 use uefi::{Char16, Event, Guid, Handle, Identify, Result, Status};
 
@@ -38,14 +35,14 @@ impl ProtocolInterface {
     }
 }
 
-struct ProtocolWrapper {
+pub struct ProtocolWrapper {
     interface: ProtocolInterface,
     in_use: bool,
 }
 
-type HandleImpl = HashMap<Guid, ProtocolWrapper>;
+pub type HandleImpl = HashMap<Guid, ProtocolWrapper>;
 
-struct EventImpl {
+pub struct EventImpl {
     ty: EventType,
     notify_func: Option<EventNotifyFn>,
     notify_ctx: Option<NonNull<c_void>>,
@@ -149,34 +146,6 @@ impl<T: ?Sized> Drop for SharedBox<T> {
             alloc::dealloc(self.ptr.cast(), self.layout);
         }
     }
-}
-
-pub struct State {
-    handle_db: HashMap<Handle, Box<HandleImpl>>,
-    events: HashMap<Event, Box<EventImpl>>,
-    pages: Vec<Pages>,
-    memory_descriptors: Vec<MemoryDescriptor>,
-    pub fs_db: FsDb,
-}
-
-// All "global" state goes in this thread local block. UEFI is single
-// threaded, so we have types like `Protocols` that can't be shared
-// between threads.
-thread_local! {
-    pub static STATE: Rc<RefCell<State>> = Rc::new(RefCell::new(State {
-        handle_db: HashMap::new(),
-        events: HashMap::new(),
-        pages: Vec::new(),
-        // Stub in some data to get past the memory test.
-        memory_descriptors: vec![MemoryDescriptor {
-            ty: MemoryType::LOADER_CODE,
-            phys_start: 0,
-            virt_start: 0,
-            page_count: 1,
-            att: MemoryAttribute::empty(),
-        }],
-        fs_db: FsDb::default(),
-    }));
 }
 
 // TODO: copied from boot.rs

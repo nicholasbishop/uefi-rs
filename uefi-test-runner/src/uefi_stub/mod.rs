@@ -13,20 +13,25 @@ mod runtime;
 mod text;
 
 use boot::{
-    install_owned_protocol, open_protocol, with_owned_protocol_data, SharedAnyBox, SharedBox,
+    install_owned_protocol, open_protocol, with_owned_protocol_data, EventImpl, HandleImpl, Pages,
+    SharedAnyBox, SharedBox,
 };
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
+use fs::FsDb;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
 use std::{mem, ptr};
 use uefi::proto::console::text::Output;
 use uefi::proto::device_path::build::DevicePathBuilder;
 use uefi::proto::device_path::text::{DevicePathFromText, DevicePathToText};
 use uefi::proto::device_path::DevicePath;
 use uefi::proto::loaded_image::LoadedImage;
-use uefi::table::boot::{BootServices, MemoryType};
+use uefi::table::boot::{BootServices, MemoryAttribute, MemoryDescriptor, MemoryType};
 use uefi::table::runtime::RuntimeServices;
 use uefi::table::{Boot, Header, Revision, SystemTable, SystemTableImpl};
-use uefi::{CString16, Handle, Identify, Status};
+use uefi::{CString16, Event, Handle, Identify, Status};
 
 #[macro_export]
 macro_rules! try_status {
@@ -38,6 +43,34 @@ macro_rules! try_status {
             }
         }
     };
+}
+
+pub struct State {
+    handle_db: HashMap<Handle, Box<HandleImpl>>,
+    events: HashMap<Event, Box<EventImpl>>,
+    pages: Vec<Pages>,
+    memory_descriptors: Vec<MemoryDescriptor>,
+    fs_db: FsDb,
+}
+
+// All "global" state goes in this thread local block. UEFI is single
+// threaded, so we have types like `Protocols` that can't be shared
+// between threads.
+thread_local! {
+    pub static STATE: Rc<RefCell<State>> = Rc::new(RefCell::new(State {
+        handle_db: HashMap::new(),
+        events: HashMap::new(),
+        pages: Vec::new(),
+        // Stub in some data to get past the memory test.
+        memory_descriptors: vec![MemoryDescriptor {
+            ty: MemoryType::LOADER_CODE,
+            phys_start: 0,
+            virt_start: 0,
+            page_count: 1,
+            att: MemoryAttribute::empty(),
+        }],
+        fs_db: FsDb::default(),
+    }));
 }
 
 pub fn launch<E>(entry: E) -> Status
