@@ -629,32 +629,3 @@ pub struct TftpError {
     pub error_code: u8,
     pub error_string: [u8; 127],
 }
-
-/// Returned by [`BaseCode::tftp_read_dir`].
-#[allow(missing_docs)]
-#[derive(Debug)]
-pub struct TftpFileInfo<'a> {
-    pub filename: &'a [u8],
-    pub size: u64,
-    pub year: u16,
-    pub month: u8,
-    pub day: u8,
-    pub hour: u8,
-    pub minute: u8,
-    pub second: f32,
-}
-
-/// Returned by [`BaseCode::mtftp_read_dir`].
-#[allow(missing_docs)]
-#[derive(Debug)]
-pub struct MtftpFileInfo<'a> {
-    pub filename: &'a [u8],
-    pub ip_address: IpAddress,
-    pub size: u64,
-    pub year: u16,
-    pub month: u8,
-    pub day: u8,
-    pub hour: u8,
-    pub minute: u8,
-    pub second: f32,
-}

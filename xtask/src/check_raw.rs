@@ -40,6 +40,8 @@ fn check_file(path: &Path, errors: &mut Vec<Error>) -> Result<()> {
     // * repr C/transparent
     // * no bool
     // * check extern fns
+    // * No generics, no references
+    // * No phantomdata?
 
     // Other TODO:
     // * get rid of data_types, move stuff up
@@ -50,6 +52,7 @@ fn check_file(path: &Path, errors: &mut Vec<Error>) -> Result<()> {
     // * Get rid of all feature cfgs
     // * get rid of deprecated
     // * Auto-reformat all the `use`
+    // * Drop tests
 
     for item in ast.items.iter() {
         match item {

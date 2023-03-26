@@ -1,78 +1,3 @@
-//! Device Path protocol
-//!
-//! A UEFI device path is a very flexible structure for encoding a
-//! programmatic path such as a hard drive or console.
-//!
-//! A device path is made up of a packed list of variable-length nodes of
-//! various types. The entire device path is terminated with an
-//! [`END_ENTIRE`] node. A device path _may_ contain multiple device-path
-//! instances separated by [`END_INSTANCE`] nodes, but typical paths contain
-//! only a single instance (in which case no `END_INSTANCE` node is needed).
-//!
-//! Example of what a device path containing two instances (each comprised of
-//! three nodes) might look like:
-//!
-//! ```text
-//! ┌──────┬─────┬──────────────╥───────┬──────────┬────────────┐
-//! │ ACPI │ PCI │ END_INSTANCE ║ CDROM │ FILEPATH │ END_ENTIRE │
-//! └──────┴─────┴──────────────╨───────┴──────────┴────────────┘
-//! ↑                           ↑                               ↑
-//! ├─── DevicePathInstance ────╨────── DevicePathInstance ─────┤
-//! │                                                           │
-//! └─────────────────── Entire DevicePath ─────────────────────┘
-//! ```
-//!
-//! # Types
-//!
-//! To represent device paths, this module provides several types:
-//!
-//! * [`DevicePath`] is the root type that represents a full device
-//!   path, containing one or more device path instance. It ends with an
-//!   [`END_ENTIRE`] node. It implements [`Protocol`] (corresponding to
-//!   `EFI_DEVICE_PATH_PROTOCOL`).
-//!
-//! * [`DevicePathInstance`] represents a single path instance within a
-//!   device path. It ends with either an [`END_INSTANCE`] or [`END_ENTIRE`]
-//!   node.
-//!
-//! * [`DevicePathNode`] represents a single node within a path. The
-//!   node's [`device_type`] and [`sub_type`] must be examined to
-//!   determine what type of data it contains.
-//!
-//!   Specific node types have their own structures in these submodules:
-//!   * [`acpi`]
-//!   * [`bios_boot_spec`]
-//!   * [`end`]
-//!   * [`hardware`]
-//!   * [`media`]
-//!   * [`messaging`]
-//!
-//! * [`DevicePathNodeEnum`] contains variants for references to each
-//!   type of node. Call [`DevicePathNode::as_enum`] to convert from a
-//!   [`DevicePathNode`] reference to a `DevicePathNodeEnum`.
-//!
-//! * [`DevicePathHeader`] is a header present at the start of every
-//!   node. It describes the type of node as well as the node's size.
-//!
-//! * [`FfiDevicePath`] is an opaque type used whenever a device path
-//!   pointer is passed to or from external UEFI interfaces (i.e. where
-//!   the UEFI spec uses `const* EFI_DEVICE_PATH_PROTOCOL`, `*const
-//!   FfiDevicePath` should be used in the Rust definition). Many of the
-//!   other types in this module are DSTs, so pointers to the type are
-//!   "fat" and not suitable for FFI.
-//!
-//! All of these types use a packed layout and may appear on any byte
-//! boundary.
-//!
-//! Note: the API provided by this module is currently mostly limited to
-//! reading existing device paths rather than constructing new ones.
-//!
-//! [`END_ENTIRE`]: DeviceSubType::END_ENTIRE
-//! [`END_INSTANCE`]: DeviceSubType::END_INSTANCE
-//! [`Protocol`]: crate::proto::Protocol
-//! [`device_type`]: DevicePathNode::device_type
-//! [`sub_type`]: DevicePathNode::sub_type
-
 pub mod text;
 
 mod device_path_gen;
@@ -141,15 +66,6 @@ impl PartialEq for DevicePathNode {
     }
 }
 
-/// A single device path instance that ends with either an [`END_INSTANCE`]
-/// or [`END_ENTIRE`] node. Use [`DevicePath::instance_iter`] to get the
-/// path instances in a [`DevicePath`].
-///
-/// See the [module-level documentation] for more details.
-///
-/// [`END_ENTIRE`]: DeviceSubType::END_ENTIRE
-/// [`END_INSTANCE`]: DeviceSubType::END_INSTANCE
-/// [module-level documentation]: crate::proto::device_path
 #[repr(C, packed)]
 #[derive(Eq, Pointee)]
 pub struct DevicePathInstance {

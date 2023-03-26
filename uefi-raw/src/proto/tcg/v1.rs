@@ -92,8 +92,6 @@ pub struct Version {
     pub rev_minor: u8,
 }
 
-/// Entry in the [`EventLog`].
-///
 /// Layout compatible with the C type `TCG_PCR_EVENT`.
 ///
 /// Naming note: the spec refers to "event data" in two conflicting

@@ -433,8 +433,7 @@ pub enum InterfaceType: i32 => {
 }
 }
 
-/// Opaque pointer returned by [`BootServices::register_protocol_notify`] to be used
-/// with [`BootServices::locate_handle`] via [`SearchType::ByRegisterNotify`].
+// TODO: typedef?
 #[derive(Debug, Clone, Copy)]
 #[repr(transparent)]
 pub struct ProtocolSearchKey(pub NonNull<c_void>);

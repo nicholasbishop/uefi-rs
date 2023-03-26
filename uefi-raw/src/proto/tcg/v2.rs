@@ -193,8 +193,6 @@ pub struct EventLogHeader {
     pub data: [u8],
 }
 
-/// TPM event log as returned by [`Tcg::get_event_log_v2`].
-///
 /// This type of event log can contain multiple hash types (e.g. SHA-1, SHA-256,
 /// SHA-512, etc).
 #[derive(Debug)]

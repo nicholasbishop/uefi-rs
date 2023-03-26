@@ -6,16 +6,7 @@ use crate::{guid, Char16, Guid, Status};
 use bitflags::bitflags;
 use core::fmt;
 use core::fmt::{Debug, Formatter};
-/// Contains pointers to all of the runtime services.
-///
-/// This table, and the function pointers it contains are valid
-/// even after the UEFI OS loader and OS have taken control of the platform.
-///
-/// # Accessing `RuntimeServices`
-///
-/// A reference to `RuntimeServices` can only be accessed by calling [`SystemTable::runtime_services`].
-///
-/// [`SystemTable::runtime_services`]: crate::table::SystemTable::runtime_services
+
 #[repr(C)]
 pub struct RuntimeServices {
     pub header: Header,
@@ -125,29 +116,6 @@ pub struct TimeError;
 impl Time {
     /// Unspecified Timezone/local time.
     const UNSPECIFIED_TIMEZONE: i16 = 0x07ff;
-
-    /// Create an invalid `Time` with all fields set to zero. This can
-    /// be used with [`FileInfo`] to indicate a field should not be
-    /// updated when calling [`File::set_info`].
-    ///
-    /// [`FileInfo`]: uefi::proto::media::file::FileInfo
-    /// [`File::set_info`]: uefi::proto::media::file::File::set_info
-    #[must_use]
-    pub const fn invalid() -> Self {
-        Self {
-            year: 0,
-            month: 0,
-            day: 0,
-            hour: 0,
-            minute: 0,
-            second: 0,
-            _pad1: 0,
-            nanosecond: 0,
-            time_zone: 0,
-            daylight: Daylight::empty(),
-            _pad2: 0,
-        }
-    }
 
     /// True if all fields are within valid ranges, false otherwise.
     #[must_use]
