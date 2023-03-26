@@ -134,9 +134,9 @@ fn test_existing_file(directory: &mut Directory) {
         time_zone: None,
         daylight: Daylight::empty(),
     };
-    assert_eq!(*info.create_time(), Time::new(tp).unwrap());
+    assert_eq!(info.create_time(), Time::new(tp).unwrap());
     assert_eq!(
-        *info.last_access_time(),
+        info.last_access_time(),
         Time::new(TimeParams {
             year: 2001,
             month: 2,
@@ -146,7 +146,7 @@ fn test_existing_file(directory: &mut Directory) {
         .unwrap()
     );
     assert_eq!(
-        *info.modification_time(),
+        info.modification_time(),
         Time::new(TimeParams {
             year: 2002,
             month: 3,

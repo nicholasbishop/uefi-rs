@@ -11,7 +11,6 @@ mod info;
 mod regular;
 
 use crate::{CStr16, Char16, Guid, Result, Status};
-use bitflags::bitflags;
 use core::ffi::c_void;
 use core::fmt::Debug;
 use core::{mem, ptr};
@@ -392,24 +391,7 @@ pub enum FileMode {
     CreateReadWrite = (1 << 63) | 2 | 1,
 }
 
-bitflags! {
-    /// Attributes describing the properties of a file on the file system.
-    #[repr(transparent)]
-    pub struct FileAttribute: u64 {
-        /// File can only be opened in [`FileMode::READ`] mode.
-        const READ_ONLY = 1;
-        /// Hidden file, not normally visible to the user.
-        const HIDDEN = 1 << 1;
-        /// System file, indicates this file is an internal operating system file.
-        const SYSTEM = 1 << 2;
-        /// This file is a directory.
-        const DIRECTORY = 1 << 4;
-        /// This file is compressed.
-        const ARCHIVE = 1 << 5;
-        /// Mask combining all the valid attributes.
-        const VALID_ATTR = 0x37;
-    }
-}
+pub use uefi_raw::protocol::media::file::FileAttribute;
 
 #[cfg(test)]
 mod tests {

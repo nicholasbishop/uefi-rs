@@ -1,0 +1,174 @@
+//! [TCG] (Trusted Computing Group) protocol for [TPM] (Trusted Platform
+//! Module) 1.1 and 1.2.
+//!
+//! This protocol is defined in the [TCG EFI Protocol Specification _for
+//! TPM Family 1.1 or 1.2_][spec].
+//!
+//! [spec]: https://trustedcomputinggroup.org/resource/tcg-efi-protocol-specification/
+//! [TCG]: https://trustedcomputinggroup.org/
+//! [TPM]: https://en.wikipedia.org/wiki/Trusted_Platform_Module
+
+use super::{EventType, HashAlgorithm, PcrIndex};
+use crate::{guid, Guid, PhysicalAddress, Status};
+use core::fmt::{self, Debug, Formatter};
+use ptr_meta::Pointee;
+
+/// 20-byte SHA-1 digest.
+pub type Sha1Digest = [u8; 20];
+
+/// This corresponds to the `AlgorithmId` enum, but in the v1 spec it's `u32`
+/// instead of `u16`.
+#[allow(non_camel_case_types)]
+pub type TCG_ALGORITHM_ID = u32;
+
+/// Information about the protocol and the TPM device.
+///
+/// Layout compatible with the C type `TCG_EFI_BOOT_SERVICE_CAPABILITY`.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Ord, PartialOrd)]
+pub struct BootServiceCapability {
+    pub size: u8,
+    pub structure_version: Version,
+    pub protocol_spec_version: Version,
+    pub hash_algorithm_bitmap: u8,
+    pub tpm_present_flag: u8,
+    pub tpm_deactivated_flag: u8,
+}
+
+impl BootServiceCapability {
+    /// Version of the `BootServiceCapability` structure.
+    #[must_use]
+    pub fn structure_version(&self) -> Version {
+        self.structure_version
+    }
+
+    /// Version of the `Tcg` protocol.
+    #[must_use]
+    pub fn protocol_spec_version(&self) -> Version {
+        self.protocol_spec_version
+    }
+
+    /// Supported hash algorithms.
+    #[must_use]
+    pub fn hash_algorithm(&self) -> HashAlgorithm {
+        // Safety: the value should always be 0x1 (indicating SHA-1), but
+        // we don't care if it's some unexpected value.
+        unsafe { HashAlgorithm::from_bits_unchecked(u32::from(self.hash_algorithm_bitmap)) }
+    }
+
+    /// Whether the TPM device is present.
+    #[must_use]
+    pub fn tpm_present(&self) -> bool {
+        self.tpm_present_flag != 0
+    }
+
+    /// Whether the TPM device is deactivated.
+    #[must_use]
+    pub fn tpm_deactivated(&self) -> bool {
+        self.tpm_deactivated_flag != 0
+    }
+}
+
+/// Version information.
+///
+/// Layout compatible with the C type `TCG_VERSION`.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Ord, PartialOrd)]
+pub struct Version {
+    /// Major version.
+    pub major: u8,
+    /// Minor version.
+    pub minor: u8,
+
+    // Leave these two fields undocumented since it's not clear what
+    // they are for. The spec doesn't say, and they were removed in the
+    // v2 spec.
+    #[allow(missing_docs)]
+    pub rev_major: u8,
+    #[allow(missing_docs)]
+    pub rev_minor: u8,
+}
+
+/// Layout compatible with the C type `TCG_PCR_EVENT`.
+///
+/// Naming note: the spec refers to "event data" in two conflicting
+/// ways: the `event_data` field and the data hashed in the digest
+/// field. These two are independent; although the event data _can_ be
+/// what is hashed in the digest field, it doesn't have to be.
+#[repr(C, packed)]
+#[derive(Pointee)]
+pub struct PcrEvent {
+    pub pcr_index: PcrIndex,
+    pub event_type: EventType,
+    pub digest: Sha1Digest,
+    pub event_data_size: u32,
+    pub event_data: [u8],
+}
+
+// Manual `Debug` implementation since it can't be derived for a packed DST.
+impl Debug for PcrEvent {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PcrEvent")
+            .field("pcr_index", &{ self.pcr_index })
+            .field("event_type", &{ self.event_type })
+            .field("digest", &self.digest)
+            .field("event_data_size", &{ self.event_data_size })
+            .field("event_data", &&self.event_data)
+            .finish()
+    }
+}
+
+opaque_type! {
+    /// Opaque type that should be used to represent a pointer to a [`PcrEvent`] in
+    /// foreign function interfaces. This type produces a thin pointer, unlike
+    /// [`PcrEvent`].
+    pub struct FfiPcrEvent;
+}
+
+/// Protocol for interacting with TPM 1.1 and 1.2 devices.
+///
+/// The corresponding C type is `EFI_TCG_PROTOCOL`.
+#[repr(C)]
+pub struct Tcg {
+    pub status_check: unsafe extern "efiapi" fn(
+        this: *mut Tcg,
+        protocol_capability: *mut BootServiceCapability,
+        feature_flags: *mut u32,
+        event_log_location: *mut PhysicalAddress,
+        event_log_last_entry: *mut PhysicalAddress,
+    ) -> Status,
+
+    pub hash_all: unsafe extern "efiapi" fn() -> Status,
+
+    pub log_event: unsafe extern "efiapi" fn(
+        this: *mut Tcg,
+        // The spec does not guarantee that the `event` will not be mutated
+        // through the pointer, but it seems reasonable to assume and makes the
+        // public interface clearer, so use a const pointer.
+        event: *const FfiPcrEvent,
+        event_number: *mut u32,
+        flags: u32,
+    ) -> Status,
+
+    pub pass_through_to_tpm: unsafe extern "efiapi" fn(
+        this: *mut Tcg,
+        tpm_input_parameter_block_size: u32,
+        tpm_input_parameter_block: *const u8,
+        tpm_output_parameter_block_size: u32,
+        tpm_output_parameter_block: *mut u8,
+    ) -> Status,
+
+    pub hash_log_extend_event: unsafe extern "efiapi" fn(
+        this: *mut Tcg,
+        hash_data: PhysicalAddress,
+        hash_data_len: u64,
+        algorithm_id: TCG_ALGORITHM_ID,
+        event: *mut FfiPcrEvent,
+        event_number: *mut u32,
+        event_log_last_entry: *mut PhysicalAddress,
+    ) -> Status,
+}
+
+impl Tcg {
+    pub const GUID: Guid = guid!("f541796d-a62e-4954-a775-9584f61b9cdd");
+}

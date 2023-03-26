@@ -142,17 +142,8 @@ pub enum FileInfoCreationError {
 /// - If a file is read-only, the only allowed change is to remove the read-only
 ///   attribute. Other changes must be carried out in a separate transaction.
 #[derive(Debug, Eq, PartialEq, Pointee)]
-#[repr(C)]
-pub struct FileInfo {
-    size: u64,
-    file_size: u64,
-    physical_size: u64,
-    create_time: Time,
-    last_access_time: Time,
-    modification_time: Time,
-    attribute: FileAttribute,
-    file_name: [Char16],
-}
+#[repr(transparent)]
+pub struct FileInfo(uefi_raw::protocol::media::file::FileInfo);
 
 impl FileInfo {
     /// Create a `FileInfo` structure
@@ -177,13 +168,13 @@ impl FileInfo {
     ) -> core::result::Result<&'buf mut Self, FileInfoCreationError> {
         unsafe {
             Self::new_impl(storage, file_name, |ptr, size| {
-                ptr::addr_of_mut!((*ptr).size).write(size);
-                ptr::addr_of_mut!((*ptr).file_size).write(file_size);
-                ptr::addr_of_mut!((*ptr).physical_size).write(physical_size);
-                ptr::addr_of_mut!((*ptr).create_time).write(create_time);
-                ptr::addr_of_mut!((*ptr).last_access_time).write(last_access_time);
-                ptr::addr_of_mut!((*ptr).modification_time).write(modification_time);
-                ptr::addr_of_mut!((*ptr).attribute).write(attribute);
+                ptr::addr_of_mut!((*ptr).0.size).write(size);
+                ptr::addr_of_mut!((*ptr).0.file_size).write(file_size);
+                ptr::addr_of_mut!((*ptr).0.physical_size).write(physical_size);
+                ptr::addr_of_mut!((*ptr).0.create_time).write(create_time.0);
+                ptr::addr_of_mut!((*ptr).0.last_access_time).write(last_access_time.0);
+                ptr::addr_of_mut!((*ptr).0.modification_time).write(modification_time.0);
+                ptr::addr_of_mut!((*ptr).0.attribute).write(attribute);
             })
         }
     }
@@ -191,43 +182,43 @@ impl FileInfo {
     /// File size (number of bytes stored in the file)
     #[must_use]
     pub const fn file_size(&self) -> u64 {
-        self.file_size
+        self.0.file_size
     }
 
     /// Physical space consumed by the file on the file system volume
     #[must_use]
     pub const fn physical_size(&self) -> u64 {
-        self.physical_size
+        self.0.physical_size
     }
 
     /// Time when the file was created
     #[must_use]
-    pub const fn create_time(&self) -> &Time {
-        &self.create_time
+    pub const fn create_time(&self) -> Time {
+        Time(self.0.create_time)
     }
 
     /// Time when the file was last accessed
     #[must_use]
-    pub const fn last_access_time(&self) -> &Time {
-        &self.last_access_time
+    pub const fn last_access_time(&self) -> Time {
+        Time(self.0.last_access_time)
     }
 
     /// Time when the file's contents were last modified
     #[must_use]
-    pub const fn modification_time(&self) -> &Time {
-        &self.modification_time
+    pub const fn modification_time(&self) -> Time {
+        Time(self.0.modification_time)
     }
 
     /// Attribute bits for the file
     #[must_use]
     pub const fn attribute(&self) -> FileAttribute {
-        self.attribute
+        self.0.attribute
     }
 
     /// Name of the file
     #[must_use]
     pub fn file_name(&self) -> &CStr16 {
-        unsafe { CStr16::from_ptr(self.file_name.as_ptr()) }
+        unsafe { CStr16::from_ptr(self.0.file_name.as_ptr().cast()) }
     }
 }
 
@@ -446,14 +437,14 @@ mod tests {
         )
         .unwrap();
 
-        validate_layout(info, &info.file_name);
+        validate_layout(info, &info.0.file_name);
 
         //   Header size: 80 bytes
         // + Name size (including trailing null): 20 bytes
         // = 100
         // Round size up to match FileInfo alignment of 8: 104
-        assert_eq!(info.size, 104);
-        assert_eq!(info.size, mem::size_of_val(info) as u64);
+        assert_eq!(info.0.size, 104);
+        assert_eq!(info.0.size, mem::size_of_val(info) as u64);
 
         assert_eq!(info.file_size(), file_size);
         assert_eq!(info.physical_size(), physical_size);

@@ -66,6 +66,7 @@ pub struct Opt {
 #[derive(Debug, Subcommand)]
 pub enum Action {
     Build(BuildOpt),
+    CheckRaw(CheckRawOpt),
     Clippy(ClippyOpt),
     Doc(DocOpt),
     GenCode(GenCodeOpt),
@@ -87,6 +88,12 @@ pub struct BuildOpt {
     /// combinations work.
     #[clap(long, action)]
     pub feature_permutations: bool,
+}
+
+/// TODO.
+#[derive(Debug, Parser)]
+pub struct CheckRawOpt {
+    // TODO
 }
 
 /// Run clippy on all the packages.
