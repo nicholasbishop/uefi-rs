@@ -42,6 +42,7 @@ fn check_file(path: &Path, errors: &mut Vec<Error>) -> Result<()> {
     // * check extern fns
     // * No generics, no references
     // * No phantomdata?
+    // * Ensure Option on Event/Handle types?
 
     // Other TODO:
     // * get rid of data_types, move stuff up
