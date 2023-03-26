@@ -241,32 +241,6 @@ pub enum Tpl: usize => {
     HIGH_LEVEL  = 31,
 }}
 
-// OpenProtocolAttributes is safe to model as a regular enum because it
-// is only used as an input. The attributes are bitflags, but all valid
-// combinations are listed in the spec and only ByDriver and Exclusive
-// can actually be combined.
-//
-// Some values intentionally excluded:
-//
-// ByHandleProtocol (0x01) excluded because it is only intended to be
-// used in an implementation of `HandleProtocol`.
-//
-// TestProtocol (0x04) excluded because it doesn't actually open the
-// protocol, just tests if it's present on the handle. Since that
-// changes the interface significantly, that's exposed as a separate
-// method: `BootServices::test_protocol`.
-
-/// Type of allocation to perform.
-#[derive(Debug, Copy, Clone)]
-pub enum AllocateType {
-    /// Allocate any possible pages.
-    AnyPages,
-    /// Allocate pages at any address below the given address.
-    MaxAddress(PhysicalAddress),
-    /// Allocate pages at the specified address.
-    Address(PhysicalAddress),
-}
-
 newtype_enum! {
 /// The type of a memory range.
 ///
@@ -573,29 +547,6 @@ impl ExactSizeIterator for MemoryMapIter<'_> {
     }
 }
 
-/// The type of handle search to perform.
-#[derive(Debug, Copy, Clone)]
-pub enum SearchType<'guid> {
-    /// Return all handles present on the system.
-    AllHandles,
-    /// Returns all handles supporting a certain protocol, specified by its GUID.
-    ///
-    /// If the protocol implements the `Protocol` interface,
-    /// you can use the `from_proto` function to construct a new `SearchType`.
-    ByProtocol(&'guid Guid),
-    /// Return all handles that implement a protocol when an interface for that protocol
-    /// is (re)installed.
-    ByRegisterNotify(ProtocolSearchKey),
-}
-
-impl<'guid> SearchType<'guid> {
-    /// Constructs a new search type for a specified protocol.
-    #[must_use]
-    pub const fn from_proto<P: ProtocolPointer + ?Sized>() -> Self {
-        SearchType::ByProtocol(&P::GUID)
-    }
-}
-
 bitflags! {
     /// Flags describing the type of an UEFI event and its attributes.
     pub struct EventType: u32 {
@@ -632,21 +583,6 @@ bitflags! {
 /// Raw event notification function
 type EventNotifyFn = unsafe extern "efiapi" fn(event: Event, context: Option<NonNull<c_void>>);
 
-/// Timer events manipulation.
-#[derive(Debug)]
-pub enum TimerTrigger {
-    /// Cancel event's timer
-    Cancel,
-    /// The event is to be signaled periodically.
-    /// Parameter is the period in 100ns units.
-    /// Delay of 0 will be signalled on every timer tick.
-    Periodic(u64),
-    /// The event is to be signaled once in 100ns units.
-    /// Parameter is the delay in 100ns units.
-    /// Delay of 0 will be signalled on next timer tick.
-    Relative(u64),
-}
-
 newtype_enum! {
 /// Interface type of a protocol interface
 ///
@@ -655,100 +591,4 @@ pub enum InterfaceType: i32 => {
     /// Native interface
     NATIVE_INTERFACE    = 0,
 }
-}
-
-/// Opaque pointer returned by [`BootServices::register_protocol_notify`] to be used
-/// with [`BootServices::locate_handle`] via [`SearchType::ByRegisterNotify`].
-#[derive(Debug, Clone, Copy)]
-#[repr(transparent)]
-pub struct ProtocolSearchKey(NonNull<c_void>);
-
-#[cfg(test)]
-mod tests {
-    use core::mem::size_of;
-
-    use crate::table::boot::{MemoryAttribute, MemoryMap, MemoryMapKey, MemoryType};
-
-    use super::{MemoryDescriptor, MemoryMapIter};
-
-    #[test]
-    fn mem_map_sorting() {
-        // Doesn't matter what type it is.
-        const TY: MemoryType = MemoryType::RESERVED;
-
-        const BASE: MemoryDescriptor = MemoryDescriptor {
-            ty: TY,
-            phys_start: 0,
-            virt_start: 0,
-            page_count: 0,
-            att: MemoryAttribute::empty(),
-        };
-
-        let mut buffer = [
-            MemoryDescriptor {
-                phys_start: 2000,
-                ..BASE
-            },
-            MemoryDescriptor {
-                phys_start: 3000,
-                ..BASE
-            },
-            BASE,
-            MemoryDescriptor {
-                phys_start: 1000,
-                ..BASE
-            },
-        ];
-
-        let desc_count = buffer.len();
-
-        let byte_buffer = {
-            let size = desc_count * size_of::<MemoryDescriptor>();
-            unsafe { core::slice::from_raw_parts_mut(buffer.as_mut_ptr() as *mut u8, size) }
-        };
-
-        let mut mem_map = MemoryMap {
-            // Key doesn't matter
-            key: MemoryMapKey(0),
-            len: desc_count,
-            buf: byte_buffer,
-            entry_size: size_of::<MemoryDescriptor>(),
-        };
-
-        mem_map.sort();
-
-        if !is_sorted(&mem_map.entries()) {
-            panic!("mem_map is not sorted: {}", mem_map);
-        }
-    }
-
-    // Added for debug purposes on test failure
-    impl core::fmt::Display for MemoryMap<'_> {
-        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-            writeln!(f)?;
-            for desc in self.entries() {
-                writeln!(f, "{:?}", desc)?;
-            }
-            Ok(())
-        }
-    }
-
-    fn is_sorted(iter: &MemoryMapIter) -> bool {
-        let mut iter = iter.clone();
-        let mut curr_start;
-
-        if let Some(val) = iter.next() {
-            curr_start = val.phys_start;
-        } else {
-            return true;
-        }
-
-        for desc in iter {
-            if desc.phys_start <= curr_start {
-                return false;
-            }
-            curr_start = desc.phys_start
-        }
-        true
-    }
 }
