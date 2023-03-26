@@ -377,7 +377,7 @@ bitflags! {
 /// If the memory map changes, this value is no longer valid.
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[repr(C)]
-pub struct MemoryMapKey(usize);
+pub struct MemoryMapKey(pub usize);
 
 /// A structure containing the size of a memory descriptor and the size of the
 /// memory map.
@@ -586,4 +586,4 @@ pub enum InterfaceType: i32 => {
 /// with [`BootServices::locate_handle`] via [`SearchType::ByRegisterNotify`].
 #[derive(Debug, Clone, Copy)]
 #[repr(transparent)]
-pub struct ProtocolSearchKey(NonNull<c_void>);
+pub struct ProtocolSearchKey(pub NonNull<c_void>);

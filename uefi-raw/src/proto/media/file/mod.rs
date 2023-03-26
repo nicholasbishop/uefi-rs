@@ -6,9 +6,7 @@
 //! `/` on that volume. With that directory, it is possible to enumerate and open
 //! all the other files on that volume.
 
-mod dir;
 mod info;
-mod regular;
 
 use crate::{Char16, Guid, Status};
 use bitflags::bitflags;
@@ -16,7 +14,6 @@ use core::ffi::c_void;
 use core::fmt::Debug;
 
 pub use self::info::{FileInfo, FileSystemInfo, FileSystemVolumeLabel};
-pub use self::{dir::Directory, regular::RegularFile};
 
 /// An opaque handle to some contiguous block of data on a volume.
 ///
@@ -27,7 +24,7 @@ pub use self::{dir::Directory, regular::RegularFile};
 /// Dropping this structure will result in the file handle being closed.
 #[repr(transparent)]
 #[derive(Debug)]
-pub struct FileHandle(*mut FileImpl);
+pub struct FileHandle(pub *mut FileImpl);
 
 /// The function pointer table for the File protocol.
 #[repr(C)]
@@ -80,15 +77,6 @@ pub struct FileImpl {
         buffer: *const c_void,
     ) -> Status,
     flush: extern "efiapi" fn(this: &mut FileImpl) -> Status,
-}
-
-/// Disambiguate the file type. Returned by `File::into_type()`.
-#[derive(Debug)]
-pub enum FileType {
-    /// The file was a regular (data) file.
-    Regular(RegularFile),
-    /// The file was a directory.
-    Dir(Directory),
 }
 
 /// Usage flags describing what is possible to do with the file.

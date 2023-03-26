@@ -714,8 +714,3 @@ pub struct MtftpFileInfo<'a> {
     pub minute: u8,
     pub second: f32,
 }
-
-/// Returned if a server sends a malformed response in
-/// [`BaseCode::tftp_read_dir`] or [`BaseCode::mtftp_read_dir`].
-#[derive(Clone, Copy, Debug)]
-pub struct ReadDirParseError;

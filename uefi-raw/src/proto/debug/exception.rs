@@ -1,7 +1,7 @@
 /// Represents supported CPU exceptions.
 #[repr(C)]
 #[derive(Debug)]
-pub struct ExceptionType(isize);
+pub struct ExceptionType(pub isize);
 
 impl ExceptionType {
     /// Undefined Exception

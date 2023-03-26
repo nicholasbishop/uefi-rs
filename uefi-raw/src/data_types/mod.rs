@@ -9,7 +9,7 @@ use core::{ffi::c_void, ptr::NonNull};
 /// If you need to have a nullable handle (for a custom UEFI FFI for example) use `Option<Handle>`.
 #[derive(Clone, Copy, Debug)]
 #[repr(transparent)]
-pub struct Handle(NonNull<c_void>);
+pub struct Handle(pub NonNull<c_void>);
 
 impl Handle {
     /// Creates a new [`Handle`] from a raw address. The address might
@@ -42,7 +42,7 @@ impl Handle {
 /// If you need to have a nullable event, use `Option<Event>`.
 #[repr(transparent)]
 #[derive(Debug)]
-pub struct Event(NonNull<c_void>);
+pub struct Event(pub NonNull<c_void>);
 
 impl Event {
     /// Clone this `Event`

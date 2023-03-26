@@ -181,7 +181,7 @@ pub struct AlgorithmDigestSize {
 }
 
 #[derive(Clone, Debug)]
-pub struct AlgorithmDigestSizes<'a>(UnalignedSlice<'a, AlgorithmDigestSize>);
+pub struct AlgorithmDigestSizes<'a>(pub UnalignedSlice<'a, AlgorithmDigestSize>);
 
 /// Header stored at the beginning of the event log.
 ///

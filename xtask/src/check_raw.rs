@@ -3,8 +3,8 @@ use fs_err as fs;
 use std::path::{Path, PathBuf};
 use syn::spanned::Spanned;
 use syn::{
-    File, Item, ItemConst, ItemEnum, ItemExternCrate, ItemImpl, ItemMacro, ItemMod, ItemStruct,
-    ItemTrait, ItemType, ItemUnion, ItemUse, Visibility,
+    Fields, FieldsUnnamed, File, Item, ItemConst, ItemEnum, ItemExternCrate, ItemImpl, ItemMacro,
+    ItemMod, ItemStruct, ItemTrait, ItemType, ItemUnion, ItemUse, Visibility,
 };
 use walkdir::WalkDir;
 
@@ -34,6 +34,14 @@ fn check_file(path: &Path, errors: &mut Vec<Error>) -> Result<()> {
 
     let ast: File = syn::parse_str(&code)?;
 
+    // Checks to add:
+    // * All fields pub
+    // * No fields start with `_`
+    // * repr C/transparent
+
+    // Other TODO:
+    // * get rid of data_types, move stuff up
+
     for item in ast.items.iter() {
         match item {
             Item::Use(ItemUse { .. }) => {
@@ -45,11 +53,25 @@ fn check_file(path: &Path, errors: &mut Vec<Error>) -> Result<()> {
                     add_error("missing pub", item);
                 }
             }
-            Item::Struct(ItemStruct { vis, .. }) => {
-                // TODO, lots more to check
+            Item::Struct(ItemStruct { vis, fields, .. }) => {
                 if !matches!(vis, Visibility::Public(_)) {
                     add_error("missing pub", item);
                 }
+
+                match fields {
+                    Fields::Named(_named) => {}
+                    Fields::Unnamed(FieldsUnnamed { unnamed, .. }) => {
+                        for field in unnamed {
+                            // TODO: dedup
+                            if !matches!(field.vis, Visibility::Public(_)) {
+                                add_error("missing pub", field);
+                            }
+                        }
+                    }
+                    Fields::Unit => {}
+                }
+
+                // TODO, lots more to check
             }
             Item::Impl(ItemImpl { .. }) => {
                 // TODO
