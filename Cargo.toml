@@ -4,6 +4,8 @@ members = [
     "template",
     "uefi",
     "uefi-macros",
+    "uefi",
+    "uefi-raw",
     "uefi-services",
     "uefi-test-runner",
     "xtask",
