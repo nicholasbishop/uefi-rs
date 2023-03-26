@@ -3,8 +3,9 @@ use fs_err as fs;
 use std::path::{Path, PathBuf};
 use syn::spanned::Spanned;
 use syn::{
-    Fields, FieldsNamed, FieldsUnnamed, File, Item, ItemConst, ItemEnum, ItemExternCrate, ItemImpl,
-    ItemMacro, ItemMod, ItemStruct, ItemTrait, ItemType, ItemUnion, ItemUse, Visibility,
+    Attribute, Fields, FieldsNamed, FieldsUnnamed, File, Item, ItemConst, ItemEnum,
+    ItemExternCrate, ItemImpl, ItemMacro, ItemMod, ItemStruct, ItemTrait, ItemType, ItemUnion,
+    ItemUse, Visibility,
 };
 use walkdir::WalkDir;
 
@@ -14,6 +15,12 @@ struct Error {
     line: usize,
     column: usize,
     code: String,
+}
+
+fn allow_non_pub(attrs: &[Attribute]) -> bool {
+    attrs
+        .iter()
+        .any(|attr| attr.path().is_ident("allow_non_pub"))
 }
 
 fn check_file(path: &Path, errors: &mut Vec<Error>) -> Result<()> {
@@ -66,8 +73,11 @@ fn check_file(path: &Path, errors: &mut Vec<Error>) -> Result<()> {
                     add_error("missing pub", item);
                 }
             }
-            Item::Struct(ItemStruct { vis, fields, .. }) => {
-                if !matches!(vis, Visibility::Public(_)) {
+            Item::Struct(ItemStruct {
+                attrs, fields, vis, ..
+            }) => {
+                let allow_non_pub = allow_non_pub(attrs);
+                if !allow_non_pub && !matches!(vis, Visibility::Public(_)) {
                     add_error("missing pub", item);
                 }
 
@@ -75,7 +85,7 @@ fn check_file(path: &Path, errors: &mut Vec<Error>) -> Result<()> {
                     Fields::Named(FieldsNamed { named, .. }) => {
                         for field in named {
                             // TODO: dedup
-                            if !matches!(field.vis, Visibility::Public(_)) {
+                            if !allow_non_pub && !matches!(field.vis, Visibility::Public(_)) {
                                 add_error("missing pub", field);
                             }
                         }
@@ -84,7 +94,7 @@ fn check_file(path: &Path, errors: &mut Vec<Error>) -> Result<()> {
                         // TODO: dedup with above?
                         for field in unnamed {
                             // TODO: dedup
-                            if !matches!(field.vis, Visibility::Public(_)) {
+                            if !allow_non_pub && !matches!(field.vis, Visibility::Public(_)) {
                                 add_error("missing pub", field);
                             }
                         }
