@@ -50,9 +50,7 @@
 //! You will have to implement your own double buffering if you want to
 //! avoid tearing with animations.
 
-use crate::proto::unsafe_protocol;
-use crate::util::usize_from_u32;
-use crate::{Result, Status};
+use crate::Status;
 use core::fmt::{Debug, Formatter};
 use core::marker::PhantomData;
 use core::mem;
@@ -410,40 +408,6 @@ pub struct ModeInfo {
     format: PixelFormat,
     mask: PixelBitmask,
     stride: u32,
-}
-
-impl ModeInfo {
-    /// Returns the (horizontal, vertical) resolution.
-    ///
-    /// On desktop monitors, this usually means (width, height).
-    #[must_use]
-    pub const fn resolution(&self) -> (usize, usize) {
-        (usize_from_u32(self.hor_res), usize_from_u32(self.ver_res))
-    }
-
-    /// Returns the format of the frame buffer.
-    #[must_use]
-    pub const fn pixel_format(&self) -> PixelFormat {
-        self.format
-    }
-
-    /// Returns the bitmask of the custom pixel format, if available.
-    #[must_use]
-    pub const fn pixel_bitmask(&self) -> Option<PixelBitmask> {
-        match self.format {
-            PixelFormat::Bitmask => Some(self.mask),
-            _ => None,
-        }
-    }
-
-    /// Returns the number of pixels per scanline.
-    ///
-    /// Due to performance reasons, the stride might not be equal to the width,
-    /// instead the stride might be bigger for better alignment.
-    #[must_use]
-    pub const fn stride(&self) -> usize {
-        usize_from_u32(self.stride)
-    }
 }
 
 /// Iterator for [`Mode`]s of the [`GraphicsOutput`] protocol.

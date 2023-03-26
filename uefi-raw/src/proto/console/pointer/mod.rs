@@ -1,7 +1,7 @@
 //! Pointer device access.
 
 use crate::proto::unsafe_protocol;
-use crate::{Event, Result, Status};
+use crate::{Event, Status};
 use core::mem::MaybeUninit;
 
 /// Provides information about a pointer device.

@@ -9,9 +9,6 @@
 //!
 //! [`BootServices`]: crate::table::boot::BootServices#accessing-protocols
 
-use crate::Identify;
-use core::ffi::c_void;
-
 pub use uefi_macros::unsafe_protocol;
 
 pub mod console;

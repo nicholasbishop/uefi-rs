@@ -3,7 +3,6 @@
 use super::Header;
 use crate::data_types::{Align, PhysicalAddress, VirtualAddress};
 use crate::proto::device_path::FfiDevicePath;
-use crate::proto::ProtocolPointer;
 #[cfg(feature = "alloc")]
 use crate::proto::{loaded_image::LoadedImage, media::fs::SimpleFileSystem};
 use crate::{Char16, Event, Guid, Handle, Status};
