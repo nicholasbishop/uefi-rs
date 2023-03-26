@@ -530,7 +530,6 @@ name = "uefi-raw"
 version = "0.1.0"
 dependencies = [
  "bitflags",
- "log",
  "ptr_meta",
  "ucs2",
  "uefi-macros",

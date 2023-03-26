@@ -8,13 +8,7 @@
 // if there is insufficient memory. So we treat any NULL output as an
 // `OUT_OF_RESOURCES` error.
 
-use crate::{
-    proto::device_path::{DevicePath, DevicePathNode, FfiDevicePath},
-    proto::unsafe_protocol,
-    table::boot::BootServices,
-    CStr16, Char16, Result, Status,
-};
-use core::ops::Deref;
+use crate::{proto::device_path::FfiDevicePath, proto::unsafe_protocol, Char16};
 
 /// This struct is a wrapper of `display_only` parameter
 /// used by Device Path to Text protocol.
@@ -40,44 +34,6 @@ pub struct DisplayOnly(pub bool);
 #[derive(Clone, Copy, Debug)]
 pub struct AllowShortcuts(pub bool);
 
-/// Wrapper for a string internally allocated from
-/// UEFI boot services memory.
-#[derive(Debug)]
-pub struct PoolString<'a> {
-    boot_services: &'a BootServices,
-    text: *const Char16,
-}
-
-impl<'a> PoolString<'a> {
-    fn new(boot_services: &'a BootServices, text: *const Char16) -> Result<Self> {
-        if text.is_null() {
-            Err(Status::OUT_OF_RESOURCES.into())
-        } else {
-            Ok(Self {
-                boot_services,
-                text,
-            })
-        }
-    }
-}
-
-impl<'a> Deref for PoolString<'a> {
-    type Target = CStr16;
-
-    fn deref(&self) -> &Self::Target {
-        unsafe { CStr16::from_ptr(self.text) }
-    }
-}
-
-impl Drop for PoolString<'_> {
-    fn drop(&mut self) {
-        let addr = self.text as *mut u8;
-        self.boot_services
-            .free_pool(addr)
-            .expect("Failed to free pool [{addr:#?}]");
-    }
-}
-
 /// Device Path to Text protocol.
 ///
 /// This protocol provides common utility functions for converting device
@@ -97,54 +53,6 @@ pub struct DevicePathToText {
     ) -> *const Char16,
 }
 
-impl DevicePathToText {
-    /// Convert a device node to its text representation.
-    ///
-    /// Returns an [`OUT_OF_RESOURCES`] error if there is insufficient
-    /// memory for the conversion.
-    ///
-    /// [`OUT_OF_RESOURCES`]: Status::OUT_OF_RESOURCES
-    pub fn convert_device_node_to_text<'boot>(
-        &self,
-        boot_services: &'boot BootServices,
-        device_node: &DevicePathNode,
-        display_only: DisplayOnly,
-        allow_shortcuts: AllowShortcuts,
-    ) -> Result<PoolString<'boot>> {
-        let text_device_node = unsafe {
-            (self.convert_device_node_to_text)(
-                device_node.as_ffi_ptr(),
-                display_only.0,
-                allow_shortcuts.0,
-            )
-        };
-        PoolString::new(boot_services, text_device_node)
-    }
-
-    /// Convert a device path to its text representation.
-    ///
-    /// Returns an [`OUT_OF_RESOURCES`] error if there is insufficient
-    /// memory for the conversion.
-    ///
-    /// [`OUT_OF_RESOURCES`]: Status::OUT_OF_RESOURCES
-    pub fn convert_device_path_to_text<'boot>(
-        &self,
-        boot_services: &'boot BootServices,
-        device_path: &DevicePath,
-        display_only: DisplayOnly,
-        allow_shortcuts: AllowShortcuts,
-    ) -> Result<PoolString<'boot>> {
-        let text_device_path = unsafe {
-            (self.convert_device_path_to_text)(
-                device_path.as_ffi_ptr(),
-                display_only.0,
-                allow_shortcuts.0,
-            )
-        };
-        PoolString::new(boot_services, text_device_path)
-    }
-}
-
 /// Device Path from Text protocol.
 ///
 /// This protocol provides common utilities for converting text to
@@ -156,51 +64,4 @@ pub struct DevicePathFromText {
         unsafe extern "efiapi" fn(text_device_node: *const Char16) -> *const FfiDevicePath,
     convert_text_to_device_path:
         unsafe extern "efiapi" fn(text_device_path: *const Char16) -> *const FfiDevicePath,
-}
-
-impl DevicePathFromText {
-    /// Convert text to the binary representation of a device node.
-    ///
-    /// `text_device_node` is the text representation of a device node.
-    /// Conversion starts with the first character and continues until
-    /// the first non-device node character.
-    ///
-    /// Returns an [`OUT_OF_RESOURCES`] error if there is insufficient
-    /// memory for the conversion.
-    ///
-    /// [`OUT_OF_RESOURCES`]: Status::OUT_OF_RESOURCES
-    pub fn convert_text_to_device_node(
-        &self,
-        text_device_node: &CStr16,
-    ) -> Result<&DevicePathNode> {
-        unsafe {
-            let ptr = (self.convert_text_to_device_node)(text_device_node.as_ptr());
-            if ptr.is_null() {
-                Err(Status::OUT_OF_RESOURCES.into())
-            } else {
-                Ok(DevicePathNode::from_ffi_ptr(ptr))
-            }
-        }
-    }
-
-    /// Convert a text to its binary device path representation.
-    ///
-    /// `text_device_path` is the text representation of a device path.
-    /// Conversion starts with the first character and continues until
-    /// the first non-device path character.
-    ///
-    /// Returns an [`OUT_OF_RESOURCES`] error if there is insufficient
-    /// memory for the conversion.
-    ///
-    /// [`OUT_OF_RESOURCES`]: Status::OUT_OF_RESOURCES
-    pub fn convert_text_to_device_path(&self, text_device_path: &CStr16) -> Result<&DevicePath> {
-        unsafe {
-            let ptr = (self.convert_text_to_device_path)(text_device_path.as_ptr());
-            if ptr.is_null() {
-                Err(Status::OUT_OF_RESOURCES.into())
-            } else {
-                Ok(DevicePath::from_ffi_ptr(ptr))
-            }
-        }
-    }
 }

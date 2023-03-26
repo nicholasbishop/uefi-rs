@@ -1,14 +1,14 @@
 use core::ffi::c_void;
-use core::fmt::{Debug, Formatter};
+use core::fmt::Debug;
 use core::marker::PhantomData;
 use core::ptr::NonNull;
-use core::{ptr, slice};
+use core::slice;
 
 use crate::proto::console::text;
-use crate::{CStr16, Char16, Handle, Result, Status};
+use crate::{CStr16, Char16, Handle, Result};
 
-use super::boot::{BootServices, MemoryDescriptor, MemoryMap, MemoryType};
-use super::runtime::{ResetType, RuntimeServices};
+use super::boot::{BootServices, MemoryDescriptor};
+use super::runtime::RuntimeServices;
 use super::{cfg, Header, Revision};
 
 /// Marker trait used to provide different views of the UEFI System Table.
@@ -45,6 +45,7 @@ impl SystemTableView for Runtime {}
 /// table will be destroyed (which conveniently invalidates all references to
 /// UEFI boot services in the eye of the Rust borrow checker) and a runtime view
 /// will be provided to replace it.
+#[derive(Debug)]
 #[repr(transparent)]
 pub struct SystemTable<View: SystemTableView> {
     table: *const SystemTableImpl,
@@ -104,178 +105,6 @@ impl<View: SystemTableView> SystemTable<View> {
             table: ptr.as_ref(),
             _marker: PhantomData,
         })
-    }
-}
-
-// These parts of the UEFI System Table interface may only be used until boot
-// services are exited and hardware control is handed over to the OS loader
-impl SystemTable<Boot> {
-    /// Returns the standard input protocol.
-    pub fn stdin(&mut self) -> &mut text::Input {
-        unsafe { &mut *(*self.table).stdin }
-    }
-
-    /// Returns the standard output protocol.
-    pub fn stdout(&mut self) -> &mut text::Output {
-        unsafe { &mut *(*self.table).stdout.cast() }
-    }
-
-    /// Returns the standard error protocol.
-    pub fn stderr(&mut self) -> &mut text::Output {
-        unsafe { &mut *(*self.table).stderr.cast() }
-    }
-
-    /// Access runtime services
-    #[must_use]
-    pub const fn runtime_services(&self) -> &RuntimeServices {
-        unsafe { &*(*self.table).runtime }
-    }
-
-    /// Access boot services
-    #[must_use]
-    pub const fn boot_services(&self) -> &BootServices {
-        unsafe { &*(*self.table).boot }
-    }
-
-    /// Get the size in bytes of the buffer to allocate for storing the memory
-    /// map in `exit_boot_services`.
-    ///
-    /// This map contains some extra room to avoid needing to allocate more than
-    /// once.
-    ///
-    /// Returns `None` on overflow.
-    fn memory_map_size_for_exit_boot_services(&self) -> Option<usize> {
-        // Allocate space for extra entries beyond the current size of the
-        // memory map. The value of 8 matches the value in the Linux kernel:
-        // https://github.com/torvalds/linux/blob/e544a07438/drivers/firmware/efi/libstub/efistub.h#L173
-        let extra_entries = 8;
-
-        let memory_map_size = self.boot_services().memory_map_size();
-        let extra_size = memory_map_size.entry_size.checked_mul(extra_entries)?;
-        memory_map_size.map_size.checked_add(extra_size)
-    }
-
-    /// Get the current memory map and exit boot services.
-    unsafe fn get_memory_map_and_exit_boot_services(
-        &self,
-        buf: &'static mut [u8],
-    ) -> Result<MemoryMap<'static>> {
-        let boot_services = self.boot_services();
-
-        // Get the memory map.
-        let memory_map = boot_services.memory_map(buf)?;
-
-        // Try to exit boot services using the memory map key. Note that after
-        // the first call to `exit_boot_services`, there are restrictions on
-        // what boot services functions can be called. In UEFI 2.8 and earlier,
-        // only `get_memory_map` and `exit_boot_services` are allowed. Starting
-        // in UEFI 2.9 other memory allocation functions may also be called.
-        boot_services
-            .exit_boot_services(boot_services.image_handle(), memory_map.key())
-            .map(move |()| memory_map)
-    }
-
-    /// Exit the UEFI boot services.
-    ///
-    /// After this function completes, UEFI hands over control of the hardware
-    /// to the executing OS loader, which implies that the UEFI boot services
-    /// are shut down and cannot be used anymore. Only UEFI configuration tables
-    /// and run-time services can be used, and the latter requires special care
-    /// from the OS loader. We model this situation by consuming the
-    /// `SystemTable<Boot>` view of the System Table and returning a more
-    /// restricted `SystemTable<Runtime>` view as an output.
-    ///
-    /// The memory map at the time of exiting boot services is also
-    /// returned. The map is backed by a [`MemoryType::LOADER_DATA`]
-    /// allocation. Since the boot services function to free that memory is no
-    /// longer available after calling `exit_boot_services`, the allocation is
-    /// live until the program ends. The lifetime of the memory map is therefore
-    /// `'static`.
-    ///
-    /// Once boot services are exited, the logger and allocator provided by
-    /// this crate can no longer be used. The logger should be disabled using
-    /// the [`Logger::disable`] method, and the allocator should be disabled by
-    /// calling [`allocator::exit_boot_services`]. Note that if the logger and
-    /// allocator were initialized with [`uefi_services::init`], they will be
-    /// disabled automatically when `exit_boot_services` is called.
-    ///
-    /// # Errors
-    ///
-    /// This function will fail if it is unable to allocate memory for
-    /// the memory map, if it fails to retrieve the memory map, or if
-    /// exiting boot services fails (with up to one retry).
-    ///
-    /// All errors are treated as unrecoverable because the system is
-    /// now in an undefined state. Rather than returning control to the
-    /// caller, the system will be reset.
-    ///
-    /// [`allocator::exit_boot_services`]: crate::allocator::exit_boot_services
-    /// [`Logger::disable`]: crate::logger::Logger::disable
-    /// [`uefi_services::init`]: https://docs.rs/uefi-services/latest/uefi_services/fn.init.html
-    #[must_use]
-    pub fn exit_boot_services(self) -> (SystemTable<Runtime>, MemoryMap<'static>) {
-        let boot_services = self.boot_services();
-
-        // Reboot the device.
-        let reset = |status| -> ! { self.runtime_services().reset(ResetType::Cold, status, None) };
-
-        // Get the size of the buffer to allocate. If that calculation
-        // overflows treat it as an unrecoverable error.
-        let buf_size = match self.memory_map_size_for_exit_boot_services() {
-            Some(buf_size) => buf_size,
-            None => reset(Status::ABORTED),
-        };
-
-        // Allocate a byte slice to hold the memory map. If the
-        // allocation fails treat it as an unrecoverable error.
-        let buf: *mut u8 = match boot_services.allocate_pool(MemoryType::LOADER_DATA, buf_size) {
-            Ok(buf) => buf,
-            Err(err) => reset(err.status()),
-        };
-
-        // Calling `exit_boot_services` can fail if the memory map key is not
-        // current. Retry a second time if that occurs. This matches the
-        // behavior of the Linux kernel:
-        // https://github.com/torvalds/linux/blob/e544a0743/drivers/firmware/efi/libstub/efi-stub-helper.c#L375
-        let mut status = Status::ABORTED;
-        for _ in 0..2 {
-            let buf: &mut [u8] = unsafe { slice::from_raw_parts_mut(buf, buf_size) };
-            match unsafe { self.get_memory_map_and_exit_boot_services(buf) } {
-                Ok(memory_map) => {
-                    let st = SystemTable {
-                        table: self.table,
-                        _marker: PhantomData,
-                    };
-                    return (st, memory_map);
-                }
-                Err(err) => status = err.status(),
-            }
-        }
-
-        // Failed to exit boot services.
-        reset(status)
-    }
-
-    /// Clone this boot-time UEFI system table interface
-    ///
-    /// # Safety
-    ///
-    /// This is unsafe because you must guarantee that the clone will not be
-    /// used after boot services are exited. However, the singleton-based
-    /// designs that Rust uses for memory allocation, logging, and panic
-    /// handling require taking this risk.
-    #[must_use]
-    pub const unsafe fn unsafe_clone(&self) -> Self {
-        SystemTable {
-            table: self.table,
-            _marker: PhantomData,
-        }
-    }
-}
-
-impl Debug for SystemTable<Boot> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        unsafe { &*self.table }.fmt(f)
     }
 }
 
@@ -367,26 +196,4 @@ struct SystemTableImpl {
 
 impl<View: SystemTableView> super::Table for SystemTable<View> {
     const SIGNATURE: u64 = 0x5453_5953_2049_4249;
-}
-
-impl Debug for SystemTableImpl {
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("UefiSystemTable")
-            .field("header", &self.header)
-            .field("fw_vendor", &(unsafe { CStr16::from_ptr(self.fw_vendor) }))
-            .field("fw_revision", &self.fw_revision)
-            .field("stdin_handle", &self.stdin_handle)
-            .field("stdin", &self.stdin)
-            .field("stdout_handle", &self.stdout_handle)
-            .field("stdout", &self.stdout)
-            .field("stderr_handle", &self.stderr_handle)
-            .field("stderr", &self.stderr)
-            .field("runtime", &self.runtime)
-            // a little bit of extra work needed to call debug-fmt on the BootServices
-            // instead of printing the raw pointer
-            .field("boot", &(unsafe { ptr::read(self.boot) }))
-            .field("nf_cfg", &self.nr_cfg)
-            .field("cfg_table", &self.cfg_table)
-            .finish()
-    }
 }
