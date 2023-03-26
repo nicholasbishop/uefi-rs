@@ -27,10 +27,10 @@ pub mod proto;
 pub mod table;
 
 mod guid;
-mod status;
+mod result;
 
 pub use guid::{Guid, Identify};
-pub use status::Status;
+pub use result::{Error, Result, ResultExt, Status};
 pub use uefi_macros::guid;
 
 /// A Latin-1 character

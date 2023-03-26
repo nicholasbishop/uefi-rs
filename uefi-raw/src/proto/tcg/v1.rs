@@ -22,7 +22,7 @@ pub type Sha1Digest = [u8; 20];
 /// This corresponds to the `AlgorithmId` enum, but in the v1 spec it's `u32`
 /// instead of `u16`.
 #[allow(non_camel_case_types)]
-type TCG_ALGORITHM_ID = u32;
+pub type TCG_ALGORITHM_ID = u32;
 
 /// Information about the protocol and the TPM device.
 ///

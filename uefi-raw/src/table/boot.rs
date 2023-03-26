@@ -421,7 +421,7 @@ bitflags! {
 }
 
 /// Raw event notification function
-type EventNotifyFn = unsafe extern "efiapi" fn(event: Event, context: Option<NonNull<c_void>>);
+pub type EventNotifyFn = unsafe extern "efiapi" fn(event: Event, context: Option<NonNull<c_void>>);
 
 newtype_enum! {
 /// Interface type of a protocol interface

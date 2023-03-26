@@ -99,8 +99,10 @@ fn check_file(path: &Path, errors: &mut Vec<Error>) -> Result<()> {
             Item::Macro(ItemMacro { .. }) => {
                 // TODO
             }
-            Item::Type(ItemType { .. }) => {
-                // TODO
+            Item::Type(ItemType { vis, .. }) => {
+                if !matches!(vis, Visibility::Public(_)) {
+                    add_error("missing pub", item);
+                }
             }
             Item::Mod(ItemMod { .. }) => {
                 // TODO
