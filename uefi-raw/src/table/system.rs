@@ -11,19 +11,6 @@ use super::boot::{BootServices, MemoryDescriptor};
 use super::runtime::RuntimeServices;
 use super::{cfg, Header, Revision};
 
-/// Marker trait used to provide different views of the UEFI System Table.
-pub trait SystemTableView {}
-
-/// Marker struct associated with the boot view of the UEFI System Table.
-#[derive(Debug)]
-pub struct Boot;
-impl SystemTableView for Boot {}
-
-/// Marker struct associated with the run-time view of the UEFI System Table.
-#[derive(Debug)]
-pub struct Runtime;
-impl SystemTableView for Runtime {}
-
 /// UEFI System Table interface
 ///
 /// The UEFI System Table is the gateway to all UEFI services which an UEFI
@@ -173,7 +160,7 @@ impl SystemTable<Runtime> {
 
 /// The actual UEFI system table
 #[repr(C)]
-struct SystemTableImpl {
+pub struct SystemTableImpl {
     header: Header,
     /// Null-terminated string representing the firmware's vendor.
     fw_vendor: *const Char16,

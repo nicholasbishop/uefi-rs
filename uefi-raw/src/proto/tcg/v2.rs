@@ -231,7 +231,7 @@ pub struct AlgorithmDigestSize {
 }
 
 #[derive(Clone, Debug)]
-struct AlgorithmDigestSizes<'a>(UnalignedSlice<'a, AlgorithmDigestSize>);
+pub struct AlgorithmDigestSizes<'a>(UnalignedSlice<'a, AlgorithmDigestSize>);
 
 impl<'a> AlgorithmDigestSizes<'a> {
     fn get_size(&self, alg: AlgorithmId) -> Option<u16> {
@@ -245,19 +245,12 @@ impl<'a> AlgorithmDigestSizes<'a> {
     }
 }
 
-fn u32_le_from_bytes_at_offset(bytes: &[u8], offset: usize) -> Option<u32> {
-    let bytes = bytes.get(offset..offset + 4)?;
-    // OK to unwrap: we know `bytes` is now of length 4.
-    let val = u32::from_le_bytes(bytes.try_into().unwrap());
-    Some(val)
-}
-
 /// Header stored at the beginning of the event log.
 ///
 /// Layout compatible with the C type `TCG_EfiSpecIDEventStruct`.
 #[derive(Clone, Debug)]
 #[allow(unused)] // We don't current access most of the fields.
-struct EventLogHeader<'a> {
+pub struct EventLogHeader<'a> {
     platform_class: u32,
     // major, minor, errata
     spec_version: (u8, u8, u8),

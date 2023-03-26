@@ -1,12 +1,5 @@
 //! Standard UEFI tables.
 
-/// Common trait implemented by all standard UEFI tables.
-pub trait Table {
-    /// A unique number assigned by the UEFI specification
-    /// to the standard tables.
-    const SIGNATURE: u64;
-}
-
 mod header;
 pub use self::header::Header;
 

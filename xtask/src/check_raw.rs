@@ -1,7 +1,6 @@
-use anyhow::Result;
+use anyhow::{bail, Result};
 use fs_err as fs;
-use std::path::Path;
-use std::process;
+use std::path::{Path, PathBuf};
 use syn::spanned::Spanned;
 use syn::{
     File, Item, ItemConst, ItemEnum, ItemImpl, ItemMacro, ItemMod, ItemStruct, ItemType, ItemUnion,
@@ -9,20 +8,26 @@ use syn::{
 };
 use walkdir::WalkDir;
 
-fn fail(err: &str, spanned: &dyn Spanned, path: &Path) -> ! {
-    let span = spanned.span();
-    eprintln!(
-        "error: {err}\n  --> {}:{}:{}",
-        // Getting the source path from the span is not yet stable:
-        // https://github.com/rust-lang/rust/issues/54725
-        path.display(),
-        span.start().line,
-        span.start().column + 1,
-    );
-    process::exit(1);
+struct Error {
+    msg: &'static str,
+    path: PathBuf,
+    line: usize,
+    column: usize,
 }
 
-fn check_file(path: &Path) -> Result<()> {
+fn check_file(path: &Path, errors: &mut Vec<Error>) -> Result<()> {
+    let mut add_error = |msg, spanned: &dyn Spanned| {
+        let span = spanned.span();
+        errors.push(Error {
+            msg,
+            // Getting the source path from the span is not yet stable:
+            // https://github.com/rust-lang/rust/issues/54725
+            path: path.to_path_buf(),
+            line: span.start().line,
+            column: span.start().column,
+        });
+    };
+
     let code = fs::read_to_string(path)?;
 
     let ast: File = syn::parse_str(&code)?;
@@ -35,13 +40,13 @@ fn check_file(path: &Path) -> Result<()> {
             Item::Const(ItemConst { vis, .. }) => {
                 // TODO: check type too
                 if !matches!(vis, Visibility::Public(_)) {
-                    fail("missing pub", item, path);
+                    add_error("missing pub", item);
                 }
             }
             Item::Struct(ItemStruct { vis, .. }) => {
                 // TODO, lots more to check
                 if !matches!(vis, Visibility::Public(_)) {
-                    fail("missing pub", item, path);
+                    add_error("missing pub", item);
                 }
             }
             Item::Impl(ItemImpl { .. }) => {
@@ -63,7 +68,7 @@ fn check_file(path: &Path) -> Result<()> {
                 // TODO
             }
             item => {
-                fail("unexpected kind of item", item, path);
+                add_error("unexpected kind of item", item);
             }
         }
     }
@@ -77,15 +82,31 @@ pub fn check_raw() -> Result<()> {
     // TODO
     assert!(Path::new("uefi-raw").exists());
 
+    let mut errors = Vec::new();
+
     for entry in WalkDir::new("uefi-raw") {
         let entry = entry?;
         let path = entry.path();
         if let Some(ext) = path.extension() {
             if ext == "rs" {
                 println!("checking {}", path.display());
-                check_file(path)?;
+                check_file(path, &mut errors)?;
             }
         }
+    }
+
+    for error in &errors {
+        eprintln!(
+            "error: {}\n  --> {}:{}:{}",
+            error.msg,
+            error.path.display(),
+            error.line,
+            error.column,
+        );
+    }
+
+    if !errors.is_empty() {
+        bail!("found {} errors", errors.len());
     }
 
     Ok(())
