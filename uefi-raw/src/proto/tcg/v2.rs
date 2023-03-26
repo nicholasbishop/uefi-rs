@@ -141,7 +141,7 @@ bitflags! {
 /// Layout compatible with the C type `EFI_TCG2_EVENT_HEADER`.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(C, packed)]
-struct EventHeader {
+pub struct EventHeader {
     header_size: u32,
     header_version: u16,
     pcr_index: PcrIndex,
@@ -225,7 +225,7 @@ impl Debug for PcrEventInputs {
 
 #[repr(C, packed)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct AlgorithmDigestSize {
+pub struct AlgorithmDigestSize {
     algorithm_id: AlgorithmId,
     digest_size: u16,
 }

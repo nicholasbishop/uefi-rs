@@ -102,18 +102,3 @@ impl MemoryProtection {
         unsafe { (self.clear_memory_attributes)(self, base_address, length, attributes).into() }
     }
 }
-
-/// Convert a byte `Range` to `(base_address, length)`.
-fn range_to_base_and_len(r: Range<PhysicalAddress>) -> (PhysicalAddress, PhysicalAddress) {
-    (r.start, r.end.checked_sub(r.start).unwrap())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_range_conversion() {
-        assert_eq!(range_to_base_and_len(2..5), (2, 3));
-    }
-}

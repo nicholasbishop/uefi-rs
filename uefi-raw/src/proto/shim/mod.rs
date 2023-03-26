@@ -16,7 +16,7 @@ use core::mem::MaybeUninit;
 // The `PE_COFF_LOADER_IMAGE_CONTEXT` type. None of our methods need to inspect
 // the fields of this struct, we just need to make sure it is the right size.
 #[repr(C)]
-struct Context {
+pub struct Context {
     _image_address: u64,
     _image_size: u64,
     _entry_point: u64,
@@ -31,8 +31,8 @@ struct Context {
     _pe_hdr: *const c_void,
 }
 
-const SHA1_DIGEST_SIZE: usize = 20;
-const SHA256_DIGEST_SIZE: usize = 32;
+pub const SHA1_DIGEST_SIZE: usize = 20;
+pub const SHA256_DIGEST_SIZE: usize = 32;
 
 /// Authenticode hashes of some UEFI application.
 #[derive(Debug)]
