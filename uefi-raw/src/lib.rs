@@ -64,7 +64,7 @@ impl Handle {
     /// # Example
     /// ```no_run
     /// use core::ffi::c_void;
-    /// use uefi::Handle;
+    /// use uefi_raw::Handle;
     ///
     /// let image_handle_addr = 0xdeadbeef as *mut c_void;
     ///

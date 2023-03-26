@@ -43,9 +43,9 @@ pub trait ResultExt<Output, ErrData: Debug> {
     /// # Example
     ///
     /// ```
-    /// use uefi::{Result, ResultExt, Status};
+    /// use uefi_raw::{Result, ResultExt, Status};
     ///
-    /// # fn x() -> uefi::Result {
+    /// # fn x() -> uefi_raw::Result {
     /// # let some_result = Result::from(Status::WARN_RESET_REQUIRED);
     /// // Treat a specific warning as success, propagate others as errors.
     /// some_result.handle_warning(|err| {
