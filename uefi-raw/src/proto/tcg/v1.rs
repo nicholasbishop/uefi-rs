@@ -13,7 +13,6 @@ use crate::proto::unsafe_protocol;
 use crate::PhysicalAddress;
 use crate::Status;
 use core::fmt::{self, Debug, Formatter};
-use core::marker::{PhantomData, PhantomPinned};
 use ptr_meta::Pointee;
 
 /// 20-byte SHA-1 digest.
@@ -121,16 +120,11 @@ impl Debug for PcrEvent {
     }
 }
 
-/// Opaque type that should be used to represent a pointer to a [`PcrEvent`] in
-/// foreign function interfaces. This type produces a thin pointer, unlike
-/// [`PcrEvent`].
-#[repr(C, packed)]
-#[derive(Debug)]
-pub struct FfiPcrEvent {
-    // This representation is recommended by the nomicon:
-    // https://doc.rust-lang.org/stable/nomicon/ffi.html#representing-opaque-structs
-    pub _data: [u8; 0],
-    pub _marker: PhantomData<(*mut u8, PhantomPinned)>,
+opaque_type! {
+    /// Opaque type that should be used to represent a pointer to a [`PcrEvent`] in
+    /// foreign function interfaces. This type produces a thin pointer, unlike
+    /// [`PcrEvent`].
+    pub struct FfiPcrEvent;
 }
 
 /// Protocol for interacting with TPM 1.1 and 1.2 devices.

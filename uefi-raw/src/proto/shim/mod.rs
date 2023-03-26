@@ -11,22 +11,21 @@ use crate::proto::unsafe_protocol;
 use crate::Status;
 use core::ffi::c_void;
 
-// The `PE_COFF_LOADER_IMAGE_CONTEXT` type. None of our methods need to inspect
-// the fields of this struct, we just need to make sure it is the right size.
+// The `PE_COFF_LOADER_IMAGE_CONTEXT` type.
 #[repr(C)]
 pub struct Context {
-    pub _image_address: u64,
-    pub _image_size: u64,
-    pub _entry_point: u64,
-    pub _size_of_headers: usize,
-    pub _image_type: u16,
-    pub _number_of_sections: u16,
-    pub _section_alignment: u32,
-    pub _first_section: *const c_void,
-    pub _reloc_dir: *const c_void,
-    pub _sec_dir: *const c_void,
-    pub _number_of_rva_and_sizes: u64,
-    pub _pe_hdr: *const c_void,
+    pub image_address: u64,
+    pub image_size: u64,
+    pub entry_point: u64,
+    pub size_of_headers: usize,
+    pub image_type: u16,
+    pub number_of_sections: u16,
+    pub section_alignment: u32,
+    pub first_section: *const c_void,
+    pub reloc_dir: *const c_void,
+    pub sec_dir: *const c_void,
+    pub number_of_rva_and_sizes: u64,
+    pub pe_hdr: *const c_void,
 }
 
 pub const SHA1_DIGEST_SIZE: usize = 20;

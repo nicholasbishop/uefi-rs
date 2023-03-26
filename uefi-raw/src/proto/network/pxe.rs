@@ -1,10 +1,7 @@
 //! PXE Base Code protocol.
 
+use core::ffi::c_void;
 use core::fmt::{Debug, Formatter};
-use core::{
-    ffi::c_void,
-    marker::{PhantomData, PhantomPinned},
-};
 
 use crate::proto::unsafe_protocol;
 use bitflags::bitflags;
@@ -136,16 +133,11 @@ pub enum BootstrapType {
     PxeTest = 65535,
 }
 
-/// Opaque type that should be used to represent a pointer to a [`DiscoverInfo`] in
-/// foreign function interfaces. This type produces a thin pointer, unlike
-/// [`DiscoverInfo`].
-#[repr(C, packed)]
-#[derive(Debug)]
-pub struct FfiDiscoverInfo {
-    // This representation is recommended by the nomicon:
-    // https://doc.rust-lang.org/stable/nomicon/ffi.html#representing-opaque-structs
-    pub data: [u8; 0],
-    pub marker: PhantomData<(*mut u8, PhantomPinned)>,
+opaque_type! {
+    /// Opaque type that should be used to represent a pointer to a [`DiscoverInfo`] in
+    /// foreign function interfaces. This type produces a thin pointer, unlike
+    /// [`DiscoverInfo`].
+    pub struct FfiDiscoverInfo;
 }
 
 /// This struct contains optional parameters for [`BaseCode::discover`].

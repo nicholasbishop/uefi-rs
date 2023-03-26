@@ -25,6 +25,9 @@ extern crate self as uefi;
 #[macro_use]
 mod enums;
 
+#[macro_use]
+mod opaque;
+
 pub mod proto;
 pub mod table;
 

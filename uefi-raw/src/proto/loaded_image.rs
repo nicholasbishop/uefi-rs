@@ -17,7 +17,7 @@ pub struct LoadedImage {
     // Source location of the image
     pub device_handle: Handle,
     pub file_path: *const FfiDevicePath,
-    pub _reserved: *const c_void,
+    pub reserved: *const c_void,
 
     // Image load options
     pub load_options_size: u32,

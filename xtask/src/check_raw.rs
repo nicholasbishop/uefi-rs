@@ -11,6 +11,10 @@ use syn::{
 };
 use walkdir::WalkDir;
 
+fn is_pub(vis: &Visibility) -> bool {
+    matches!(vis, Visibility::Public(_))
+}
+
 struct Error {
     msg: &'static str,
     path: PathBuf,
@@ -71,7 +75,7 @@ fn check_file(path: &Path, errors: &mut Vec<Error>) -> Result<()> {
             }
             Item::Const(ItemConst { vis, .. }) => {
                 // TODO: check type too
-                if !matches!(vis, Visibility::Public(_)) {
+                if !is_pub(vis) {
                     add_error("missing pub", item);
                 }
             }
@@ -79,15 +83,19 @@ fn check_file(path: &Path, errors: &mut Vec<Error>) -> Result<()> {
                 attrs, fields, vis, ..
             }) => {
                 let allow_non_pub = allow_non_pub(attrs);
-                if !allow_non_pub && !matches!(vis, Visibility::Public(_)) {
+                if !allow_non_pub && !is_pub(vis) {
                     add_error("missing pub", item);
                 }
 
                 let mut check_fields = |fields: &Punctuated<Field, Comma>| {
                     for field in fields {
-                        // TODO: dedup
-                        if !allow_non_pub && !matches!(field.vis, Visibility::Public(_)) {
+                        if !allow_non_pub && !is_pub(&field.vis) {
                             add_error("missing pub", field);
+                        }
+                        if let Some(ident) = &field.ident {
+                            if ident.to_string().starts_with("_") {
+                                add_error("field name starts with `_`", ident);
+                            }
                         }
                     }
                 };
@@ -107,7 +115,7 @@ fn check_file(path: &Path, errors: &mut Vec<Error>) -> Result<()> {
                 // TODO
             }
             Item::Type(ItemType { vis, .. }) => {
-                if !matches!(vis, Visibility::Public(_)) {
+                if !is_pub(vis) {
                     add_error("missing pub", item);
                 }
             }
