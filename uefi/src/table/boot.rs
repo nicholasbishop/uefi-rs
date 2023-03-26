@@ -88,7 +88,7 @@ pub const PAGE_SIZE: usize = 4096;
 ///
 /// [`Output`]: crate::proto::console::text::Output
 /// [`open_protocol`]: BootServices::open_protocol
-#[repr(C)]
+#[repr(transparent)]
 pub struct BootServices(uefi_raw::table::boot::BootServices);
 
 impl BootServices {
