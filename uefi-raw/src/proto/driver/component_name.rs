@@ -26,19 +26,19 @@ use core::fmt::Debug;
 #[unsafe_protocol("107a772c-d5e1-11d4-9a46-0090273fc14d")]
 #[repr(C)]
 pub struct ComponentName1 {
-    get_driver_name: unsafe extern "efiapi" fn(
+    pub get_driver_name: unsafe extern "efiapi" fn(
         this: *const Self,
         language: *const u8,
         driver_name: *mut *const u16,
     ) -> Status,
-    get_controller_name: unsafe extern "efiapi" fn(
+    pub get_controller_name: unsafe extern "efiapi" fn(
         this: *const Self,
         controller_handle: Handle,
         child_handle: Option<Handle>,
         language: *const u8,
         controller_name: *mut *const u16,
     ) -> Status,
-    supported_languages: *const u8,
+    pub supported_languages: *const u8,
 }
 
 /// Protocol that provides human-readable names for a driver and for each of the
@@ -58,19 +58,19 @@ pub struct ComponentName1 {
 #[unsafe_protocol("6a7a5cff-e8d9-4f70-bada-75ab3025ce14")]
 #[repr(C)]
 pub struct ComponentName2 {
-    get_driver_name: unsafe extern "efiapi" fn(
+    pub get_driver_name: unsafe extern "efiapi" fn(
         this: *const Self,
         language: *const u8,
         driver_name: *mut *const u16,
     ) -> Status,
-    get_controller_name: unsafe extern "efiapi" fn(
+    pub get_controller_name: unsafe extern "efiapi" fn(
         this: *const Self,
         controller_handle: Handle,
         child_handle: Option<Handle>,
         language: *const u8,
         controller_name: *mut *const u16,
     ) -> Status,
-    supported_languages: *const u8,
+    pub supported_languages: *const u8,
 }
 
 /// Error returned by [`ComponentName1::supported_languages`] and

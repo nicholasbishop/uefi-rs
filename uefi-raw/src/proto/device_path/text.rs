@@ -41,12 +41,12 @@ pub struct AllowShortcuts(pub bool);
 #[repr(C)]
 #[unsafe_protocol("8b843e20-8132-4852-90cc-551a4e4a7f1c")]
 pub struct DevicePathToText {
-    convert_device_node_to_text: unsafe extern "efiapi" fn(
+    pub convert_device_node_to_text: unsafe extern "efiapi" fn(
         device_node: *const FfiDevicePath,
         display_only: bool,
         allow_shortcuts: bool,
     ) -> *const Char16,
-    convert_device_path_to_text: unsafe extern "efiapi" fn(
+    pub convert_device_path_to_text: unsafe extern "efiapi" fn(
         device_path: *const FfiDevicePath,
         display_only: bool,
         allow_shortcuts: bool,
@@ -60,8 +60,8 @@ pub struct DevicePathToText {
 #[repr(C)]
 #[unsafe_protocol("05c99a21-c70f-4ad2-8a5f-35df3343f51e")]
 pub struct DevicePathFromText {
-    convert_text_to_device_node:
+    pub convert_text_to_device_node:
         unsafe extern "efiapi" fn(text_device_node: *const Char16) -> *const FfiDevicePath,
-    convert_text_to_device_path:
+    pub convert_text_to_device_path:
         unsafe extern "efiapi" fn(text_device_path: *const Char16) -> *const FfiDevicePath,
 }

@@ -30,12 +30,12 @@ type TCG_ALGORITHM_ID = u32;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Ord, PartialOrd)]
 pub struct BootServiceCapability {
-    size: u8,
-    structure_version: Version,
-    protocol_spec_version: Version,
-    hash_algorithm_bitmap: u8,
-    tpm_present_flag: u8,
-    tpm_deactivated_flag: u8,
+    pub size: u8,
+    pub structure_version: Version,
+    pub protocol_spec_version: Version,
+    pub hash_algorithm_bitmap: u8,
+    pub tpm_present_flag: u8,
+    pub tpm_deactivated_flag: u8,
 }
 
 impl BootServiceCapability {
@@ -103,11 +103,11 @@ pub struct Version {
 #[repr(C, packed)]
 #[derive(Pointee)]
 pub struct PcrEvent {
-    pcr_index: PcrIndex,
-    event_type: EventType,
-    digest: Sha1Digest,
-    event_data_size: u32,
-    event_data: [u8],
+    pub pcr_index: PcrIndex,
+    pub event_type: EventType,
+    pub digest: Sha1Digest,
+    pub event_data_size: u32,
+    pub event_data: [u8],
 }
 
 // Manual `Debug` implementation since it can't be derived for a packed DST.
@@ -131,8 +131,8 @@ impl Debug for PcrEvent {
 pub struct FfiPcrEvent {
     // This representation is recommended by the nomicon:
     // https://doc.rust-lang.org/stable/nomicon/ffi.html#representing-opaque-structs
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+    pub _data: [u8; 0],
+    pub _marker: PhantomData<(*mut u8, PhantomPinned)>,
 }
 
 /// Protocol for interacting with TPM 1.1 and 1.2 devices.
@@ -141,7 +141,7 @@ pub struct FfiPcrEvent {
 #[repr(C)]
 #[unsafe_protocol("f541796d-a62e-4954-a775-9584f61b9cdd")]
 pub struct Tcg {
-    status_check: unsafe extern "efiapi" fn(
+    pub status_check: unsafe extern "efiapi" fn(
         this: *mut Tcg,
         protocol_capability: *mut BootServiceCapability,
         feature_flags: *mut u32,
@@ -160,9 +160,9 @@ pub struct Tcg {
     // supported with TPM v1. Second, TPMs are not cryptographic
     // accelerators, so it is very likely faster to calculate the hash
     // on the CPU, e.g. with the `sha1` crate.
-    hash_all: unsafe extern "efiapi" fn() -> Status,
+    pub hash_all: unsafe extern "efiapi" fn() -> Status,
 
-    log_event: unsafe extern "efiapi" fn(
+    pub log_event: unsafe extern "efiapi" fn(
         this: *mut Tcg,
         // The spec does not guarantee that the `event` will not be mutated
         // through the pointer, but it seems reasonable to assume and makes the
@@ -172,7 +172,7 @@ pub struct Tcg {
         flags: u32,
     ) -> Status,
 
-    pass_through_to_tpm: unsafe extern "efiapi" fn(
+    pub pass_through_to_tpm: unsafe extern "efiapi" fn(
         this: *mut Tcg,
         tpm_input_parameter_block_size: u32,
         tpm_input_parameter_block: *const u8,
@@ -180,7 +180,7 @@ pub struct Tcg {
         tpm_output_parameter_block: *mut u8,
     ) -> Status,
 
-    hash_log_extend_event: unsafe extern "efiapi" fn(
+    pub hash_log_extend_event: unsafe extern "efiapi" fn(
         this: *mut Tcg,
         hash_data: PhysicalAddress,
         hash_data_len: u64,

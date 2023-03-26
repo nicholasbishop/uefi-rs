@@ -53,8 +53,6 @@
 use crate::proto::unsafe_protocol;
 use crate::Status;
 use core::fmt::Debug;
-use core::marker::PhantomData;
-use core::mem;
 
 /// Provides access to the video hardware's frame buffer.
 ///
@@ -63,15 +61,15 @@ use core::mem;
 #[repr(C)]
 #[unsafe_protocol("9042a9de-23dc-4a38-96fb-7aded080516a")]
 pub struct GraphicsOutput {
-    query_mode: extern "efiapi" fn(
+    pub query_mode: extern "efiapi" fn(
         &GraphicsOutput,
         mode: u32,
         info_sz: &mut usize,
         &mut *const ModeInfo,
     ) -> Status,
-    set_mode: extern "efiapi" fn(&mut GraphicsOutput, mode: u32) -> Status,
+    pub set_mode: extern "efiapi" fn(&mut GraphicsOutput, mode: u32) -> Status,
     // Clippy correctly complains that this is too complicated, but we can't change the spec.
-    blt: unsafe extern "efiapi" fn(
+    pub blt: unsafe extern "efiapi" fn(
         this: &mut GraphicsOutput,
         buffer: *mut BltPixel,
         op: u32,
@@ -83,23 +81,23 @@ pub struct GraphicsOutput {
         height: usize,
         stride: usize,
     ) -> Status,
-    mode: *const ModeData,
+    pub mode: *const ModeData,
 }
 
 #[repr(C)]
 pub struct ModeData {
     // Number of modes which the GOP supports.
-    max_mode: u32,
+    pub max_mode: u32,
     // Current mode.
-    mode: u32,
+    pub mode: u32,
     // Information about the current mode.
-    info: *const ModeInfo,
+    pub info: *const ModeInfo,
     // Size of the above structure.
-    info_sz: usize,
+    pub info_sz: usize,
     // Physical address of the frame buffer.
-    fb_address: u64,
+    pub fb_address: u64,
     // Size in bytes. Equal to (pixel size) * height * stride.
-    fb_size: usize,
+    pub fb_size: usize,
 }
 
 /// Represents the format of the pixels in a frame buffer.
@@ -166,12 +164,12 @@ impl Mode {
 #[repr(C)]
 pub struct ModeInfo {
     // The only known version, associated with the current spec, is 0.
-    version: u32,
-    hor_res: u32,
-    ver_res: u32,
-    format: PixelFormat,
-    mask: PixelBitmask,
-    stride: u32,
+    pub version: u32,
+    pub hor_res: u32,
+    pub ver_res: u32,
+    pub format: PixelFormat,
+    pub mask: PixelBitmask,
+    pub stride: u32,
 }
 
 /// Format of pixel data used for blitting.
@@ -184,7 +182,7 @@ pub struct BltPixel {
     pub blue: u8,
     pub green: u8,
     pub red: u8,
-    _reserved: u8,
+    pub reserved: u8,
 }
 
 impl BltPixel {
@@ -195,7 +193,7 @@ impl BltPixel {
             red,
             green,
             blue,
-            _reserved: 0,
+            reserved: 0,
         }
     }
 }
@@ -206,7 +204,7 @@ impl From<u32> for BltPixel {
             blue: (color & 0x00_00_FF) as u8,
             green: ((color & 0x00_FF_00) >> 8) as u8,
             red: ((color & 0xFF_00_00) >> 16) as u8,
-            _reserved: 0,
+            reserved: 0,
         }
     }
 }
@@ -275,105 +273,4 @@ pub enum BltOp<'buf> {
         /// Width / height of the rectangles.
         dims: (usize, usize),
     },
-}
-
-/// Direct access to a memory-mapped frame buffer
-#[derive(Debug)]
-pub struct FrameBuffer<'gop> {
-    base: *mut u8,
-    size: usize,
-    _lifetime: PhantomData<&'gop mut u8>,
-}
-
-impl<'gop> FrameBuffer<'gop> {
-    /// Access the raw framebuffer pointer
-    ///
-    /// To use this pointer safely and correctly, you must...
-    /// - Honor the pixel format and stride specified by the mode info
-    /// - Keep memory accesses in bound
-    /// - Use volatile reads and writes
-    /// - Make sure that the pointer does not outlive the FrameBuffer
-    ///
-    /// On some implementations this framebuffer pointer can be used after
-    /// exiting boot services, but that is not guaranteed by the UEFI Specification.
-    pub fn as_mut_ptr(&mut self) -> *mut u8 {
-        self.base
-    }
-
-    /// Query the framebuffer size in bytes
-    #[must_use]
-    pub const fn size(&self) -> usize {
-        self.size
-    }
-
-    /// Modify the i-th byte of the frame buffer
-    ///
-    /// # Safety
-    ///
-    /// This operation is unsafe because...
-    /// - You must honor the pixel format and stride specified by the mode info
-    /// - There is no bound checking on memory accesses in release mode
-    #[inline]
-    pub unsafe fn write_byte(&mut self, index: usize, value: u8) {
-        debug_assert!(index < self.size, "Frame buffer accessed out of bounds");
-        self.base.add(index).write_volatile(value)
-    }
-
-    /// Read the i-th byte of the frame buffer
-    ///
-    /// # Safety
-    ///
-    /// This operation is unsafe because...
-    /// - You must honor the pixel format and stride specified by the mode info
-    /// - There is no bound checking on memory accesses in release mode
-    #[inline]
-    #[must_use]
-    pub unsafe fn read_byte(&self, index: usize) -> u8 {
-        debug_assert!(index < self.size, "Frame buffer accessed out of bounds");
-        self.base.add(index).read_volatile()
-    }
-
-    /// Write a value in the frame buffer, starting at the i-th byte
-    ///
-    /// We only recommend using this method with [u8; N] arrays. Once Rust has
-    /// const generics, it will be deprecated and replaced with a write_bytes()
-    /// method that only accepts [u8; N] input.
-    ///
-    /// # Safety
-    ///
-    /// This operation is unsafe because...
-    /// - It is your responsibility to make sure that the value type makes sense
-    /// - You must honor the pixel format and stride specified by the mode info
-    /// - There is no bound checking on memory accesses in release mode
-    #[inline]
-    pub unsafe fn write_value<T>(&mut self, index: usize, value: T) {
-        debug_assert!(
-            index.saturating_add(mem::size_of::<T>()) <= self.size,
-            "Frame buffer accessed out of bounds"
-        );
-        let ptr = self.base.add(index).cast::<T>();
-        ptr.write_volatile(value)
-    }
-
-    /// Read a value from the frame buffer, starting at the i-th byte
-    ///
-    /// We only recommend using this method with [u8; N] arrays. Once Rust has
-    /// const generics, it will be deprecated and replaced with a read_bytes()
-    /// method that only accepts [u8; N] input.
-    ///
-    /// # Safety
-    ///
-    /// This operation is unsafe because...
-    /// - It is your responsibility to make sure that the value type makes sense
-    /// - You must honor the pixel format and stride specified by the mode info
-    /// - There is no bound checking on memory accesses in release mode
-    #[inline]
-    #[must_use]
-    pub unsafe fn read_value<T>(&self, index: usize) -> T {
-        debug_assert!(
-            index.saturating_add(mem::size_of::<T>()) <= self.size,
-            "Frame buffer accessed out of bounds"
-        );
-        (self.base.add(index) as *const T).read_volatile()
-    }
 }

@@ -3,8 +3,8 @@ use fs_err as fs;
 use std::path::{Path, PathBuf};
 use syn::spanned::Spanned;
 use syn::{
-    Fields, FieldsUnnamed, File, Item, ItemConst, ItemEnum, ItemExternCrate, ItemImpl, ItemMacro,
-    ItemMod, ItemStruct, ItemTrait, ItemType, ItemUnion, ItemUse, Visibility,
+    Fields, FieldsNamed, FieldsUnnamed, File, Item, ItemConst, ItemEnum, ItemExternCrate, ItemImpl,
+    ItemMacro, ItemMod, ItemStruct, ItemTrait, ItemType, ItemUnion, ItemUse, Visibility,
 };
 use walkdir::WalkDir;
 
@@ -38,9 +38,17 @@ fn check_file(path: &Path, errors: &mut Vec<Error>) -> Result<()> {
     // * All fields pub
     // * No fields start with `_`
     // * repr C/transparent
+    // * no bool
+    // * check extern fns
 
     // Other TODO:
     // * get rid of data_types, move stuff up
+    // * get rid of allow(unused)
+    // * think about lints more
+    // * Actually use the crate in uefi
+    // * Maybe add a macro for "extern" types
+    // * Get rid of all feature cfgs
+    // * get rid of deprecated
 
     for item in ast.items.iter() {
         match item {
@@ -59,8 +67,16 @@ fn check_file(path: &Path, errors: &mut Vec<Error>) -> Result<()> {
                 }
 
                 match fields {
-                    Fields::Named(_named) => {}
+                    Fields::Named(FieldsNamed { named, .. }) => {
+                        for field in named {
+                            // TODO: dedup
+                            if !matches!(field.vis, Visibility::Public(_)) {
+                                add_error("missing pub", field);
+                            }
+                        }
+                    }
                     Fields::Unnamed(FieldsUnnamed { unnamed, .. }) => {
+                        // TODO: dedup with above?
                         for field in unnamed {
                             // TODO: dedup
                             if !matches!(field.vis, Visibility::Public(_)) {
@@ -132,7 +148,7 @@ pub fn check_raw() -> Result<()> {
             error.msg,
             error.path.display(),
             error.line,
-            error.column,
+            error.column + 1,
             error.code,
         );
     }

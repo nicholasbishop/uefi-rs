@@ -13,15 +13,15 @@ use core::ptr::NonNull;
 #[repr(C)]
 #[unsafe_protocol("ce345171-ba0b-11d2-8e4f-00a0c969723b")]
 pub struct DiskIo {
-    revision: u64,
-    read_disk: extern "efiapi" fn(
+    pub revision: u64,
+    pub read_disk: extern "efiapi" fn(
         this: &DiskIo,
         media_id: u32,
         offset: u64,
         len: usize,
         buffer: *mut u8,
     ) -> Status,
-    write_disk: extern "efiapi" fn(
+    pub write_disk: extern "efiapi" fn(
         this: &mut DiskIo,
         media_id: u32,
         offset: u64,
@@ -47,9 +47,9 @@ pub struct DiskIo2Token {
 #[repr(C)]
 #[unsafe_protocol("151c8eae-7f2c-472c-9e54-9828194f6a88")]
 pub struct DiskIo2 {
-    revision: u64,
-    cancel: extern "efiapi" fn(this: &mut DiskIo2) -> Status,
-    read_disk_ex: extern "efiapi" fn(
+    pub revision: u64,
+    pub cancel: extern "efiapi" fn(this: &mut DiskIo2) -> Status,
+    pub read_disk_ex: extern "efiapi" fn(
         this: &DiskIo2,
         media_id: u32,
         offset: u64,
@@ -57,7 +57,7 @@ pub struct DiskIo2 {
         len: usize,
         buffer: *mut u8,
     ) -> Status,
-    write_disk_ex: extern "efiapi" fn(
+    pub write_disk_ex: extern "efiapi" fn(
         this: &mut DiskIo2,
         media_id: u32,
         offset: u64,
@@ -65,6 +65,6 @@ pub struct DiskIo2 {
         len: usize,
         buffer: *const u8,
     ) -> Status,
-    flush_disk_ex:
+    pub flush_disk_ex:
         extern "efiapi" fn(this: &mut DiskIo2, token: Option<NonNull<DiskIo2Token>>) -> Status,
 }

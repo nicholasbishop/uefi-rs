@@ -24,7 +24,7 @@ bitflags! {
     /// if the processor is enabled or disabled, and if
     /// the processor is healthy.
     #[derive(Default)]
-    struct StatusFlag: u32 {
+    pub struct StatusFlag: u32 {
         /// Processor is playing the role of BSP.
         const PROCESSOR_AS_BSP_BIT = 1;
         /// Processor is enabled.
@@ -50,30 +50,9 @@ pub struct ProcessorInformation {
     /// Unique processor ID determined by system hardware.
     pub processor_id: u64,
     /// Flags indicating BSP, enabled and healthy status.
-    status_flag: StatusFlag,
+    pub status_flag: StatusFlag,
     /// Physical location of the processor.
     pub location: CpuPhysicalLocation,
-}
-
-impl ProcessorInformation {
-    /// Returns `true` if the processor is playing the role of BSP.
-    #[must_use]
-    pub const fn is_bsp(&self) -> bool {
-        self.status_flag.contains(StatusFlag::PROCESSOR_AS_BSP_BIT)
-    }
-
-    /// Returns `true` if the processor is enabled.
-    #[must_use]
-    pub const fn is_enabled(&self) -> bool {
-        self.status_flag.contains(StatusFlag::PROCESSOR_ENABLED_BIT)
-    }
-
-    /// Returns `true` if the processor is healthy.
-    #[must_use]
-    pub const fn is_healthy(&self) -> bool {
-        self.status_flag
-            .contains(StatusFlag::PROCESSOR_HEALTH_STATUS_BIT)
-    }
 }
 
 /// Information about physical location of the processor.
@@ -93,17 +72,17 @@ pub struct CpuPhysicalLocation {
 #[repr(C)]
 #[unsafe_protocol("3fdda605-a76e-4f46-ad29-12f4531b3d08")]
 pub struct MpServices {
-    get_number_of_processors: extern "efiapi" fn(
+    pub get_number_of_processors: extern "efiapi" fn(
         this: *const MpServices,
         number_of_processors: *mut usize,
         number_of_enabled_processors: *mut usize,
     ) -> Status,
-    get_processor_info: extern "efiapi" fn(
+    pub get_processor_info: extern "efiapi" fn(
         this: *const MpServices,
         processor_number: usize,
         processor_info_buffer: *mut ProcessorInformation,
     ) -> Status,
-    startup_all_aps: extern "efiapi" fn(
+    pub startup_all_aps: extern "efiapi" fn(
         this: *const MpServices,
         procedure: Procedure,
         single_thread: bool,
@@ -112,7 +91,7 @@ pub struct MpServices {
         procedure_argument: *mut c_void,
         failed_cpu_list: *mut *mut usize,
     ) -> Status,
-    startup_this_ap: extern "efiapi" fn(
+    pub startup_this_ap: extern "efiapi" fn(
         this: *const MpServices,
         procedure: Procedure,
         processor_number: usize,
@@ -121,16 +100,17 @@ pub struct MpServices {
         procedure_argument: *mut c_void,
         finished: *mut bool,
     ) -> Status,
-    switch_bsp: extern "efiapi" fn(
+    pub switch_bsp: extern "efiapi" fn(
         this: *const MpServices,
         processor_number: usize,
         enable_old_bsp: bool,
     ) -> Status,
-    enable_disable_ap: extern "efiapi" fn(
+    pub enable_disable_ap: extern "efiapi" fn(
         this: *const MpServices,
         processor_number: usize,
         enable_ap: bool,
         health_flag: *const u32,
     ) -> Status,
-    who_am_i: extern "efiapi" fn(this: *const MpServices, processor_number: *mut usize) -> Status,
+    pub who_am_i:
+        extern "efiapi" fn(this: *const MpServices, processor_number: *mut usize) -> Status,
 }

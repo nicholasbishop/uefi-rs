@@ -23,14 +23,14 @@ use ptr_meta::Pointee;
 #[derive(Debug, Eq, PartialEq, Pointee)]
 #[repr(C)]
 pub struct FileInfo {
-    size: u64,
-    file_size: u64,
-    physical_size: u64,
-    create_time: Time,
-    last_access_time: Time,
-    modification_time: Time,
-    attribute: FileAttribute,
-    file_name: [Char16],
+    pub size: u64,
+    pub file_size: u64,
+    pub physical_size: u64,
+    pub create_time: Time,
+    pub last_access_time: Time,
+    pub modification_time: Time,
+    pub attribute: FileAttribute,
+    pub file_name: [Char16],
 }
 
 unsafe impl Identify for FileInfo {
@@ -46,12 +46,12 @@ unsafe impl Identify for FileInfo {
 #[derive(Debug, Eq, PartialEq, Pointee)]
 #[repr(C)]
 pub struct FileSystemInfo {
-    size: u64,
-    read_only: bool,
-    volume_size: u64,
-    free_space: u64,
-    block_size: u32,
-    volume_label: [Char16],
+    pub size: u64,
+    pub read_only: bool,
+    pub volume_size: u64,
+    pub free_space: u64,
+    pub block_size: u32,
+    pub volume_label: [Char16],
 }
 
 unsafe impl Identify for FileSystemInfo {
@@ -64,7 +64,7 @@ unsafe impl Identify for FileSystemInfo {
 #[derive(Debug, Eq, PartialEq, Pointee)]
 #[repr(C)]
 pub struct FileSystemVolumeLabel {
-    volume_label: [Char16],
+    pub volume_label: [Char16],
 }
 
 unsafe impl Identify for FileSystemVolumeLabel {

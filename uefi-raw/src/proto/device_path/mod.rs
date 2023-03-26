@@ -95,8 +95,8 @@ use ptr_meta::Pointee;
 pub struct FfiDevicePath {
     // This representation is recommended by the nomicon:
     // https://doc.rust-lang.org/stable/nomicon/ffi.html#representing-opaque-structs
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+    pub data: [u8; 0],
+    pub marker: PhantomData<(*mut u8, PhantomPinned)>,
 }
 
 /// Header that appears at the start of every [`DevicePathNode`].
@@ -122,8 +122,8 @@ pub struct DevicePathHeader {
 #[derive(Eq, Pointee)]
 #[repr(C, packed)]
 pub struct DevicePathNode {
-    header: DevicePathHeader,
-    data: [u8],
+    pub header: DevicePathHeader,
+    pub data: [u8],
 }
 
 impl Debug for DevicePathNode {
@@ -153,7 +153,7 @@ impl PartialEq for DevicePathNode {
 #[repr(C, packed)]
 #[derive(Eq, Pointee)]
 pub struct DevicePathInstance {
-    data: [u8],
+    pub data: [u8],
 }
 
 impl Debug for DevicePathInstance {
@@ -183,7 +183,7 @@ impl PartialEq for DevicePathInstance {
 #[unsafe_protocol("09576e91-6d3f-11d2-8e39-00a0c969723b")]
 #[derive(Eq, Pointee)]
 pub struct DevicePath {
-    data: [u8],
+    pub data: [u8],
 }
 
 impl Debug for DevicePath {

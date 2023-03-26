@@ -19,17 +19,17 @@ use uefi_macros::unsafe_protocol;
 #[repr(C)]
 #[unsafe_protocol("a19832b9-ac25-11d3-9a2d-0090273fc14d")]
 pub struct SimpleNetwork {
-    revision: u64,
-    start: extern "efiapi" fn(this: &Self) -> Status,
-    stop: extern "efiapi" fn(this: &Self) -> Status,
-    initialize: extern "efiapi" fn(
+    pub revision: u64,
+    pub start: extern "efiapi" fn(this: &Self) -> Status,
+    pub stop: extern "efiapi" fn(this: &Self) -> Status,
+    pub initialize: extern "efiapi" fn(
         this: &Self,
         extra_recv_buffer_size: usize,
         extra_transmit_buffer_size: usize,
     ) -> Status,
-    reset: extern "efiapi" fn(this: &Self, extended_verification: bool) -> Status,
-    shutdown: extern "efiapi" fn(this: &Self) -> Status,
-    receive_filters: extern "efiapi" fn(
+    pub reset: extern "efiapi" fn(this: &Self, extended_verification: bool) -> Status,
+    pub shutdown: extern "efiapi" fn(this: &Self) -> Status,
+    pub receive_filters: extern "efiapi" fn(
         this: &Self,
         enable: u32,
         disable: u32,
@@ -37,29 +37,29 @@ pub struct SimpleNetwork {
         mcast_filter_count: usize,
         mcast_filter: Option<NonNull<MacAddress>>,
     ) -> Status,
-    station_address:
+    pub station_address:
         extern "efiapi" fn(this: &Self, reset: bool, new: Option<&MacAddress>) -> Status,
-    statistics: extern "efiapi" fn(
+    pub statistics: extern "efiapi" fn(
         this: &Self,
         reset: bool,
         stats_size: Option<&mut usize>,
         stats_table: Option<&mut NetworkStats>,
     ) -> Status,
-    mcast_ip_to_mac:
+    pub mcast_ip_to_mac:
         extern "efiapi" fn(this: &Self, ipv6: bool, ip: &IpAddress, mac: &mut MacAddress) -> Status,
-    nv_data: extern "efiapi" fn(
+    pub nv_data: extern "efiapi" fn(
         this: &Self,
         read_write: bool,
         offset: usize,
         buffer_size: usize,
         buffer: *mut c_void,
     ) -> Status,
-    get_status: extern "efiapi" fn(
+    pub get_status: extern "efiapi" fn(
         this: &Self,
         interrupt_status: Option<&mut InterruptStatus>,
         tx_buf: Option<&mut *mut c_void>,
     ) -> Status,
-    transmit: extern "efiapi" fn(
+    pub transmit: extern "efiapi" fn(
         this: &Self,
         header_size: usize,
         buffer_size: usize,
@@ -68,7 +68,7 @@ pub struct SimpleNetwork {
         dest_addr: Option<&MacAddress>,
         protocol: Option<&u16>,
     ) -> Status,
-    receive: extern "efiapi" fn(
+    pub receive: extern "efiapi" fn(
         this: &Self,
         header_size: Option<&mut usize>,
         buffer_size: &mut usize,
@@ -78,8 +78,8 @@ pub struct SimpleNetwork {
         protocol: Option<&mut u16>,
     ) -> Status,
     // On QEMU, this event seems to never fire.
-    wait_for_packet: Event,
-    mode: *const NetworkMode,
+    pub wait_for_packet: Event,
+    pub mode: *const NetworkMode,
 }
 
 bitflags! {
@@ -123,224 +123,32 @@ bitflags! {
 #[repr(C)]
 #[derive(Default, Debug)]
 pub struct NetworkStats {
-    rx_total_frames: u64,
-    rx_good_frames: u64,
-    rx_undersize_frames: u64,
-    rx_oversize_frames: u64,
-    rx_dropped_frames: u64,
-    rx_unicast_frames: u64,
-    rx_broadcast_frames: u64,
-    rx_multicast_frames: u64,
-    rx_crc_error_frames: u64,
-    rx_total_bytes: u64,
-    tx_total_frames: u64,
-    tx_good_frames: u64,
-    tx_undersize_frames: u64,
-    tx_oversize_frames: u64,
-    tx_dropped_frames: u64,
-    tx_unicast_frames: u64,
-    tx_broadcast_frames: u64,
-    tx_multicast_frames: u64,
-    tx_crc_error_frames: u64,
-    tx_total_bytes: u64,
-    collisions: u64,
-    unsupported_protocol: u64,
-    rx_duplicated_frames: u64,
-    rx_decrypt_error_frames: u64,
-    tx_error_frames: u64,
-    tx_retry_frames: u64,
-}
-
-impl NetworkStats {
-    /// Any statistic value of -1 is not available
-    fn available(&self, stat: u64) -> bool {
-        stat as i64 != -1
-    }
-
-    /// Takes a statistic and converts it to an option
-    ///
-    /// When the statistic is not available, `None` is returned
-    fn to_option(&self, stat: u64) -> Option<u64> {
-        match self.available(stat) {
-            true => Some(stat),
-            false => None,
-        }
-    }
-
-    /// The total number of frames received, including error frames
-    /// and dropped frames
-    #[must_use]
-    pub fn rx_total_frames(&self) -> Option<u64> {
-        self.to_option(self.rx_total_frames)
-    }
-
-    /// The total number of good frames received and copied
-    /// into receive buffers
-    #[must_use]
-    pub fn rx_good_frames(&self) -> Option<u64> {
-        self.to_option(self.rx_good_frames)
-    }
-
-    /// The number of frames below the minimum length for the
-    /// communications device
-    #[must_use]
-    pub fn rx_undersize_frames(&self) -> Option<u64> {
-        self.to_option(self.rx_undersize_frames)
-    }
-
-    /// The number of frames longer than the maximum length for
-    /// the communications length device
-    #[must_use]
-    pub fn rx_oversize_frames(&self) -> Option<u64> {
-        self.to_option(self.rx_oversize_frames)
-    }
-
-    /// The number of valid frames that were dropped because
-    /// the receive buffers were full
-    #[must_use]
-    pub fn rx_dropped_frames(&self) -> Option<u64> {
-        self.to_option(self.rx_dropped_frames)
-    }
-
-    /// The number of valid unicast frames received and not dropped
-    #[must_use]
-    pub fn rx_unicast_frames(&self) -> Option<u64> {
-        self.to_option(self.rx_unicast_frames)
-    }
-
-    /// The number of valid broadcast frames received and not dropped
-    #[must_use]
-    pub fn rx_broadcast_frames(&self) -> Option<u64> {
-        self.to_option(self.rx_broadcast_frames)
-    }
-
-    /// The number of valid multicast frames received and not dropped
-    #[must_use]
-    pub fn rx_multicast_frames(&self) -> Option<u64> {
-        self.to_option(self.rx_multicast_frames)
-    }
-
-    /// Number of frames with CRC or alignment errors
-    #[must_use]
-    pub fn rx_crc_error_frames(&self) -> Option<u64> {
-        self.to_option(self.rx_crc_error_frames)
-    }
-
-    /// The total number of bytes received including frames with errors
-    /// and dropped frames
-    #[must_use]
-    pub fn rx_total_bytes(&self) -> Option<u64> {
-        self.to_option(self.rx_total_bytes)
-    }
-
-    /// The total number of frames transmitted including frames
-    /// with errors and dropped frames
-    #[must_use]
-    pub fn tx_total_frames(&self) -> Option<u64> {
-        self.to_option(self.tx_total_frames)
-    }
-
-    /// The total number of valid frames transmitted and copied
-    /// into receive buffers
-    #[must_use]
-    pub fn tx_good_frames(&self) -> Option<u64> {
-        self.to_option(self.tx_good_frames)
-    }
-
-    /// The number of frames below the minimum length for
-    /// the media. This would be less than 64 for Ethernet
-    #[must_use]
-    pub fn tx_undersize_frames(&self) -> Option<u64> {
-        self.to_option(self.tx_undersize_frames)
-    }
-
-    /// The number of frames longer than the maximum length for
-    /// the media. This would be 1500 for Ethernet
-    #[must_use]
-    pub fn tx_oversize_frames(&self) -> Option<u64> {
-        self.to_option(self.tx_oversize_frames)
-    }
-
-    /// The number of valid frames that were dropped because
-    /// received buffers were full
-    #[must_use]
-    pub fn tx_dropped_frames(&self) -> Option<u64> {
-        self.to_option(self.tx_dropped_frames)
-    }
-
-    /// The number of valid unicast frames transmitted and not
-    /// dropped
-    #[must_use]
-    pub fn tx_unicast_frames(&self) -> Option<u64> {
-        self.to_option(self.tx_unicast_frames)
-    }
-
-    /// The number of valid broadcast frames transmitted and
-    /// not dropped
-    #[must_use]
-    pub fn tx_broadcast_frames(&self) -> Option<u64> {
-        self.to_option(self.tx_broadcast_frames)
-    }
-
-    /// The number of valid multicast frames transmitted
-    /// and not dropped
-    #[must_use]
-    pub fn tx_multicast_frames(&self) -> Option<u64> {
-        self.to_option(self.tx_multicast_frames)
-    }
-
-    /// The number of transmitted frames with CRC or
-    /// alignment errors
-    #[must_use]
-    pub fn tx_crc_error_frames(&self) -> Option<u64> {
-        self.to_option(self.tx_crc_error_frames)
-    }
-
-    /// The total number of bytes transmitted including
-    /// error frames and dropped frames
-    #[must_use]
-    pub fn tx_total_bytes(&self) -> Option<u64> {
-        self.to_option(self.tx_total_bytes)
-    }
-
-    /// The number of collisions detected on this subnet
-    #[must_use]
-    pub fn collisions(&self) -> Option<u64> {
-        self.to_option(self.collisions)
-    }
-
-    /// The number of frames destined for unsupported protocol
-    #[must_use]
-    pub fn unsupported_protocol(&self) -> Option<u64> {
-        self.to_option(self.unsupported_protocol)
-    }
-
-    /// The number of valid frames received that were duplicated
-    #[must_use]
-    pub fn rx_duplicated_frames(&self) -> Option<u64> {
-        self.to_option(self.rx_duplicated_frames)
-    }
-
-    /// The number of encrypted frames received that failed
-    /// to decrypt
-    #[must_use]
-    pub fn rx_decrypt_error_frames(&self) -> Option<u64> {
-        self.to_option(self.rx_decrypt_error_frames)
-    }
-
-    /// The number of frames that failed to transmit after
-    /// exceeding the retry limit
-    #[must_use]
-    pub fn tx_error_frames(&self) -> Option<u64> {
-        self.to_option(self.tx_error_frames)
-    }
-
-    /// The number of frames that transmitted successfully
-    /// after more than one attempt
-    #[must_use]
-    pub fn tx_retry_frames(&self) -> Option<u64> {
-        self.to_option(self.tx_retry_frames)
-    }
+    pub rx_total_frames: u64,
+    pub rx_good_frames: u64,
+    pub rx_undersize_frames: u64,
+    pub rx_oversize_frames: u64,
+    pub rx_dropped_frames: u64,
+    pub rx_unicast_frames: u64,
+    pub rx_broadcast_frames: u64,
+    pub rx_multicast_frames: u64,
+    pub rx_crc_error_frames: u64,
+    pub rx_total_bytes: u64,
+    pub tx_total_frames: u64,
+    pub tx_good_frames: u64,
+    pub tx_undersize_frames: u64,
+    pub tx_oversize_frames: u64,
+    pub tx_dropped_frames: u64,
+    pub tx_unicast_frames: u64,
+    pub tx_broadcast_frames: u64,
+    pub tx_multicast_frames: u64,
+    pub tx_crc_error_frames: u64,
+    pub tx_total_bytes: u64,
+    pub collisions: u64,
+    pub unsupported_protocol: u64,
+    pub rx_duplicated_frames: u64,
+    pub rx_decrypt_error_frames: u64,
+    pub tx_error_frames: u64,
+    pub tx_retry_frames: u64,
 }
 
 /// The Simple Network Mode

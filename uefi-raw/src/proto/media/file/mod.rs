@@ -29,16 +29,16 @@ pub struct FileHandle(pub *mut FileImpl);
 /// The function pointer table for the File protocol.
 #[repr(C)]
 pub struct FileImpl {
-    revision: u64,
-    open: unsafe extern "efiapi" fn(
+    pub revision: u64,
+    pub open: unsafe extern "efiapi" fn(
         this: &mut FileImpl,
         new_handle: &mut *mut FileImpl,
         filename: *const Char16,
         open_mode: FileMode,
         attributes: FileAttribute,
     ) -> Status,
-    close: extern "efiapi" fn(this: &mut FileImpl) -> Status,
-    delete: extern "efiapi" fn(this: &mut FileImpl) -> Status,
+    pub close: extern "efiapi" fn(this: &mut FileImpl) -> Status,
+    pub delete: extern "efiapi" fn(this: &mut FileImpl) -> Status,
     /// # Read from Regular Files
     /// If `self` is not a directory, the function reads the requested number of bytes from the file
     /// at the file’s current position and returns them in `buffer`. If the read goes beyond the end
@@ -52,31 +52,31 @@ pub struct FileImpl {
     /// position is not updated. `buffer_size` is set to be the size of the buffer needed to read
     /// the entry. On success, the current position is updated to the next directory entry. If there
     /// are no more directory entries, the read returns a zero-length buffer.
-    read: unsafe extern "efiapi" fn(
+    pub read: unsafe extern "efiapi" fn(
         this: &mut FileImpl,
         buffer_size: &mut usize,
         buffer: *mut u8,
     ) -> Status,
-    write: unsafe extern "efiapi" fn(
+    pub write: unsafe extern "efiapi" fn(
         this: &mut FileImpl,
         buffer_size: &mut usize,
         buffer: *const u8,
     ) -> Status,
-    get_position: extern "efiapi" fn(this: &mut FileImpl, position: &mut u64) -> Status,
-    set_position: extern "efiapi" fn(this: &mut FileImpl, position: u64) -> Status,
-    get_info: unsafe extern "efiapi" fn(
+    pub get_position: extern "efiapi" fn(this: &mut FileImpl, position: &mut u64) -> Status,
+    pub set_position: extern "efiapi" fn(this: &mut FileImpl, position: u64) -> Status,
+    pub get_info: unsafe extern "efiapi" fn(
         this: &mut FileImpl,
         information_type: &Guid,
         buffer_size: &mut usize,
         buffer: *mut u8,
     ) -> Status,
-    set_info: unsafe extern "efiapi" fn(
+    pub set_info: unsafe extern "efiapi" fn(
         this: &mut FileImpl,
         information_type: &Guid,
         buffer_size: usize,
         buffer: *const c_void,
     ) -> Status,
-    flush: extern "efiapi" fn(this: &mut FileImpl) -> Status,
+    pub flush: extern "efiapi" fn(this: &mut FileImpl) -> Status,
 }
 
 /// Usage flags describing what is possible to do with the file.

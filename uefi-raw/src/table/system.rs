@@ -8,24 +8,24 @@ use super::{cfg, Header};
 /// The actual UEFI system table
 #[repr(C)]
 pub struct SystemTable {
-    header: Header,
+    pub header: Header,
     /// Null-terminated string representing the firmware's vendor.
-    fw_vendor: *const Char16,
-    fw_revision: u32,
-    stdin_handle: Handle,
-    stdin: *mut text::Input,
-    stdout_handle: Handle,
-    stdout: *mut text::Output,
-    stderr_handle: Handle,
-    stderr: *mut text::Output,
+    pub fw_vendor: *const Char16,
+    pub fw_revision: u32,
+    pub stdin_handle: Handle,
+    pub stdin: *mut text::Input,
+    pub stdout_handle: Handle,
+    pub stdout: *mut text::Output,
+    pub stderr_handle: Handle,
+    pub stderr: *mut text::Output,
     /// Runtime services table.
-    runtime: *const RuntimeServices,
+    pub runtime: *const RuntimeServices,
     /// Boot services table.
-    boot: *const BootServices,
+    pub boot: *const BootServices,
     /// Number of entries in the configuration table.
-    nr_cfg: usize,
+    pub nr_cfg: usize,
     /// Pointer to beginning of the array.
-    cfg_table: *const cfg::ConfigTableEntry,
+    pub cfg_table: *const cfg::ConfigTableEntry,
 }
 
 impl SystemTable {

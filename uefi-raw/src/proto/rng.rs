@@ -36,12 +36,12 @@ newtype_enum! {
 #[repr(C)]
 #[unsafe_protocol("3152bca5-eade-433d-862e-c01cdc291f44")]
 pub struct Rng {
-    get_info: unsafe extern "efiapi" fn(
+    pub get_info: unsafe extern "efiapi" fn(
         this: &Rng,
         algorithm_list_size: *mut usize,
         algorithm_list: *mut RngAlgorithmType,
     ) -> Status,
-    get_rng: unsafe extern "efiapi" fn(
+    pub get_rng: unsafe extern "efiapi" fn(
         this: &Rng,
         algorithm: *const RngAlgorithmType,
         value_length: usize,

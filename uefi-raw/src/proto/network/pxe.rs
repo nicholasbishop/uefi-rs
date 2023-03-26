@@ -19,18 +19,18 @@ use super::{IpAddress, MacAddress};
 #[unsafe_protocol("03c4e603-ac28-11d3-9a2d-0090273fc14d")]
 #[allow(clippy::type_complexity)]
 pub struct BaseCode {
-    revision: u64,
-    start: extern "efiapi" fn(this: &Self, use_ipv6: bool) -> Status,
-    stop: extern "efiapi" fn(this: &Self) -> Status,
-    dhcp: extern "efiapi" fn(this: &Self, sort_offers: bool) -> Status,
-    discover: extern "efiapi" fn(
+    pub revision: u64,
+    pub start: extern "efiapi" fn(this: &Self, use_ipv6: bool) -> Status,
+    pub stop: extern "efiapi" fn(this: &Self) -> Status,
+    pub dhcp: extern "efiapi" fn(this: &Self, sort_offers: bool) -> Status,
+    pub discover: extern "efiapi" fn(
         this: &Self,
         ty: BootstrapType,
         layer: &mut u16,
         use_bis: bool,
         info: *const FfiDiscoverInfo,
     ) -> Status,
-    mtftp: unsafe extern "efiapi" fn(
+    pub mtftp: unsafe extern "efiapi" fn(
         this: &Self,
         operation: TftpOpcode,
         buffer: *mut c_void,
@@ -42,7 +42,7 @@ pub struct BaseCode {
         info: Option<&MtftpInfo>,
         dont_use_buffer: bool,
     ) -> Status,
-    udp_write: unsafe extern "efiapi" fn(
+    pub udp_write: unsafe extern "efiapi" fn(
         this: &Self,
         op_flags: UdpOpFlags,
         dest_ip: &IpAddress,
@@ -55,7 +55,7 @@ pub struct BaseCode {
         buffer_size: &usize,
         buffer_ptr: *const c_void,
     ) -> Status,
-    udp_read: unsafe extern "efiapi" fn(
+    pub udp_read: unsafe extern "efiapi" fn(
         this: &Self,
         op_flags: UdpOpFlags,
         dest_ip: Option<&mut IpAddress>,
@@ -67,13 +67,13 @@ pub struct BaseCode {
         buffer_size: &mut usize,
         buffer_ptr: *mut c_void,
     ) -> Status,
-    set_ip_filter: extern "efiapi" fn(this: &Self, new_filter: &IpFilter) -> Status,
-    arp: extern "efiapi" fn(
+    pub set_ip_filter: extern "efiapi" fn(this: &Self, new_filter: &IpFilter) -> Status,
+    pub arp: extern "efiapi" fn(
         this: &Self,
         ip_addr: &IpAddress,
         mac_addr: Option<&mut MacAddress>,
     ) -> Status,
-    set_parameters: extern "efiapi" fn(
+    pub set_parameters: extern "efiapi" fn(
         this: &Self,
         new_auto_arp: Option<&bool>,
         new_send_guid: Option<&bool>,
@@ -81,12 +81,12 @@ pub struct BaseCode {
         new_tos: Option<&u8>,
         new_make_callback: Option<&bool>,
     ) -> Status,
-    set_station_ip: extern "efiapi" fn(
+    pub set_station_ip: extern "efiapi" fn(
         this: &Self,
         new_station_ip: Option<&IpAddress>,
         new_subnet_mask: Option<&IpAddress>,
     ) -> Status,
-    set_packets: extern "efiapi" fn(
+    pub set_packets: extern "efiapi" fn(
         this: &Self,
         new_dhcp_discover_valid: Option<&bool>,
         new_dhcp_ack_received: Option<&bool>,
@@ -101,7 +101,7 @@ pub struct BaseCode {
         new_pxe_reply: Option<&Packet>,
         new_pxe_bis_reply: Option<&Packet>,
     ) -> Status,
-    mode: *const Mode,
+    pub mode: *const Mode,
 }
 
 /// A type of bootstrap to perform in [`BaseCode::discover`].
@@ -144,8 +144,8 @@ pub enum BootstrapType {
 pub struct FfiDiscoverInfo {
     // This representation is recommended by the nomicon:
     // https://doc.rust-lang.org/stable/nomicon/ffi.html#representing-opaque-structs
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+    pub data: [u8; 0],
+    pub marker: PhantomData<(*mut u8, PhantomPinned)>,
 }
 
 /// This struct contains optional parameters for [`BaseCode::discover`].
@@ -154,13 +154,13 @@ pub struct FfiDiscoverInfo {
 #[repr(C)]
 #[derive(Debug, Pointee)]
 pub struct DiscoverInfo {
-    use_m_cast: bool,
-    use_b_cast: bool,
-    use_u_cast: bool,
-    must_use_list: bool,
-    server_m_cast_ip: IpAddress,
-    ip_cnt: u16,
-    srv_list: [Server],
+    pub use_m_cast: bool,
+    pub use_b_cast: bool,
+    pub use_u_cast: bool,
+    pub must_use_list: bool,
+    pub server_m_cast_ip: IpAddress,
+    pub ip_cnt: u16,
+    pub srv_list: [Server],
 }
 
 /// An entry in the Boot Server list
@@ -171,36 +171,10 @@ pub struct DiscoverInfo {
 pub struct Server {
     /// The type of Boot Server reply
     pub ty: u16,
-    accept_any_response: bool,
-    _reserved: u8,
+    pub accept_any_response: bool,
+    pub reserved: u8,
     /// The IP address of the server
-    ip_addr: IpAddress,
-}
-
-impl Server {
-    /// Construct a `Server` for a Boot Server reply type. If `ip_addr` is not
-    /// `None` only Boot Server replies with matching the IP address will be
-    /// accepted.
-    #[must_use]
-    pub fn new(ty: u16, ip_addr: Option<IpAddress>) -> Self {
-        Self {
-            ty,
-            accept_any_response: ip_addr.is_none(),
-            _reserved: 0,
-            ip_addr: ip_addr.unwrap_or(IpAddress([0; 16])),
-        }
-    }
-
-    /// Returns a `None` if the any response should be accepted or the IP
-    /// address of a Boot Server whose responses should be accepted.
-    #[must_use]
-    pub const fn ip_addr(&self) -> Option<&IpAddress> {
-        if self.accept_any_response {
-            None
-        } else {
-            Some(&self.ip_addr)
-        }
-    }
+    pub ip_addr: IpAddress,
 }
 
 /// Corresponds to the `EFI_PXE_BASE_CODE_TFTP_OPCODE` type in the C API.
@@ -268,39 +242,9 @@ bitflags! {
 pub struct IpFilter {
     /// A set of filters.
     pub filters: IpFilters,
-    ip_cnt: u8,
-    _reserved: u16,
-    ip_list: [IpAddress; 8],
-}
-
-impl IpFilter {
-    /// Construct a new `IpFilter`.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `ip_list` contains more than 8 entries.
-    #[must_use]
-    pub fn new(filters: IpFilters, ip_list: &[IpAddress]) -> Self {
-        assert!(ip_list.len() <= 8);
-
-        let ip_cnt = ip_list.len() as u8;
-        let mut buffer = [IpAddress([0; 16]); 8];
-        buffer[..ip_list.len()].copy_from_slice(ip_list);
-
-        Self {
-            filters,
-            ip_cnt,
-            _reserved: 0,
-            ip_list: buffer,
-        }
-    }
-
-    /// A list of IP addresses other than the Station Ip that should be
-    /// enabled. Maybe be multicast or unicast.
-    #[must_use]
-    pub fn ip_list(&self) -> &[IpAddress] {
-        &self.ip_list[..usize::from(self.ip_cnt)]
-    }
+    pub ip_cnt: u8,
+    pub reserved: u16,
+    pub ip_list: [IpAddress; 8],
 }
 
 bitflags! {
@@ -366,9 +310,9 @@ pub struct DhcpV4Packet {
     pub bootp_hw_addr_len: u8,
     /// Client sets to zero, optionally used by gateways in cross-gateway booting.
     pub bootp_gate_hops: u8,
-    bootp_ident: u32,
-    bootp_seconds: u16,
-    bootp_flags: u16,
+    pub bootp_ident: u32,
+    pub bootp_seconds: u16,
+    pub bootp_flags: u16,
     /// Client IP address, filled in by client in bootrequest if known.
     pub bootp_ci_addr: [u8; 4],
     /// 'your' (client) IP address; filled by server if client doesn't know its own address (`bootp_ci_addr` was 0).
@@ -384,7 +328,7 @@ pub struct DhcpV4Packet {
     /// Boot file name, null terminated string, 'generic' name or null in
     /// bootrequest, fully qualified directory-path name in bootreply.
     pub bootp_boot_file: [u8; 128],
-    dhcp_magik: u32,
+    pub dhcp_magik: u32,
     /// Optional vendor-specific area, e.g. could be hardware type/serial on request, or 'capability' / remote file system handle on reply.  This info may be set aside for use by a third phase bootstrap or kernel.
     pub dhcp_options: [u8; 56],
 }
@@ -435,7 +379,7 @@ bitflags! {
 pub struct DhcpV6Packet {
     /// The message type.
     pub message_type: u8,
-    transaction_id: [u8; 3],
+    pub transaction_id: [u8; 3],
     /// A byte array containing dhcp options.
     pub dhcp_options: [u8; 1024],
 }

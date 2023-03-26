@@ -16,9 +16,9 @@ use bitflags::bitflags;
 pub struct Serial {
     // Revision of this protocol, only 1.0 is currently defined.
     // Future versions will be backwards compatible.
-    revision: u32,
-    reset: extern "efiapi" fn(&mut Serial) -> Status,
-    set_attributes: extern "efiapi" fn(
+    pub revision: u32,
+    pub reset: extern "efiapi" fn(&mut Serial) -> Status,
+    pub set_attributes: extern "efiapi" fn(
         &Serial,
         baud_rate: u64,
         receive_fifo_depth: u32,
@@ -27,11 +27,11 @@ pub struct Serial {
         data_bits: u8,
         stop_bits_type: StopBits,
     ) -> Status,
-    set_control_bits: extern "efiapi" fn(&mut Serial, ControlBits) -> Status,
-    get_control_bits: extern "efiapi" fn(&Serial, &mut ControlBits) -> Status,
-    write: unsafe extern "efiapi" fn(&mut Serial, &mut usize, *const u8) -> Status,
-    read: unsafe extern "efiapi" fn(&mut Serial, &mut usize, *mut u8) -> Status,
-    io_mode: *const IoMode,
+    pub set_control_bits: extern "efiapi" fn(&mut Serial, ControlBits) -> Status,
+    pub get_control_bits: extern "efiapi" fn(&Serial, &mut ControlBits) -> Status,
+    pub write: unsafe extern "efiapi" fn(&mut Serial, &mut usize, *const u8) -> Status,
+    pub read: unsafe extern "efiapi" fn(&mut Serial, &mut usize, *mut u8) -> Status,
+    pub io_mode: *const IoMode,
 }
 
 /// Structure representing the device's current parameters.

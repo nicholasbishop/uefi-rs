@@ -8,7 +8,6 @@ use bitflags::bitflags;
 use core::ffi::c_void;
 use core::fmt::Debug;
 use core::mem::MaybeUninit;
-use core::ptr;
 use core::ptr::NonNull;
 
 /// Size in bytes of a UEFI page.
@@ -19,92 +18,92 @@ pub const PAGE_SIZE: usize = 4096;
 
 #[repr(C)]
 pub struct BootServices {
-    header: Header,
+    pub header: Header,
 
     // Task Priority services
-    raise_tpl: unsafe extern "efiapi" fn(new_tpl: Tpl) -> Tpl,
-    restore_tpl: unsafe extern "efiapi" fn(old_tpl: Tpl),
+    pub raise_tpl: unsafe extern "efiapi" fn(new_tpl: Tpl) -> Tpl,
+    pub restore_tpl: unsafe extern "efiapi" fn(old_tpl: Tpl),
 
     // Memory allocation functions
-    allocate_pages: extern "efiapi" fn(
+    pub allocate_pages: extern "efiapi" fn(
         alloc_ty: u32,
         mem_ty: MemoryType,
         count: usize,
         addr: &mut PhysicalAddress,
     ) -> Status,
-    free_pages: extern "efiapi" fn(addr: PhysicalAddress, pages: usize) -> Status,
-    get_memory_map: unsafe extern "efiapi" fn(
+    pub free_pages: extern "efiapi" fn(addr: PhysicalAddress, pages: usize) -> Status,
+    pub get_memory_map: unsafe extern "efiapi" fn(
         size: &mut usize,
         map: *mut MemoryDescriptor,
         key: &mut MemoryMapKey,
         desc_size: &mut usize,
         desc_version: &mut u32,
     ) -> Status,
-    allocate_pool:
+    pub allocate_pool:
         extern "efiapi" fn(pool_type: MemoryType, size: usize, buffer: &mut *mut u8) -> Status,
-    free_pool: extern "efiapi" fn(buffer: *mut u8) -> Status,
+    pub free_pool: extern "efiapi" fn(buffer: *mut u8) -> Status,
 
     // Event & timer functions
-    create_event: unsafe extern "efiapi" fn(
+    pub create_event: unsafe extern "efiapi" fn(
         ty: EventType,
         notify_tpl: Tpl,
         notify_func: Option<EventNotifyFn>,
         notify_ctx: Option<NonNull<c_void>>,
         out_event: *mut Event,
     ) -> Status,
-    set_timer: unsafe extern "efiapi" fn(event: Event, ty: u32, trigger_time: u64) -> Status,
-    wait_for_event: unsafe extern "efiapi" fn(
+    pub set_timer: unsafe extern "efiapi" fn(event: Event, ty: u32, trigger_time: u64) -> Status,
+    pub wait_for_event: unsafe extern "efiapi" fn(
         number_of_events: usize,
         events: *mut Event,
         out_index: *mut usize,
     ) -> Status,
-    signal_event: extern "efiapi" fn(event: Event) -> Status,
-    close_event: unsafe extern "efiapi" fn(event: Event) -> Status,
-    check_event: unsafe extern "efiapi" fn(event: Event) -> Status,
+    pub signal_event: extern "efiapi" fn(event: Event) -> Status,
+    pub close_event: unsafe extern "efiapi" fn(event: Event) -> Status,
+    pub check_event: unsafe extern "efiapi" fn(event: Event) -> Status,
 
     // Protocol handlers
-    install_protocol_interface: unsafe extern "efiapi" fn(
+    pub install_protocol_interface: unsafe extern "efiapi" fn(
         handle: &mut Option<Handle>,
         guid: &Guid,
         interface_type: InterfaceType,
         interface: *mut c_void,
     ) -> Status,
-    reinstall_protocol_interface: unsafe extern "efiapi" fn(
+    pub reinstall_protocol_interface: unsafe extern "efiapi" fn(
         handle: Handle,
         protocol: &Guid,
         old_interface: *mut c_void,
         new_interface: *mut c_void,
     ) -> Status,
-    uninstall_protocol_interface: unsafe extern "efiapi" fn(
+    pub uninstall_protocol_interface: unsafe extern "efiapi" fn(
         handle: Handle,
         protocol: &Guid,
         interface: *mut c_void,
     ) -> Status,
     #[deprecated = "open_protocol and open_protocol_exclusive are better alternatives and available since EFI 1.10 (2002)"]
-    handle_protocol:
+    pub handle_protocol:
         extern "efiapi" fn(handle: Handle, proto: &Guid, out_proto: &mut *mut c_void) -> Status,
-    _reserved: usize,
-    register_protocol_notify: extern "efiapi" fn(
+    pub _reserved: usize,
+    pub register_protocol_notify: extern "efiapi" fn(
         protocol: &Guid,
         event: Event,
         registration: *mut ProtocolSearchKey,
     ) -> Status,
-    locate_handle: unsafe extern "efiapi" fn(
+    pub locate_handle: unsafe extern "efiapi" fn(
         search_ty: i32,
         proto: Option<&Guid>,
         key: Option<ProtocolSearchKey>,
         buf_sz: &mut usize,
         buf: *mut MaybeUninit<Handle>,
     ) -> Status,
-    locate_device_path: unsafe extern "efiapi" fn(
+    pub locate_device_path: unsafe extern "efiapi" fn(
         proto: &Guid,
         device_path: &mut *const FfiDevicePath,
         out_handle: &mut MaybeUninit<Handle>,
     ) -> Status,
-    install_configuration_table: usize,
+    pub install_configuration_table: usize,
 
     // Image services
-    load_image: unsafe extern "efiapi" fn(
+    pub load_image: unsafe extern "efiapi" fn(
         boot_policy: u8,
         parent_image_handle: Handle,
         device_path: *const FfiDevicePath,
@@ -112,25 +111,25 @@ pub struct BootServices {
         source_size: usize,
         image_handle: &mut MaybeUninit<Handle>,
     ) -> Status,
-    start_image: unsafe extern "efiapi" fn(
+    pub start_image: unsafe extern "efiapi" fn(
         image_handle: Handle,
         exit_data_size: *mut usize,
         exit_data: &mut *mut Char16,
     ) -> Status,
-    exit: extern "efiapi" fn(
+    pub exit: extern "efiapi" fn(
         image_handle: Handle,
         exit_status: Status,
         exit_data_size: usize,
         exit_data: *mut Char16,
     ) -> !,
-    unload_image: extern "efiapi" fn(image_handle: Handle) -> Status,
-    exit_boot_services:
+    pub unload_image: extern "efiapi" fn(image_handle: Handle) -> Status,
+    pub exit_boot_services:
         unsafe extern "efiapi" fn(image_handle: Handle, map_key: MemoryMapKey) -> Status,
 
     // Misc services
-    get_next_monotonic_count: usize,
-    stall: extern "efiapi" fn(microseconds: usize) -> Status,
-    set_watchdog_timer: unsafe extern "efiapi" fn(
+    pub get_next_monotonic_count: usize,
+    pub stall: extern "efiapi" fn(microseconds: usize) -> Status,
+    pub set_watchdog_timer: unsafe extern "efiapi" fn(
         timeout: usize,
         watchdog_code: u64,
         data_size: usize,
@@ -138,20 +137,20 @@ pub struct BootServices {
     ) -> Status,
 
     // Driver support services
-    connect_controller: unsafe extern "efiapi" fn(
+    pub connect_controller: unsafe extern "efiapi" fn(
         controller: Handle,
         driver_image: Option<Handle>,
         remaining_device_path: *const FfiDevicePath,
         recursive: bool,
     ) -> Status,
-    disconnect_controller: unsafe extern "efiapi" fn(
+    pub disconnect_controller: unsafe extern "efiapi" fn(
         controller: Handle,
         driver_image: Option<Handle>,
         child: Option<Handle>,
     ) -> Status,
 
     // Protocol open / close services
-    open_protocol: extern "efiapi" fn(
+    pub open_protocol: extern "efiapi" fn(
         handle: Handle,
         protocol: &Guid,
         interface: &mut *mut c_void,
@@ -159,21 +158,21 @@ pub struct BootServices {
         controller_handle: Option<Handle>,
         attributes: u32,
     ) -> Status,
-    close_protocol: extern "efiapi" fn(
+    pub close_protocol: extern "efiapi" fn(
         handle: Handle,
         protocol: &Guid,
         agent_handle: Handle,
         controller_handle: Option<Handle>,
     ) -> Status,
-    open_protocol_information: usize,
+    pub open_protocol_information: usize,
 
     // Library services
-    protocols_per_handle: unsafe extern "efiapi" fn(
+    pub protocols_per_handle: unsafe extern "efiapi" fn(
         handle: Handle,
         protocol_buffer: *mut *mut *const Guid,
         protocol_buffer_count: *mut usize,
     ) -> Status,
-    locate_handle_buffer: unsafe extern "efiapi" fn(
+    pub locate_handle_buffer: unsafe extern "efiapi" fn(
         search_ty: i32,
         proto: Option<&Guid>,
         key: Option<ProtocolSearchKey>,
@@ -181,23 +180,23 @@ pub struct BootServices {
         buf: &mut *mut Handle,
     ) -> Status,
     #[deprecated = "open_protocol and open_protocol_exclusive are better alternatives and available since EFI 1.10 (2002)"]
-    locate_protocol: extern "efiapi" fn(
+    pub locate_protocol: extern "efiapi" fn(
         proto: &Guid,
         registration: *mut c_void,
         out_proto: &mut *mut c_void,
     ) -> Status,
-    install_multiple_protocol_interfaces: usize,
-    uninstall_multiple_protocol_interfaces: usize,
+    pub install_multiple_protocol_interfaces: usize,
+    pub uninstall_multiple_protocol_interfaces: usize,
 
     // CRC services
-    calculate_crc32: usize,
+    pub calculate_crc32: usize,
 
     // Misc services
-    copy_mem: unsafe extern "efiapi" fn(dest: *mut u8, src: *const u8, len: usize),
-    set_mem: unsafe extern "efiapi" fn(buffer: *mut u8, len: usize, value: u8),
+    pub copy_mem: unsafe extern "efiapi" fn(dest: *mut u8, src: *const u8, len: usize),
+    pub set_mem: unsafe extern "efiapi" fn(buffer: *mut u8, len: usize, value: u8),
 
     // New event functions (UEFI 2.0 or newer)
-    create_event_ex: unsafe extern "efiapi" fn(
+    pub create_event_ex: unsafe extern "efiapi" fn(
         ty: EventType,
         notify_tpl: Tpl,
         notify_fn: Option<EventNotifyFn>,
@@ -387,153 +386,6 @@ pub struct MemoryMapSize {
     pub entry_size: usize,
     /// Size of the entire memory map in bytes
     pub map_size: usize,
-}
-
-/// An iterator of [`MemoryDescriptor`] that is always associated with the
-/// unique [`MemoryMapKey`] contained in the struct.
-///
-/// To iterate over the entries, call [`MemoryMap::entries`]. To get a sorted
-/// map, you manually have to call [`MemoryMap::sort`] first.
-#[derive(Debug)]
-pub struct MemoryMap<'buf> {
-    key: MemoryMapKey,
-    buf: &'buf mut [u8],
-    entry_size: usize,
-    len: usize,
-}
-
-impl<'buf> MemoryMap<'buf> {
-    #[must_use]
-    /// Returns the unique [`MemoryMapKey`] associated with the memory map.
-    pub fn key(&self) -> MemoryMapKey {
-        self.key
-    }
-
-    /// Sorts the memory map by physical address in place.
-    /// This operation is optional and should be invoked only once.
-    pub fn sort(&mut self) {
-        unsafe {
-            self.qsort(0, self.len - 1);
-        }
-    }
-
-    /// Hoare partition scheme for quicksort.
-    /// Must be called with `low` and `high` being indices within bounds.
-    unsafe fn qsort(&mut self, low: usize, high: usize) {
-        if low >= high {
-            return;
-        }
-
-        let p = self.partition(low, high);
-        self.qsort(low, p);
-        self.qsort(p + 1, high);
-    }
-
-    unsafe fn partition(&mut self, low: usize, high: usize) -> usize {
-        let pivot = self.get_element_phys_addr(low + (high - low) / 2);
-
-        let mut left_index = low.wrapping_sub(1);
-        let mut right_index = high.wrapping_add(1);
-
-        loop {
-            while {
-                left_index = left_index.wrapping_add(1);
-
-                self.get_element_phys_addr(left_index) < pivot
-            } {}
-
-            while {
-                right_index = right_index.wrapping_sub(1);
-
-                self.get_element_phys_addr(right_index) > pivot
-            } {}
-
-            if left_index >= right_index {
-                return right_index;
-            }
-
-            self.swap(left_index, right_index);
-        }
-    }
-
-    /// Indices must be smaller than len.
-    unsafe fn swap(&mut self, index1: usize, index2: usize) {
-        if index1 == index2 {
-            return;
-        }
-
-        let base = self.buf.as_mut_ptr();
-
-        unsafe {
-            ptr::swap_nonoverlapping(
-                base.add(index1 * self.entry_size),
-                base.add(index2 * self.entry_size),
-                self.entry_size,
-            );
-        }
-    }
-
-    fn get_element_phys_addr(&self, index: usize) -> PhysicalAddress {
-        let offset = index.checked_mul(self.entry_size).unwrap();
-        let elem = unsafe { &*self.buf.as_ptr().add(offset).cast::<MemoryDescriptor>() };
-        elem.phys_start
-    }
-
-    /// Returns an iterator over the contained memory map. To get a sorted map,
-    /// call [`MemoryMap::sort`] first.
-    #[must_use]
-    pub fn entries(&self) -> MemoryMapIter {
-        MemoryMapIter {
-            buffer: self.buf,
-            entry_size: self.entry_size,
-            index: 0,
-            len: self.len,
-        }
-    }
-}
-
-/// An iterator of [`MemoryDescriptor`]. The underlying memory map is always
-/// associated with a unique [`MemoryMapKey`].
-#[derive(Debug, Clone)]
-pub struct MemoryMapIter<'buf> {
-    buffer: &'buf [u8],
-    entry_size: usize,
-    index: usize,
-    len: usize,
-}
-
-impl<'buf> Iterator for MemoryMapIter<'buf> {
-    type Item = &'buf MemoryDescriptor;
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let sz = self.len - self.index;
-
-        (sz, Some(sz))
-    }
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.index < self.len {
-            let descriptor = unsafe {
-                &*self
-                    .buffer
-                    .as_ptr()
-                    .add(self.entry_size * self.index)
-                    .cast::<MemoryDescriptor>()
-            };
-
-            self.index += 1;
-
-            Some(descriptor)
-        } else {
-            None
-        }
-    }
-}
-
-impl ExactSizeIterator for MemoryMapIter<'_> {
-    fn len(&self) -> usize {
-        self.len
-    }
 }
 
 bitflags! {

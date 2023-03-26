@@ -15,18 +15,18 @@ use core::ffi::c_void;
 // the fields of this struct, we just need to make sure it is the right size.
 #[repr(C)]
 pub struct Context {
-    _image_address: u64,
-    _image_size: u64,
-    _entry_point: u64,
-    _size_of_headers: usize,
-    _image_type: u16,
-    _number_of_sections: u16,
-    _section_alignment: u32,
-    _first_section: *const c_void,
-    _reloc_dir: *const c_void,
-    _sec_dir: *const c_void,
-    _number_of_rva_and_sizes: u64,
-    _pe_hdr: *const c_void,
+    pub _image_address: u64,
+    pub _image_size: u64,
+    pub _entry_point: u64,
+    pub _size_of_headers: usize,
+    pub _image_type: u16,
+    pub _number_of_sections: u16,
+    pub _section_alignment: u32,
+    pub _first_section: *const c_void,
+    pub _reloc_dir: *const c_void,
+    pub _sec_dir: *const c_void,
+    pub _number_of_rva_and_sizes: u64,
+    pub _pe_hdr: *const c_void,
 }
 
 pub const SHA1_DIGEST_SIZE: usize = 20;
@@ -66,8 +66,8 @@ macro_rules! shim_function {
 #[repr(C)]
 #[unsafe_protocol("605dab50-e046-4300-abb6-3dd810dd8b23")]
 pub struct ShimLock {
-    verify: shim_function! { fn(buffer: *const u8, size: u32) -> Status },
-    hash: shim_function! {
+    pub verify: shim_function! { fn(buffer: *const u8, size: u32) -> Status },
+    pub hash: shim_function! {
         fn(
             buffer: *const u8,
             size: u32,
@@ -76,5 +76,5 @@ pub struct ShimLock {
             sha1: *mut [u8; SHA1_DIGEST_SIZE]
         ) -> Status
     },
-    context: shim_function! { fn(buffer: *const u8, size: u32, context: *mut Context) -> Status },
+    pub context: shim_function! { fn(buffer: *const u8, size: u32, context: *mut Context) -> Status },
 }

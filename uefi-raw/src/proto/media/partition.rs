@@ -159,7 +159,7 @@ newtype_enum! {
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-union PartitionInfoRecord {
+pub union PartitionInfoRecord {
     mbr: MbrPartitionRecord,
     gpt: GptPartitionEntry,
 }
@@ -183,9 +183,9 @@ pub struct PartitionInfo {
     /// Type of partition.
     pub partition_type: PartitionType,
 
-    system: u8,
-    reserved: [u8; 7],
-    record: PartitionInfoRecord,
+    pub system: u8,
+    pub reserved: [u8; 7],
+    pub record: PartitionInfoRecord,
 }
 
 impl PartitionInfo {

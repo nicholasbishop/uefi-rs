@@ -7,10 +7,10 @@ use crate::{Event, Status};
 #[repr(C)]
 #[unsafe_protocol("31878c87-0b75-11d5-9a4f-0090273fc14d")]
 pub struct Pointer {
-    reset: extern "efiapi" fn(this: &mut Pointer, ext_verif: bool) -> Status,
-    get_state: extern "efiapi" fn(this: &Pointer, state: *mut PointerState) -> Status,
-    wait_for_input: Event,
-    mode: *const PointerMode,
+    pub reset: extern "efiapi" fn(this: &mut Pointer, ext_verif: bool) -> Status,
+    pub get_state: extern "efiapi" fn(this: &Pointer, state: *mut PointerState) -> Status,
+    pub wait_for_input: Event,
+    pub mode: *const PointerMode,
 }
 
 /// Information about this pointer device.

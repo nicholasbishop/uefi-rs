@@ -12,16 +12,16 @@ use core::fmt;
 #[repr(C)]
 pub struct Guid {
     /// The low field of the timestamp.
-    a: u32,
+    pub a: u32,
     /// The middle field of the timestamp.
-    b: u16,
+    pub b: u16,
     /// The high field of the timestamp multiplexed with the version number.
-    c: u16,
+    pub c: u16,
     /// Contains, in this order:
     /// - The high field of the clock sequence multiplexed with the variant.
     /// - The low field of the clock sequence.
     /// - The spatially unique node identifier.
-    d: [u8; 8],
+    pub d: [u8; 8],
 }
 
 impl Guid {

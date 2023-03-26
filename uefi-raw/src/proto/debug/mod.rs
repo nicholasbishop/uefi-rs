@@ -32,21 +32,21 @@ mod exception;
 #[repr(C)]
 #[unsafe_protocol("2755590c-6f3c-42fa-9ea4-a3ba543cda25")]
 pub struct DebugSupport {
-    isa: ProcessorArch,
-    get_maximum_processor_index:
+    pub isa: ProcessorArch,
+    pub get_maximum_processor_index:
         extern "efiapi" fn(this: &mut DebugSupport, max_processor_index: &mut usize) -> Status,
-    register_periodic_callback: unsafe extern "efiapi" fn(
+    pub register_periodic_callback: unsafe extern "efiapi" fn(
         this: &mut DebugSupport,
         processor_index: usize,
         periodic_callback: Option<unsafe extern "efiapi" fn(SystemContext)>,
     ) -> Status,
-    register_exception_callback: unsafe extern "efiapi" fn(
+    pub register_exception_callback: unsafe extern "efiapi" fn(
         this: &mut DebugSupport,
         processor_index: usize,
         exception_callback: Option<unsafe extern "efiapi" fn(ExceptionType, SystemContext)>,
         exception_type: ExceptionType,
     ) -> Status,
-    invalidate_instruction_cache: unsafe extern "efiapi" fn(
+    pub invalidate_instruction_cache: unsafe extern "efiapi" fn(
         this: &mut DebugSupport,
         processor_index: usize,
         start: *mut c_void,

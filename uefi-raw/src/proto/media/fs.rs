@@ -21,7 +21,7 @@ use crate::Status;
 #[repr(C)]
 #[unsafe_protocol("964e5b22-6459-11d2-8e39-00a0c969723b")]
 pub struct SimpleFileSystem {
-    revision: u64,
-    open_volume:
+    pub revision: u64,
+    pub open_volume:
         extern "efiapi" fn(this: &mut SimpleFileSystem, root: &mut *mut FileImpl) -> Status,
 }

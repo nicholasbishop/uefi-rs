@@ -11,7 +11,7 @@
 //! [TPM]: https://en.wikipedia.org/wiki/Trusted_Platform_Module
 
 use super::{AlgorithmId, EventType, HashAlgorithm, PcrIndex};
-use crate::data_types::{PhysicalAddress, UnalignedSlice};
+use crate::data_types::PhysicalAddress;
 use crate::proto::unsafe_protocol;
 use crate::Status;
 use bitflags::bitflags;
@@ -52,7 +52,7 @@ bitflags! {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct BootServiceCapability {
-    size: u8,
+    pub size: u8,
 
     /// Version of the EFI TCG2 protocol.
     pub structure_version: Version,
@@ -66,7 +66,7 @@ pub struct BootServiceCapability {
     /// Event log formats supported by the firmware.
     pub supported_event_logs: EventLogFormat,
 
-    present_flag: u8,
+    pub present_flag: u8,
 
     /// Maximum size (in bytes) of a command that can be sent to the TPM.
     pub max_command_size: u16,
@@ -139,10 +139,10 @@ bitflags! {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(C, packed)]
 pub struct EventHeader {
-    header_size: u32,
-    header_version: u16,
-    pcr_index: PcrIndex,
-    event_type: EventType,
+    pub header_size: u32,
+    pub header_version: u16,
+    pub pcr_index: PcrIndex,
+    pub event_type: EventType,
 }
 
 /// Event type passed to [`Tcg::hash_log_extend_event`].
@@ -158,9 +158,9 @@ pub struct EventHeader {
 #[derive(Pointee)]
 #[repr(C, packed)]
 pub struct PcrEventInputs {
-    size: u32,
-    event_header: EventHeader,
-    event: [u8],
+    pub size: u32,
+    pub event_header: EventHeader,
+    pub event: [u8],
 }
 
 impl Debug for PcrEventInputs {
@@ -176,27 +176,21 @@ impl Debug for PcrEventInputs {
 #[repr(C, packed)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AlgorithmDigestSize {
-    algorithm_id: AlgorithmId,
-    digest_size: u16,
+    pub algorithm_id: AlgorithmId,
+    pub digest_size: u16,
 }
-
-#[derive(Clone, Debug)]
-pub struct AlgorithmDigestSizes<'a>(pub UnalignedSlice<'a, AlgorithmDigestSize>);
 
 /// Header stored at the beginning of the event log.
 ///
 /// Layout compatible with the C type `TCG_EfiSpecIDEventStruct`.
-#[derive(Clone, Debug)]
-#[allow(unused)] // We don't current access most of the fields.
-pub struct EventLogHeader<'a> {
-    platform_class: u32,
+pub struct EventLogHeader {
+    pub platform_class: u32,
     // major, minor, errata
-    spec_version: (u8, u8, u8),
-    uintn_size: u8,
-    algorithm_digest_sizes: AlgorithmDigestSizes<'a>,
-    vendor_info: &'a [u8],
-    // Size of the whole header event, in bytes.
-    size_in_bytes: usize,
+    pub spec_version: (u8, u8, u8),
+    pub uintn_size: u8,
+
+    // TODO
+    pub data: [u8],
 }
 
 /// TPM event log as returned by [`Tcg::get_event_log_v2`].
@@ -211,13 +205,6 @@ pub struct EventLog {
     pub is_truncated: bool,
 }
 
-/// Digests in a PCR event.
-#[derive(Clone)]
-pub struct PcrEventDigests<'a> {
-    pub data: &'a [u8],
-    pub algorithm_digest_sizes: AlgorithmDigestSizes<'a>,
-}
-
 /// Protocol for interacting with TPM devices.
 ///
 /// This protocol can be used for interacting with older TPM 1.1/1.2
@@ -227,12 +214,12 @@ pub struct PcrEventDigests<'a> {
 #[repr(C)]
 #[unsafe_protocol("607f766c-7455-42be-930b-e4d76db2720f")]
 pub struct Tcg {
-    get_capability: unsafe extern "efiapi" fn(
+    pub get_capability: unsafe extern "efiapi" fn(
         this: *mut Tcg,
         protocol_capability: *mut BootServiceCapability,
     ) -> Status,
 
-    get_event_log: unsafe extern "efiapi" fn(
+    pub get_event_log: unsafe extern "efiapi" fn(
         this: *mut Tcg,
         event_log_format: EventLogFormat,
         event_log_location: *mut PhysicalAddress,
@@ -240,7 +227,7 @@ pub struct Tcg {
         event_log_truncated: *mut u8,
     ) -> Status,
 
-    hash_log_extend_event: unsafe extern "efiapi" fn(
+    pub hash_log_extend_event: unsafe extern "efiapi" fn(
         this: *mut Tcg,
         flags: HashLogExtendEventFlags,
         data_to_hash: PhysicalAddress,
@@ -250,7 +237,7 @@ pub struct Tcg {
         event: *const (),
     ) -> Status,
 
-    submit_command: unsafe extern "efiapi" fn(
+    pub submit_command: unsafe extern "efiapi" fn(
         this: *mut Tcg,
         input_parameter_block_size: u32,
         input_parameter_block: *const u8,
@@ -258,13 +245,13 @@ pub struct Tcg {
         output_parameter_block: *mut u8,
     ) -> Status,
 
-    get_active_pcr_banks:
+    pub get_active_pcr_banks:
         unsafe extern "efiapi" fn(this: *mut Tcg, active_pcr_banks: *mut HashAlgorithm) -> Status,
 
-    set_active_pcr_banks:
+    pub set_active_pcr_banks:
         unsafe extern "efiapi" fn(this: *mut Tcg, active_pcr_banks: HashAlgorithm) -> Status,
 
-    get_result_of_set_active_pcr_banks: unsafe extern "efiapi" fn(
+    pub get_result_of_set_active_pcr_banks: unsafe extern "efiapi" fn(
         this: *mut Tcg,
         operation_present: *mut u32,
         response: *mut u32,

@@ -18,40 +18,40 @@ use core::fmt::{Debug, Formatter};
 /// [`SystemTable::runtime_services`]: crate::table::SystemTable::runtime_services
 #[repr(C)]
 pub struct RuntimeServices {
-    header: Header,
-    get_time:
+    pub header: Header,
+    pub get_time:
         unsafe extern "efiapi" fn(time: *mut Time, capabilities: *mut TimeCapabilities) -> Status,
-    set_time: unsafe extern "efiapi" fn(time: &Time) -> Status,
+    pub set_time: unsafe extern "efiapi" fn(time: &Time) -> Status,
     // Skip some useless functions.
-    _pad: [usize; 2],
-    pub(crate) set_virtual_address_map: unsafe extern "efiapi" fn(
+    pub _pad: [usize; 2],
+    pub set_virtual_address_map: unsafe extern "efiapi" fn(
         map_size: usize,
         desc_size: usize,
         desc_version: u32,
         virtual_map: *mut MemoryDescriptor,
     ) -> Status,
-    _pad2: usize,
-    get_variable: unsafe extern "efiapi" fn(
+    pub pad2: usize,
+    pub get_variable: unsafe extern "efiapi" fn(
         variable_name: *const Char16,
         vendor_guid: *const Guid,
         attributes: *mut VariableAttributes,
         data_size: *mut usize,
         data: *mut u8,
     ) -> Status,
-    get_next_variable_name: unsafe extern "efiapi" fn(
+    pub get_next_variable_name: unsafe extern "efiapi" fn(
         variable_name_size: *mut usize,
         variable_name: *mut u16,
         vendor_guid: *mut Guid,
     ) -> Status,
-    set_variable: unsafe extern "efiapi" fn(
+    pub set_variable: unsafe extern "efiapi" fn(
         variable_name: *const Char16,
         vendor_guid: *const Guid,
         attributes: VariableAttributes,
         data_size: usize,
         data: *const u8,
     ) -> Status,
-    _pad3: usize,
-    reset: unsafe extern "efiapi" fn(
+    pub _pad3: usize,
+    pub reset: unsafe extern "efiapi" fn(
         rt: ResetType,
 
         status: Status,
@@ -60,11 +60,11 @@ pub struct RuntimeServices {
     ) -> !,
 
     // UEFI 2.0 Capsule Services.
-    update_capsule: usize,
-    query_capsule_capabilities: usize,
+    pub update_capsule: usize,
+    pub query_capsule_capabilities: usize,
 
     // Miscellaneous UEFI 2.0 Service.
-    query_variable_info: unsafe extern "efiapi" fn(
+    pub query_variable_info: unsafe extern "efiapi" fn(
         attributes: VariableAttributes,
         maximum_variable_storage_size: *mut u64,
         remaining_variable_storage_size: *mut u64,
@@ -95,50 +95,17 @@ impl Debug for RuntimeServices {
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct Time {
-    year: u16,  // 1900 - 9999
-    month: u8,  // 1 - 12
-    day: u8,    // 1 - 31
-    hour: u8,   // 0 - 23
-    minute: u8, // 0 - 59
-    second: u8, // 0 - 59
-    _pad1: u8,
-    nanosecond: u32, // 0 - 999_999_999
-    time_zone: i16,  // -1440 to 1440, or 2047 if unspecified
-    daylight: Daylight,
-    _pad2: u8,
-}
-
-/// Input parameters for [`Time::new`].
-#[derive(Copy, Clone, Debug)]
-pub struct TimeParams {
-    /// Year in the range `1900..=9999`.
-    pub year: u16,
-
-    /// Month in the range `1..=12`.
-    pub month: u8,
-
-    /// Day in the range `1..=31`.
-    pub day: u8,
-
-    /// Hour in the range `0.=23`.
-    pub hour: u8,
-
-    /// Minute in the range `0..=59`.
-    pub minute: u8,
-
-    /// Second in the range `0..=59`.
-    pub second: u8,
-
-    /// Fraction of a second represented as nanoseconds in the range
-    /// `0..=999_999_999`.
-    pub nanosecond: u32,
-
-    /// Offset in minutes from UTC in the range `-1440..=1440`, or
-    /// local time if `None`.
-    pub time_zone: Option<i16>,
-
-    /// Daylight savings time information.
+    pub year: u16,  // 1900 - 9999
+    pub month: u8,  // 1 - 12
+    pub day: u8,    // 1 - 31
+    pub hour: u8,   // 0 - 23
+    pub minute: u8, // 0 - 59
+    pub second: u8, // 0 - 59
+    pub _pad1: u8,
+    pub nanosecond: u32, // 0 - 999_999_999
+    pub time_zone: i16,  // -1440 to 1440, or 2047 if unspecified
     pub daylight: Daylight,
+    pub _pad2: u8,
 }
 
 bitflags! {
@@ -158,29 +125,6 @@ pub struct TimeError;
 impl Time {
     /// Unspecified Timezone/local time.
     const UNSPECIFIED_TIMEZONE: i16 = 0x07ff;
-
-    /// Create a `Time` value. If a field is not in the valid range,
-    /// [`TimeError`] is returned.
-    pub fn new(params: TimeParams) -> core::result::Result<Self, TimeError> {
-        let time = Self {
-            year: params.year,
-            month: params.month,
-            day: params.day,
-            hour: params.hour,
-            minute: params.minute,
-            second: params.second,
-            _pad1: 0,
-            nanosecond: params.nanosecond,
-            time_zone: params.time_zone.unwrap_or(Self::UNSPECIFIED_TIMEZONE),
-            daylight: params.daylight,
-            _pad2: 0,
-        };
-        if time.is_valid() {
-            Ok(time)
-        } else {
-            Err(TimeError)
-        }
-    }
 
     /// Create an invalid `Time` with all fields set to zero. This can
     /// be used with [`FileInfo`] to indicate a field should not be
@@ -404,45 +348,6 @@ newtype_enum! {
 
         /// Used to access EFI signature database variables.
         IMAGE_SECURITY_DATABASE = guid!("d719b2cb-3d3a-4596-a3bc-dad00e67656f"),
-    }
-}
-
-/// Unique key for a variable.
-#[cfg(feature = "alloc")]
-#[derive(Debug)]
-pub struct VariableKey {
-    name: Vec<u16>,
-    /// Unique identifier for the vendor.
-    pub vendor: VariableVendor,
-}
-
-#[cfg(feature = "alloc")]
-impl VariableKey {
-    /// Name of the variable.
-    pub fn name(&self) -> core::result::Result<&CStr16, FromSliceWithNulError> {
-        CStr16::from_u16_with_nul(&self.name)
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl fmt::Display for VariableKey {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "VariableKey {{ name: ")?;
-
-        match self.name() {
-            Ok(name) => write!(f, "\"{name}\"")?,
-            Err(err) => write!(f, "Err({err:?})")?,
-        }
-
-        write!(f, ", vendor: ")?;
-
-        if self.vendor == VariableVendor::GLOBAL_VARIABLE {
-            write!(f, "GLOBAL_VARIABLE")?;
-        } else {
-            write!(f, "{}", self.vendor.0)?;
-        }
-
-        write!(f, " }}")
     }
 }
 

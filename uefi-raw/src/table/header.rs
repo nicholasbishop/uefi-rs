@@ -14,5 +14,5 @@ pub struct Header {
     /// calculated with this field set to 0.
     pub crc: u32,
     /// Reserved field that must be set to 0.
-    _reserved: u32,
+    pub reserved: u32,
 }
