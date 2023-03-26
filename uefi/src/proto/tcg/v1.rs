@@ -224,12 +224,7 @@ impl PartialEq for PcrEvent {
     }
 }
 
-opaque_type! {
-    /// Opaque type that should be used to represent a pointer to a [`PcrEvent`] in
-    /// foreign function interfaces. This type produces a thin pointer, unlike
-    /// [`PcrEvent`].
-    pub struct FfiPcrEvent;
-}
+pub use uefi_raw::protocol::tcg::v1::FfiPcrEvent;
 
 /// TPM event log.
 ///

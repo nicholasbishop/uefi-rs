@@ -400,3 +400,10 @@ pub fn cstr16(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             .into(),
     }
 }
+
+// TODO
+#[doc(hidden)]
+#[proc_macro_attribute]
+pub fn allow_non_pub(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    item
+}

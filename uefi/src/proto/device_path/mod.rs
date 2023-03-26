@@ -87,13 +87,7 @@ use core::fmt::{self, Debug, Formatter};
 use core::mem;
 use ptr_meta::Pointee;
 
-opaque_type! {
-    /// Opaque type that should be used to represent a pointer to a
-    /// [`DevicePath`] or [`DevicePathNode`] in foreign function interfaces. This
-    /// type produces a thin pointer, unlike [`DevicePath`] and
-    /// [`DevicePathNode`].
-    pub struct FfiDevicePath;
-}
+pub use uefi_raw::protocol::device_path::FfiDevicePath;
 
 /// Header that appears at the start of every [`DevicePathNode`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
