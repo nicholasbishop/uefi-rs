@@ -1,9 +1,7 @@
 //! Abstraction over byte stream devices, also known as serial I/O devices.
 
-use core::fmt::Write;
-
 use crate::proto::unsafe_protocol;
-use crate::{ Status};
+use crate::Status;
 use bitflags::bitflags;
 
 /// Provides access to a serial I/O device.
@@ -34,91 +32,6 @@ pub struct Serial {
     write: unsafe extern "efiapi" fn(&mut Serial, &mut usize, *const u8) -> Status,
     read: unsafe extern "efiapi" fn(&mut Serial, &mut usize, *mut u8) -> Status,
     io_mode: *const IoMode,
-}
-
-impl Serial {
-    /// Reset the device.
-    pub fn reset(&mut self) -> Result {
-        (self.reset)(self).into()
-    }
-
-    /// Returns the current I/O mode.
-    #[must_use]
-    pub const fn io_mode(&self) -> &IoMode {
-        unsafe { &*self.io_mode }
-    }
-
-    /// Sets the device's new attributes.
-    ///
-    /// The given `IoMode` will become the device's new `IoMode`,
-    /// with some exceptions:
-    ///
-    /// - `control_mask` is ignored, since it's a read-only field;
-    ///
-    /// - values set to `0` / `Default` will be filled with the device's
-    ///   default parameters
-    ///
-    /// - if either `baud_rate` or `receive_fifo_depth` is less than
-    ///   the device's minimum, an error will be returned;
-    ///   this value will be rounded down to the nearest value supported by the device;
-    pub fn set_attributes(&mut self, mode: &IoMode) -> Result {
-        (self.set_attributes)(
-            self,
-            mode.baud_rate,
-            mode.receive_fifo_depth,
-            mode.timeout,
-            mode.parity,
-            mode.data_bits as u8,
-            mode.stop_bits,
-        )
-        .into()
-    }
-
-    /// Retrieve the device's current control bits.
-    pub fn get_control_bits(&self) -> Result<ControlBits> {
-        let mut bits = ControlBits::empty();
-        (self.get_control_bits)(self, &mut bits).into_with_val(|| bits)
-    }
-
-    /// Sets the device's new control bits.
-    ///
-    /// Not all bits can be modified with this function. A mask of the allowed
-    /// bits is stored in the [`ControlBits::SETTABLE`] constant.
-    pub fn set_control_bits(&mut self, bits: ControlBits) -> Result {
-        (self.set_control_bits)(self, bits).into()
-    }
-
-    /// Reads data from this device.
-    ///
-    /// This operation will block until the buffer has been filled with data or
-    /// an error occurs. In the latter case, the error will indicate how many
-    /// bytes were actually read from the device.
-    pub fn read(&mut self, data: &mut [u8]) -> Result<(), usize> {
-        let mut buffer_size = data.len();
-        unsafe { (self.read)(self, &mut buffer_size, data.as_mut_ptr()) }.into_with(
-            || debug_assert_eq!(buffer_size, data.len()),
-            |_| buffer_size,
-        )
-    }
-
-    /// Writes data to this device.
-    ///
-    /// This operation will block until the data has been fully written or an
-    /// error occurs. In the latter case, the error will indicate how many bytes
-    /// were actually written to the device.
-    pub fn write(&mut self, data: &[u8]) -> Result<(), usize> {
-        let mut buffer_size = data.len();
-        unsafe { (self.write)(self, &mut buffer_size, data.as_ptr()) }.into_with(
-            || debug_assert_eq!(buffer_size, data.len()),
-            |_| buffer_size,
-        )
-    }
-}
-
-impl Write for Serial {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        self.write(s.as_bytes()).map_err(|_| core::fmt::Error)
-    }
 }
 
 /// Structure representing the device's current parameters.

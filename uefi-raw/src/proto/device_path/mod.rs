@@ -76,15 +76,14 @@
 pub mod text;
 
 mod device_path_gen;
-pub use device_path_gen::{
-    acpi, bios_boot_spec, end, hardware, media, messaging, DevicePathNodeEnum,
-};
+// TODO
+// pub use device_path_gen::{
+//     acpi, bios_boot_spec, end, hardware, media, messaging, DevicePathNodeEnum,
+// };
 
-use crate::proto::{unsafe_protocol, ProtocolPointer};
-use core::ffi::c_void;
+use crate::proto::unsafe_protocol;
 use core::fmt::{self, Debug, Formatter};
 use core::marker::{PhantomData, PhantomPinned};
-use core::mem;
 use ptr_meta::Pointee;
 
 /// Opaque type that should be used to represent a pointer to a
@@ -127,66 +126,6 @@ pub struct DevicePathNode {
     data: [u8],
 }
 
-impl DevicePathNode {
-    /// Create a [`DevicePathNode`] reference from an opaque pointer.
-    ///
-    /// # Safety
-    ///
-    /// The input pointer must point to valid data. That data must
-    /// remain valid for the lifetime `'a`, and cannot be mutated during
-    /// that lifetime.
-    #[must_use]
-    pub unsafe fn from_ffi_ptr<'a>(ptr: *const FfiDevicePath) -> &'a DevicePathNode {
-        let header = *ptr.cast::<DevicePathHeader>();
-
-        let data_len = usize::from(header.length) - mem::size_of::<DevicePathHeader>();
-        &*ptr_meta::from_raw_parts(ptr.cast(), data_len)
-    }
-
-    /// Cast to a [`FfiDevicePath`] pointer.
-    #[must_use]
-    pub const fn as_ffi_ptr(&self) -> *const FfiDevicePath {
-        let ptr: *const Self = self;
-        ptr.cast::<FfiDevicePath>()
-    }
-
-    /// Type of device
-    #[must_use]
-    pub const fn device_type(&self) -> DeviceType {
-        self.header.device_type
-    }
-
-    /// Sub type of device
-    #[must_use]
-    pub const fn sub_type(&self) -> DeviceSubType {
-        self.header.sub_type
-    }
-
-    /// Tuple of the node's type and subtype.
-    #[must_use]
-    pub const fn full_type(&self) -> (DeviceType, DeviceSubType) {
-        (self.header.device_type, self.header.sub_type)
-    }
-
-    /// Size (in bytes) of the full [`DevicePathNode`], including the header.
-    #[must_use]
-    pub const fn length(&self) -> u16 {
-        self.header.length
-    }
-
-    /// True if this node ends an entire [`DevicePath`].
-    #[must_use]
-    pub fn is_end_entire(&self) -> bool {
-        self.full_type() == (DeviceType::END, DeviceSubType::END_ENTIRE)
-    }
-
-    /// Convert from a generic [`DevicePathNode`] reference to an enum
-    /// of more specific node types.
-    pub fn as_enum(&self) -> Result<DevicePathNodeEnum, NodeConversionError> {
-        DevicePathNodeEnum::try_from(self)
-    }
-}
-
 impl Debug for DevicePathNode {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.debug_struct("DevicePathNode")
@@ -215,21 +154,6 @@ impl PartialEq for DevicePathNode {
 #[derive(Eq, Pointee)]
 pub struct DevicePathInstance {
     data: [u8],
-}
-
-impl DevicePathInstance {
-    /// Get an iterator over the [`DevicePathNodes`] in this
-    /// instance. Iteration ends when any [`DeviceType::END`] node is
-    /// reached.
-    ///
-    /// [`DevicePathNodes`]: DevicePathNode
-    #[must_use]
-    pub const fn node_iter(&self) -> DevicePathNodeIterator {
-        DevicePathNodeIterator {
-            nodes: &self.data,
-            stop_condition: StopCondition::AnyEndNode,
-        }
-    }
 }
 
 impl Debug for DevicePathInstance {
@@ -262,76 +186,6 @@ pub struct DevicePath {
     data: [u8],
 }
 
-impl ProtocolPointer for DevicePath {
-    unsafe fn ptr_from_ffi(ptr: *const c_void) -> *const Self {
-        ptr_meta::from_raw_parts(ptr.cast(), Self::size_in_bytes_from_ptr(ptr))
-    }
-
-    unsafe fn mut_ptr_from_ffi(ptr: *mut c_void) -> *mut Self {
-        ptr_meta::from_raw_parts_mut(ptr.cast(), Self::size_in_bytes_from_ptr(ptr))
-    }
-}
-
-impl DevicePath {
-    /// Calculate the size in bytes of the entire `DevicePath` starting
-    /// at `ptr`. This adds up each node's length, including the
-    /// end-entire node.
-    unsafe fn size_in_bytes_from_ptr(ptr: *const c_void) -> usize {
-        let mut ptr = ptr.cast::<u8>();
-        let mut total_size_in_bytes: usize = 0;
-        loop {
-            let node = DevicePathNode::from_ffi_ptr(ptr.cast::<FfiDevicePath>());
-            let node_size_in_bytes = usize::from(node.length());
-            total_size_in_bytes += node_size_in_bytes;
-            if node.is_end_entire() {
-                break;
-            }
-            ptr = ptr.add(node_size_in_bytes);
-        }
-
-        total_size_in_bytes
-    }
-
-    /// Create a [`DevicePath`] reference from an opaque pointer.
-    ///
-    /// # Safety
-    ///
-    /// The input pointer must point to valid data. That data must
-    /// remain valid for the lifetime `'a`, and cannot be mutated during
-    /// that lifetime.
-    #[must_use]
-    pub unsafe fn from_ffi_ptr<'a>(ptr: *const FfiDevicePath) -> &'a DevicePath {
-        &*Self::ptr_from_ffi(ptr.cast::<c_void>())
-    }
-
-    /// Cast to a [`FfiDevicePath`] pointer.
-    #[must_use]
-    pub const fn as_ffi_ptr(&self) -> *const FfiDevicePath {
-        let p = self as *const Self;
-        p.cast()
-    }
-
-    /// Get an iterator over the [`DevicePathInstance`]s in this path.
-    #[must_use]
-    pub const fn instance_iter(&self) -> DevicePathInstanceIterator {
-        DevicePathInstanceIterator {
-            remaining_path: Some(self),
-        }
-    }
-
-    /// Get an iterator over the [`DevicePathNode`]s starting at
-    /// `self`. Iteration ends when a path is reached where
-    /// [`is_end_entire`][DevicePathNode::is_end_entire] is true. That ending
-    /// path is not returned by the iterator.
-    #[must_use]
-    pub const fn node_iter(&self) -> DevicePathNodeIterator {
-        DevicePathNodeIterator {
-            nodes: &self.data,
-            stop_condition: StopCondition::EndEntireNode,
-        }
-    }
-}
-
 impl Debug for DevicePath {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.debug_struct("DevicePath")
@@ -343,107 +197,6 @@ impl Debug for DevicePath {
 impl PartialEq for DevicePath {
     fn eq(&self, other: &Self) -> bool {
         self.data == other.data
-    }
-}
-
-/// Iterator over the [`DevicePathInstance`]s in a [`DevicePath`].
-///
-/// This struct is returned by [`DevicePath::instance_iter`].
-#[derive(Debug)]
-pub struct DevicePathInstanceIterator<'a> {
-    remaining_path: Option<&'a DevicePath>,
-}
-
-impl<'a> Iterator for DevicePathInstanceIterator<'a> {
-    type Item = &'a DevicePathInstance;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let remaining_path = self.remaining_path?;
-
-        let mut instance_size: usize = 0;
-
-        // Find the end of the instance, which can be either kind of end
-        // node (end-instance or end-entire). Count the number of bytes
-        // up to and including that end node.
-        let node_iter = DevicePathNodeIterator {
-            nodes: &remaining_path.data,
-            stop_condition: StopCondition::NoMoreNodes,
-        };
-        for node in node_iter {
-            instance_size += usize::from(node.length());
-            if node.device_type() == DeviceType::END {
-                break;
-            }
-        }
-
-        let (head, rest) = remaining_path.data.split_at(instance_size);
-
-        if rest.is_empty() {
-            self.remaining_path = None;
-        } else {
-            self.remaining_path = unsafe {
-                Some(&*ptr_meta::from_raw_parts(
-                    rest.as_ptr().cast::<()>(),
-                    rest.len(),
-                ))
-            };
-        }
-
-        unsafe {
-            Some(&*ptr_meta::from_raw_parts(
-                head.as_ptr().cast::<()>(),
-                head.len(),
-            ))
-        }
-    }
-}
-
-#[derive(Debug)]
-enum StopCondition {
-    AnyEndNode,
-    EndEntireNode,
-    NoMoreNodes,
-}
-
-/// Iterator over [`DevicePathNode`]s.
-///
-/// This struct is returned by [`DevicePath::node_iter`] and
-/// [`DevicePathInstance::node_iter`].
-#[derive(Debug)]
-pub struct DevicePathNodeIterator<'a> {
-    nodes: &'a [u8],
-    stop_condition: StopCondition,
-}
-
-impl<'a> Iterator for DevicePathNodeIterator<'a> {
-    type Item = &'a DevicePathNode;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.nodes.is_empty() {
-            return None;
-        }
-
-        let node =
-            unsafe { DevicePathNode::from_ffi_ptr(self.nodes.as_ptr().cast::<FfiDevicePath>()) };
-
-        // Check if an early stop condition has been reached.
-        let stop = match self.stop_condition {
-            StopCondition::AnyEndNode => node.device_type() == DeviceType::END,
-            StopCondition::EndEntireNode => node.is_end_entire(),
-            StopCondition::NoMoreNodes => false,
-        };
-
-        if stop {
-            // Clear the remaining node data so that future calls to
-            // next() immediately return `None`.
-            self.nodes = &[];
-            None
-        } else {
-            // Advance to next node.
-            let node_size = usize::from(node.length());
-            self.nodes = &self.nodes[node_size..];
-            Some(node)
-        }
     }
 }
 

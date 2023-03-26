@@ -8,10 +8,8 @@
 ))]
 
 use crate::proto::unsafe_protocol;
-use crate::result::Error;
-use crate::{ Status};
+use crate::Status;
 use core::ffi::c_void;
-use core::mem::MaybeUninit;
 
 // The `PE_COFF_LOADER_IMAGE_CONTEXT` type. None of our methods need to inspect
 // the fields of this struct, we just need to make sure it is the right size.
@@ -79,43 +77,4 @@ pub struct ShimLock {
         ) -> Status
     },
     context: shim_function! { fn(buffer: *const u8, size: u32, context: *mut Context) -> Status },
-}
-
-impl ShimLock {
-    /// Verify that an EFI application is signed by the certificate
-    /// embedded in shim.
-    ///
-    /// The buffer's size must fit in a `u32`; if that condition is not
-    /// met then a `BAD_BUFFER_SIZE` error will be returned and the shim
-    /// lock protocol will not be called.
-    pub fn verify(&self, buffer: &[u8]) -> Result {
-        let size: u32 = buffer
-            .len()
-            .try_into()
-            .map_err(|_| Error::from(Status::BAD_BUFFER_SIZE))?;
-        (self.verify)(buffer.as_ptr(), size).into()
-    }
-    /// Compute the Authenticode Hash of the provided EFI application.
-    ///
-    /// The buffer's size must fit in a `u32`; if that condition is not
-    /// met then a `BAD_BUFFER_SIZE` error will be returned and the shim
-    /// lock protocol will not be called.
-    pub fn hash(&self, buffer: &[u8], hashes: &mut Hashes) -> Result {
-        let ptr: *const u8 = buffer.as_ptr();
-        let size: u32 = buffer
-            .len()
-            .try_into()
-            .map_err(|_| Error::from(Status::BAD_BUFFER_SIZE))?;
-
-        let mut context = MaybeUninit::<Context>::uninit();
-        Result::from((self.context)(ptr, size, context.as_mut_ptr()))?;
-        (self.hash)(
-            ptr,
-            size,
-            context.as_mut_ptr(),
-            &mut hashes.sha256,
-            &mut hashes.sha1,
-        )
-        .into()
-    }
 }

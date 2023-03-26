@@ -2,7 +2,6 @@
 
 use crate::proto::unsafe_protocol;
 use crate::{Event, Status};
-use core::mem::MaybeUninit;
 
 /// Provides information about a pointer device.
 #[repr(C)]
@@ -12,50 +11,6 @@ pub struct Pointer {
     get_state: extern "efiapi" fn(this: &Pointer, state: *mut PointerState) -> Status,
     wait_for_input: Event,
     mode: *const PointerMode,
-}
-
-impl Pointer {
-    /// Resets the pointer device hardware.
-    ///
-    /// The `extended_verification` parameter is used to request that UEFI
-    /// performs an extended check and reset of the input device.
-    ///
-    /// # Errors
-    ///
-    /// - `DeviceError` if the device is malfunctioning and cannot be reset.
-    pub fn reset(&mut self, extended_verification: bool) -> Result {
-        (self.reset)(self, extended_verification).into()
-    }
-
-    /// Retrieves the pointer device's current state, if a state change occurred
-    /// since the last time this function was called.
-    ///
-    /// Use `wait_for_input_event()` with the `BootServices::wait_for_event()`
-    /// interface in order to wait for input from the pointer device.
-    ///
-    /// # Errors
-    /// - `DeviceError` if there was an issue with the pointer device.
-    pub fn read_state(&mut self) -> Result<Option<PointerState>> {
-        let mut pointer_state = MaybeUninit::<PointerState>::uninit();
-
-        match (self.get_state)(self, pointer_state.as_mut_ptr()) {
-            Status::NOT_READY => Ok(None),
-            other => other.into_with_val(|| unsafe { Some(pointer_state.assume_init()) }),
-        }
-    }
-
-    /// Event to be used with `BootServices::wait_for_event()` in order to wait
-    /// for input from the pointer device
-    #[must_use]
-    pub const fn wait_for_input_event(&self) -> &Event {
-        &self.wait_for_input
-    }
-
-    /// Returns a reference to the pointer device information.
-    #[must_use]
-    pub const fn mode(&self) -> &PointerMode {
-        unsafe { &*self.mode }
-    }
 }
 
 /// Information about this pointer device.

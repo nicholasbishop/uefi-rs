@@ -1,17 +1,13 @@
 //! UEFI services available during boot.
 
 use super::Header;
-use crate::data_types::{Align, PhysicalAddress, VirtualAddress};
+use crate::data_types::{PhysicalAddress, VirtualAddress};
 use crate::proto::device_path::FfiDevicePath;
-#[cfg(feature = "alloc")]
-use crate::proto::{loaded_image::LoadedImage, media::fs::SimpleFileSystem};
 use crate::{Char16, Event, Guid, Handle, Status};
-#[cfg(feature = "alloc")]
-use ::alloc::vec::Vec;
 use bitflags::bitflags;
 use core::ffi::c_void;
 use core::fmt::Debug;
-use core::mem::{self, MaybeUninit};
+use core::mem::MaybeUninit;
 use core::ptr;
 use core::ptr::NonNull;
 
@@ -211,8 +207,8 @@ pub struct BootServices {
     ) -> Status,
 }
 
-impl super::Table for BootServices {
-    const SIGNATURE: u64 = 0x5652_4553_544f_4f42;
+impl BootServices {
+    pub const SIGNATURE: u64 = 0x5652_4553_544f_4f42;
 }
 
 newtype_enum! {
@@ -324,12 +320,6 @@ impl Default for MemoryDescriptor {
             page_count: 0,
             att: MemoryAttribute::empty(),
         }
-    }
-}
-
-impl Align for MemoryDescriptor {
-    fn alignment() -> usize {
-        mem::align_of::<Self>()
     }
 }
 
@@ -591,3 +581,9 @@ pub enum InterfaceType: i32 => {
     NATIVE_INTERFACE    = 0,
 }
 }
+
+/// Opaque pointer returned by [`BootServices::register_protocol_notify`] to be used
+/// with [`BootServices::locate_handle`] via [`SearchType::ByRegisterNotify`].
+#[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
+pub struct ProtocolSearchKey(NonNull<c_void>);

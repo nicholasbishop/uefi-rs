@@ -50,11 +50,11 @@
 //! You will have to implement your own double buffering if you want to
 //! avoid tearing with animations.
 
+use crate::proto::unsafe_protocol;
 use crate::Status;
-use core::fmt::{Debug, Formatter};
+use core::fmt::Debug;
 use core::marker::PhantomData;
 use core::mem;
-use core::ptr;
 
 /// Provides access to the video hardware's frame buffer.
 ///
@@ -86,236 +86,6 @@ pub struct GraphicsOutput {
     mode: *const ModeData,
 }
 
-impl GraphicsOutput {
-    /// Returns information for an available graphics mode that the graphics
-    /// device and the set of active video output devices supports.
-    pub fn query_mode(&self, index: u32) -> Result<Mode> {
-        let mut info_sz = 0;
-        let mut info = ptr::null();
-
-        (self.query_mode)(self, index, &mut info_sz, &mut info).into_with_val(|| {
-            let info = unsafe { *info };
-            Mode {
-                index,
-                info_sz,
-                info,
-            }
-        })
-    }
-
-    /// Returns information about all available graphics modes.
-    #[must_use]
-    pub fn modes(&self) -> ModeIter {
-        ModeIter {
-            gop: self,
-            current: 0,
-            max: self.mode().max_mode,
-        }
-    }
-
-    /// Sets the video device into the specified mode, clearing visible portions
-    /// of the output display to black.
-    ///
-    /// This function will invalidate the current framebuffer.
-    pub fn set_mode(&mut self, mode: &Mode) -> Result {
-        (self.set_mode)(self, mode.index).into()
-    }
-
-    /// Performs a blt (block transfer) operation on the frame buffer.
-    ///
-    /// Every operation requires different parameters.
-    pub fn blt(&mut self, op: BltOp) -> Result {
-        // Demultiplex the operation type.
-        unsafe {
-            match op {
-                BltOp::VideoFill {
-                    color,
-                    dest: (dest_x, dest_y),
-                    dims: (width, height),
-                } => {
-                    self.check_framebuffer_region((dest_x, dest_y), (width, height));
-                    (self.blt)(
-                        self,
-                        &color as *const _ as *mut _,
-                        0,
-                        0,
-                        0,
-                        dest_x,
-                        dest_y,
-                        width,
-                        height,
-                        0,
-                    )
-                    .into()
-                }
-                BltOp::VideoToBltBuffer {
-                    buffer,
-                    src: (src_x, src_y),
-                    dest: dest_region,
-                    dims: (width, height),
-                } => {
-                    self.check_framebuffer_region((src_x, src_y), (width, height));
-                    self.check_blt_buffer_region(dest_region, (width, height), buffer.len());
-                    match dest_region {
-                        BltRegion::Full => (self.blt)(
-                            self,
-                            buffer.as_mut_ptr(),
-                            1,
-                            src_x,
-                            src_y,
-                            0,
-                            0,
-                            width,
-                            height,
-                            0,
-                        )
-                        .into(),
-                        BltRegion::SubRectangle {
-                            coords: (dest_x, dest_y),
-                            px_stride,
-                        } => (self.blt)(
-                            self,
-                            buffer.as_mut_ptr(),
-                            1,
-                            src_x,
-                            src_y,
-                            dest_x,
-                            dest_y,
-                            width,
-                            height,
-                            px_stride * core::mem::size_of::<BltPixel>(),
-                        )
-                        .into(),
-                    }
-                }
-                BltOp::BufferToVideo {
-                    buffer,
-                    src: src_region,
-                    dest: (dest_x, dest_y),
-                    dims: (width, height),
-                } => {
-                    self.check_blt_buffer_region(src_region, (width, height), buffer.len());
-                    self.check_framebuffer_region((dest_x, dest_y), (width, height));
-                    match src_region {
-                        BltRegion::Full => (self.blt)(
-                            self,
-                            buffer.as_ptr() as *mut _,
-                            2,
-                            0,
-                            0,
-                            dest_x,
-                            dest_y,
-                            width,
-                            height,
-                            0,
-                        )
-                        .into(),
-                        BltRegion::SubRectangle {
-                            coords: (src_x, src_y),
-                            px_stride,
-                        } => (self.blt)(
-                            self,
-                            buffer.as_ptr() as *mut _,
-                            2,
-                            src_x,
-                            src_y,
-                            dest_x,
-                            dest_y,
-                            width,
-                            height,
-                            px_stride * core::mem::size_of::<BltPixel>(),
-                        )
-                        .into(),
-                    }
-                }
-                BltOp::VideoToVideo {
-                    src: (src_x, src_y),
-                    dest: (dest_x, dest_y),
-                    dims: (width, height),
-                } => {
-                    self.check_framebuffer_region((src_x, src_y), (width, height));
-                    self.check_framebuffer_region((dest_x, dest_y), (width, height));
-                    (self.blt)(
-                        self,
-                        ptr::null_mut(),
-                        3,
-                        src_x,
-                        src_y,
-                        dest_x,
-                        dest_y,
-                        width,
-                        height,
-                        0,
-                    )
-                    .into()
-                }
-            }
-        }
-    }
-
-    /// Memory-safety check for accessing a region of the framebuffer
-    fn check_framebuffer_region(&self, coords: (usize, usize), dims: (usize, usize)) {
-        let (width, height) = self.current_mode_info().resolution();
-        assert!(
-            coords.0.saturating_add(dims.0) <= width,
-            "Horizontal framebuffer coordinate out of bounds"
-        );
-        assert!(
-            coords.1.saturating_add(dims.1) <= height,
-            "Vertical framebuffer coordinate out of bounds"
-        );
-    }
-
-    /// Memory-safety check for accessing a region of a user-provided buffer
-    fn check_blt_buffer_region(&self, region: BltRegion, dims: (usize, usize), buf_length: usize) {
-        match region {
-            BltRegion::Full => assert!(
-                dims.1.saturating_mul(dims.0) <= buf_length,
-                "BltBuffer access out of bounds"
-            ),
-            BltRegion::SubRectangle {
-                coords: (x, y),
-                px_stride,
-            } => {
-                assert!(
-                    x.saturating_add(dims.0) <= px_stride,
-                    "Horizontal BltBuffer coordinate out of bounds"
-                );
-                assert!(
-                    y.saturating_add(dims.1).saturating_mul(px_stride) <= buf_length,
-                    "Vertical BltBuffer coordinate out of bounds"
-                );
-            }
-        }
-    }
-
-    /// Returns the frame buffer information for the current mode.
-    #[must_use]
-    pub const fn current_mode_info(&self) -> ModeInfo {
-        *self.mode().info()
-    }
-
-    /// Access the frame buffer directly
-    pub fn frame_buffer(&mut self) -> FrameBuffer {
-        assert!(
-            self.mode().info().format != PixelFormat::BltOnly,
-            "Cannot access the framebuffer in a Blt-only mode"
-        );
-        let base = self.mode().fb_address as *mut u8;
-        let size = self.mode().fb_size;
-
-        FrameBuffer {
-            base,
-            size,
-            _lifetime: PhantomData,
-        }
-    }
-
-    const fn mode(&self) -> &ModeData {
-        unsafe { &*self.mode }
-    }
-}
-
 #[repr(C)]
 pub struct ModeData {
     // Number of modes which the GOP supports.
@@ -330,12 +100,6 @@ pub struct ModeData {
     fb_address: u64,
     // Size in bytes. Equal to (pixel size) * height * stride.
     fb_size: usize,
-}
-
-impl ModeData {
-    const fn info(&self) -> &ModeInfo {
-        unsafe { &*self.info }
-    }
 }
 
 /// Represents the format of the pixels in a frame buffer.
@@ -376,9 +140,9 @@ pub struct PixelBitmask {
 /// Represents a graphics mode compatible with a given graphics device.
 #[derive(Debug)]
 pub struct Mode {
-    index: u32,
-    info_sz: usize,
-    info: ModeInfo,
+    pub index: u32,
+    pub info_sz: usize,
+    pub info: ModeInfo,
 }
 
 impl Mode {
@@ -409,45 +173,6 @@ pub struct ModeInfo {
     mask: PixelBitmask,
     stride: u32,
 }
-
-/// Iterator for [`Mode`]s of the [`GraphicsOutput`] protocol.
-pub struct ModeIter<'gop> {
-    gop: &'gop GraphicsOutput,
-    current: u32,
-    max: u32,
-}
-
-impl<'gop> Iterator for ModeIter<'gop> {
-    type Item = Mode;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let index = self.current;
-        if index < self.max {
-            let m = self.gop.query_mode(index);
-            self.current += 1;
-
-            m.ok().or_else(|| self.next())
-        } else {
-            None
-        }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let size = (self.max - self.current) as usize;
-        (size, Some(size))
-    }
-}
-
-impl<'gop> Debug for ModeIter<'gop> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("ModeIter")
-            .field("current", &self.current)
-            .field("max", &self.max)
-            .finish()
-    }
-}
-
-impl ExactSizeIterator for ModeIter<'_> {}
 
 /// Format of pixel data used for blitting.
 ///

@@ -7,10 +7,15 @@
 #![deny(clippy::all)]
 #![deny(clippy::must_use_candidate)]
 
+// TODO: this is to make macros like `guid` work, is this OK?
+extern crate self as uefi;
+
 #[macro_use]
 pub mod data_types;
 
-pub use self::data_types::{CStr16, CStr8, Char16, Char8, Event, Guid, Handle};
+pub use data_types::guid::Identify;
+
+pub use self::data_types::{Char16, Char8, Event, Guid, Handle};
 pub use uefi_macros::guid;
 
 pub mod table;

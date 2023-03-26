@@ -24,3 +24,6 @@ pub mod security;
 pub mod shim;
 pub mod string;
 pub mod tcg;
+
+// TODO
+pub trait Protocol {}

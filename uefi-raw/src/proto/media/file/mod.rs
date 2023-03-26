@@ -10,18 +10,12 @@ mod dir;
 mod info;
 mod regular;
 
-use crate::{CStr16, Char16, Guid,  Status};
+use crate::{Char16, Guid, Status};
 use bitflags::bitflags;
 use core::ffi::c_void;
 use core::fmt::Debug;
-use core::mem;
-use core::ptr;
-#[cfg(all(feature = "unstable", feature = "alloc"))]
-use {alloc::alloc::Global, core::alloc::Allocator};
-#[cfg(feature = "alloc")]
-use {alloc::boxed::Box, uefi::mem::make_boxed};
 
-pub use self::info::{FileInfo, FileProtocolInfo, FileSystemInfo, FileSystemVolumeLabel, FromUefi};
+pub use self::info::{FileInfo, FileSystemInfo, FileSystemVolumeLabel};
 pub use self::{dir::Directory, regular::RegularFile};
 
 /// An opaque handle to some contiguous block of data on a volume.
@@ -34,80 +28,6 @@ pub use self::{dir::Directory, regular::RegularFile};
 #[repr(transparent)]
 #[derive(Debug)]
 pub struct FileHandle(*mut FileImpl);
-
-impl FileHandle {
-    pub(super) const unsafe fn new(ptr: *mut FileImpl) -> Self {
-        Self(ptr)
-    }
-
-    /// Converts `File` into a more specific subtype based on if it is a
-    /// directory or not. Wrapper around [Self::is_regular_file].
-    pub fn into_type(self) -> Result<FileType> {
-        use FileType::*;
-
-        self.is_regular_file().map(|is_file| {
-            if is_file {
-                unsafe { Regular(RegularFile::new(self)) }
-            } else {
-                unsafe { Dir(Directory::new(self)) }
-            }
-        })
-    }
-
-    /// If the handle represents a directory, convert it into a
-    /// [`Directory`]. Otherwise returns `None`.
-    #[must_use]
-    pub fn into_directory(self) -> Option<Directory> {
-        if let Ok(FileType::Dir(dir)) = self.into_type() {
-            Some(dir)
-        } else {
-            None
-        }
-    }
-
-    /// If the handle represents a regular file, convert it into a
-    /// [`RegularFile`]. Otherwise returns `None`.
-    #[must_use]
-    pub fn into_regular_file(self) -> Option<RegularFile> {
-        if let Ok(FileType::Regular(regular)) = self.into_type() {
-            Some(regular)
-        } else {
-            None
-        }
-    }
-}
-
-impl File for FileHandle {
-    #[inline]
-    fn handle(&mut self) -> &mut FileHandle {
-        self
-    }
-
-    fn is_regular_file(&self) -> Result<bool> {
-        let this = unsafe { self.0.as_mut().unwrap() };
-
-        // - get_position fails with EFI_UNSUPPORTED on directories
-        // - result is an error if the underlying file was already closed or deleted.
-        let mut pos = 0;
-        match (this.get_position)(this, &mut pos) {
-            Status::SUCCESS => Ok(true),
-            Status::UNSUPPORTED => Ok(false),
-            s => Err(s.into()),
-        }
-    }
-
-    fn is_directory(&self) -> Result<bool> {
-        self.is_regular_file().map(|b| !b)
-    }
-}
-
-impl Drop for FileHandle {
-    fn drop(&mut self) {
-        let result: Result = (self.imp().close)(self.imp()).into();
-        // The spec says this always succeeds.
-        result.expect("Failed to close file");
-    }
-}
 
 /// The function pointer table for the File protocol.
 #[repr(C)]

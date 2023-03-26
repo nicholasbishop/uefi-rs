@@ -1,7 +1,6 @@
 //! `Rng` protocol.
 
-use crate::{data_types::Guid, guid, proto::unsafe_protocol,  Status};
-use core::{mem, ptr};
+use crate::{data_types::Guid, guid, proto::unsafe_protocol, Status};
 
 newtype_enum! {
     /// The algorithms listed are optional, not meant to be exhaustive
@@ -48,42 +47,4 @@ pub struct Rng {
         value_length: usize,
         value: *mut u8,
     ) -> Status,
-}
-
-impl Rng {
-    /// Returns information about the random number generation implementation.
-    pub fn get_info<'buf>(
-        &mut self,
-        algorithm_list: &'buf mut [RngAlgorithmType],
-    ) -> Result<&'buf [RngAlgorithmType], Option<usize>> {
-        let mut algorithm_list_size = algorithm_list.len() * mem::size_of::<RngAlgorithmType>();
-
-        unsafe {
-            (self.get_info)(self, &mut algorithm_list_size, algorithm_list.as_mut_ptr()).into_with(
-                || {
-                    let len = algorithm_list_size / mem::size_of::<RngAlgorithmType>();
-                    &algorithm_list[..len]
-                },
-                |status| {
-                    if status == Status::BUFFER_TOO_SMALL {
-                        Some(algorithm_list_size)
-                    } else {
-                        None
-                    }
-                },
-            )
-        }
-    }
-
-    /// Returns the next set of random numbers
-    pub fn get_rng(&mut self, algorithm: Option<RngAlgorithmType>, buffer: &mut [u8]) -> Result {
-        let buffer_length = buffer.len();
-
-        let algo = match algorithm.as_ref() {
-            None => ptr::null(),
-            Some(algo) => algo as *const RngAlgorithmType,
-        };
-
-        unsafe { (self.get_rng)(self, algo, buffer_length, buffer.as_mut_ptr()).into() }
-    }
 }

@@ -65,9 +65,8 @@ pub type PhysicalAddress = u64;
 /// of target platform.
 pub type VirtualAddress = u64;
 
-mod guid;
+pub mod guid;
 pub use self::guid::Guid;
-pub use self::guid::Identify;
 
 pub mod chars;
 pub use self::chars::{Char16, Char8};

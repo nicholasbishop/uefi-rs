@@ -12,7 +12,7 @@
 use core::ffi::c_void;
 
 use crate::proto::unsafe_protocol;
-use crate::{ Status};
+use crate::Status;
 
 // re-export for ease of use
 pub use self::context::SystemContext;
@@ -52,96 +52,6 @@ pub struct DebugSupport {
         start: *mut c_void,
         length: u64,
     ) -> Status,
-}
-
-impl DebugSupport {
-    /// Returns the processor architecture of the running CPU.
-    #[must_use]
-    pub const fn arch(&self) -> ProcessorArch {
-        self.isa
-    }
-
-    /// Returns the maximum value that may be used for the processor_index parameter in
-    /// `register_periodic_callback()` and `register_exception_callback()`.
-    ///
-    /// Note: Applications built with EDK2 (such as OVMF) always return `0` as of 2021-09-15
-    pub fn get_maximum_processor_index(&mut self) -> usize {
-        // initially set to a canary value for testing purposes
-        let mut max_processor_index: usize = usize::MAX;
-
-        // per the UEFI spec, this call should only return EFI_SUCCESS
-        let _ = (self.get_maximum_processor_index)(self, &mut max_processor_index);
-
-        max_processor_index
-    }
-
-    /// Registers a function to be called back periodically in interrupt context.
-    /// Pass `None` for `callback` to deregister the currently registered function for
-    /// a specified `processor_index`. Will return `Status::INVALID_PARAMETER` if
-    /// `processor_index` exceeds the current maximum from `Self::get_maximum_processor_index`.
-    ///
-    /// Note: Applications built with EDK2 (such as OVMF) ignore the `processor_index` parameter
-    ///
-    /// # Safety
-    /// No portion of the debug agent that runs in interrupt context may make any
-    /// calls to EFI services or other protocol interfaces.
-    pub unsafe fn register_periodic_callback(
-        &mut self,
-        processor_index: usize,
-        callback: Option<unsafe extern "efiapi" fn(SystemContext)>,
-    ) -> Result {
-        if processor_index > self.get_maximum_processor_index() {
-            return Err(Status::INVALID_PARAMETER.into());
-        }
-
-        // Safety: As we've validated the `processor_index`, this should always be safe
-        (self.register_periodic_callback)(self, processor_index, callback).into()
-    }
-
-    /// Registers a function to be called when a given processor exception occurs.
-    /// Pass `None` for `callback` to deregister the currently registered function for a
-    /// given `exception_type` and `processor_index`. Will return `Status::INVALID_PARAMETER`
-    /// if `processor_index` exceeds the current maximum from `Self::get_maximum_processor_index`.
-    ///
-    /// Note: Applications built with EDK2 (such as OVMF) ignore the `processor_index` parameter
-    ///
-    /// # Safety
-    /// No portion of the debug agent that runs in interrupt context may make any
-    /// calls to EFI services or other protocol interfaces.
-    pub unsafe fn register_exception_callback(
-        &mut self,
-        processor_index: usize,
-        callback: Option<unsafe extern "efiapi" fn(ExceptionType, SystemContext)>,
-        exception_type: ExceptionType,
-    ) -> Result {
-        if processor_index > self.get_maximum_processor_index() {
-            return Err(Status::INVALID_PARAMETER.into());
-        }
-
-        // Safety: As we've validated the `processor_index`, this should always be safe
-        (self.register_exception_callback)(self, processor_index, callback, exception_type).into()
-    }
-
-    /// Invalidates processor instruction cache for a memory range for a given `processor_index`.
-    ///
-    /// Note: Applications built with EDK2 (such as OVMF) ignore the `processor_index` parameter
-    ///
-    /// # Safety
-    /// `start` must be a c_void ptr to a valid memory address
-    pub unsafe fn invalidate_instruction_cache(
-        &mut self,
-        processor_index: usize,
-        start: *mut c_void,
-        length: u64,
-    ) -> Result {
-        if processor_index > self.get_maximum_processor_index() {
-            return Err(Status::INVALID_PARAMETER.into());
-        }
-
-        // per the UEFI spec, this call should only return EFI_SUCCESS
-        // Safety: As we've validated the `processor_index`, this should always be safe
-        (self.invalidate_instruction_cache)(self, processor_index, start, length).into()
-    }
 }
 
 newtype_enum! {
