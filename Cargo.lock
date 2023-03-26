@@ -521,6 +521,7 @@ dependencies = [
  "ptr_meta",
  "ucs2",
  "uefi-macros",
+ "uefi-raw",
 ]
 
 [[package]]

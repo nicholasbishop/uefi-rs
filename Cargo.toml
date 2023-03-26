@@ -13,4 +13,5 @@ members = [
 [patch.crates-io]
 uefi = { path = "uefi" }
 uefi-macros = { path = "uefi-macros" }
+uefi-raw = { path = "uefi-raw" }
 uefi-services = { path = "uefi-services" }
