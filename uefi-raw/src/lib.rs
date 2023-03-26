@@ -29,12 +29,4 @@ pub mod table;
 
 pub mod proto;
 
-pub mod prelude;
-
-// As long as this is behind "alloc", we can simplify cfg-feature attributes in this module.
-#[cfg(feature = "alloc")]
-pub(crate) mod mem;
-
-pub(crate) mod polyfill;
-
 mod util;

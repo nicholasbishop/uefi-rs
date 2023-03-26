@@ -73,7 +73,6 @@
 //! [`device_type`]: DevicePathNode::device_type
 //! [`sub_type`]: DevicePathNode::sub_type
 
-pub mod build;
 pub mod text;
 
 mod device_path_gen;

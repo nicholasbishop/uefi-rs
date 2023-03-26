@@ -319,7 +319,7 @@ impl GraphicsOutput {
 }
 
 #[repr(C)]
-struct ModeData {
+pub struct ModeData {
     // Number of modes which the GOP supports.
     max_mode: u32,
     // Current mode.

@@ -3,8 +3,24 @@ use fs_err as fs;
 use std::path::Path;
 use std::process;
 use syn::spanned::Spanned;
-use syn::{File, Item, ItemConst, ItemImpl, ItemMacro, ItemStruct, ItemType, ItemUse, Visibility};
+use syn::{
+    File, Item, ItemConst, ItemEnum, ItemImpl, ItemMacro, ItemMod, ItemStruct, ItemType, ItemUnion,
+    ItemUse, Visibility,
+};
 use walkdir::WalkDir;
+
+fn fail(err: &str, spanned: &dyn Spanned, path: &Path) -> ! {
+    let span = spanned.span();
+    eprintln!(
+        "error: {err}\n  --> {}:{}:{}",
+        // Getting the source path from the span is not yet stable:
+        // https://github.com/rust-lang/rust/issues/54725
+        path.display(),
+        span.start().line,
+        span.start().column + 1,
+    );
+    process::exit(1);
+}
 
 fn check_file(path: &Path) -> Result<()> {
     let code = fs::read_to_string(path)?;
@@ -18,11 +34,15 @@ fn check_file(path: &Path) -> Result<()> {
             }
             Item::Const(ItemConst { vis, .. }) => {
                 // TODO: check type too
-                assert!(matches!(vis, Visibility::Public(_)));
+                if !matches!(vis, Visibility::Public(_)) {
+                    fail("missing pub", item, path);
+                }
             }
             Item::Struct(ItemStruct { vis, .. }) => {
                 // TODO, lots more to check
-                assert!(matches!(vis, Visibility::Public(_)));
+                if !matches!(vis, Visibility::Public(_)) {
+                    fail("missing pub", item, path);
+                }
             }
             Item::Impl(ItemImpl { .. }) => {
                 // TODO
@@ -33,16 +53,17 @@ fn check_file(path: &Path) -> Result<()> {
             Item::Type(ItemType { .. }) => {
                 // TODO
             }
+            Item::Mod(ItemMod { .. }) => {
+                // TODO
+            }
+            Item::Enum(ItemEnum { .. }) => {
+                // TODO: decide if we actually want to allow any Rust enums
+            }
+            Item::Union(ItemUnion { .. }) => {
+                // TODO
+            }
             item => {
-                let span = item.span();
-                eprintln!(
-                    "error: unexpected item\n  --> {}:{}:{}",
-                    path.display(),
-                    span.start().line,
-                    span.start().column + 1,
-                );
-                todo!();
-                process::exit(1);
+                fail("unexpected kind of item", item, path);
             }
         }
     }

@@ -317,7 +317,7 @@ impl<'out> Iterator for OutputModeIter<'out> {
 /// Additional data of the output device.
 #[derive(Debug)]
 #[repr(C)]
-struct OutputData {
+pub struct OutputData {
     /// The number of modes supported by the device.
     max_mode: i32,
     /// The current output mode.

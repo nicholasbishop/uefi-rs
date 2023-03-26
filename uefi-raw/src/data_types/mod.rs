@@ -75,16 +75,6 @@ pub use self::chars::{Char16, Char8};
 #[macro_use]
 mod enums;
 
-mod strs;
-pub use self::strs::{
-    CStr16, CStr8, EqStrUntilNul, FromSliceWithNulError, FromStrWithBufError, UnalignedCStr16Error,
-};
-
-#[cfg(feature = "alloc")]
-mod owned_strs;
-#[cfg(feature = "alloc")]
-pub use self::owned_strs::{CString16, FromStrError};
-
 mod unaligned_slice;
 pub use unaligned_slice::UnalignedSlice;
 

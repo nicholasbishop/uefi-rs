@@ -8,28 +8,6 @@ use alloc::vec::Vec;
 use core::fmt;
 use core::ops;
 
-/// Error returned by [`CString16::try_from::<&str>`].
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum FromStrError {
-    /// Character conversion error.
-    InvalidChar,
-    /// Nul character found in the input.
-    InteriorNul,
-}
-
-impl fmt::Display for FromStrError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "UCS-2 Conversion Error: {}",
-            match self {
-                Self::InvalidChar => "Invalid character",
-                Self::InteriorNul => "Interior null terminator",
-            }
-        )
-    }
-}
-
 #[cfg(feature = "unstable")]
 impl core::error::Error for FromStrError {}
 
