@@ -1,4 +1,12 @@
-//! TODO
+//! Raw interface for working with UEFI.
+//!
+//! This crate is intended for implementing UEFI services. It is also used for
+//! implementing the [`uefi`] crate, which provides a safe wrapper around UEFI.
+//!
+//! For creating UEFI applications and drivers, consider using the [`uefi`]
+//! crate instead of `uefi-raw`.
+//!
+//! [`uefi`]: https://crates.io/crates/uefi
 
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![no_std]
@@ -15,19 +23,15 @@ extern crate self as uefi;
 #[macro_use]
 mod enums;
 
-pub mod data_types;
-
-pub use data_types::guid::Identify;
-
-pub use self::data_types::Guid;
-pub use uefi_macros::guid;
-
+pub mod proto;
 pub mod table;
 
-pub mod proto;
-
+mod guid;
 mod status;
+
+pub use guid::{Guid, Identify};
 pub use status::Status;
+pub use uefi_macros::guid;
 
 /// A Latin-1 character
 pub type Char8 = u8;

@@ -1,6 +1,6 @@
 //! `Rng` protocol.
 
-use crate::{data_types::Guid, guid, proto::unsafe_protocol, Status};
+use crate::{guid, proto::unsafe_protocol, Guid, Status};
 
 newtype_enum! {
     /// The algorithms listed are optional, not meant to be exhaustive
