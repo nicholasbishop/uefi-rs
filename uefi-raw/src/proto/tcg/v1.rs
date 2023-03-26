@@ -135,26 +135,6 @@ pub struct FfiPcrEvent {
     _marker: PhantomData<(*mut u8, PhantomPinned)>,
 }
 
-/// TPM event log.
-///
-/// This type of event log always uses SHA-1 hashes. The [`v1::Tcg`]
-/// protocol always uses this type of event log, but it can also be
-/// provided by the [`v2::Tcg`] protocol via [`get_event_log_v2`].
-///
-/// [`v1::Tcg`]: Tcg
-/// [`v2::Tcg`]: super::v2::Tcg
-/// [`get_event_log_v2`]: super::v2::Tcg::get_event_log_v2
-#[derive(Debug)]
-pub struct EventLog<'a> {
-    // Tie the lifetime to the protocol, and by extension, boot services.
-    _lifetime: PhantomData<&'a Tcg>,
-
-    location: *const u8,
-    last_entry: *const u8,
-
-    is_truncated: bool,
-}
-
 /// Protocol for interacting with TPM 1.1 and 1.2 devices.
 ///
 /// The corresponding C type is `EFI_TCG_PROTOCOL`.
@@ -209,18 +189,4 @@ pub struct Tcg {
         event_number: *mut u32,
         event_log_last_entry: *mut PhysicalAddress,
     ) -> Status,
-}
-
-/// Return type of [`Tcg::status_check`].
-#[derive(Debug)]
-pub struct StatusCheck<'a> {
-    /// Information about the protocol and the TPM device.
-    pub protocol_capability: BootServiceCapability,
-
-    /// Feature flags. The spec does not define any feature flags, so
-    /// this is always expected to be zero.
-    pub feature_flags: u32,
-
-    /// TPM event log.
-    pub event_log: EventLog<'a>,
 }

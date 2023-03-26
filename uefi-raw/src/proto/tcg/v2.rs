@@ -16,7 +16,6 @@ use crate::proto::unsafe_protocol;
 use crate::Status;
 use bitflags::bitflags;
 use core::fmt::{self, Debug, Formatter};
-use core::marker::PhantomData;
 use core::mem;
 use ptr_meta::Pointee;
 
@@ -184,18 +183,6 @@ pub struct AlgorithmDigestSize {
 #[derive(Clone, Debug)]
 pub struct AlgorithmDigestSizes<'a>(UnalignedSlice<'a, AlgorithmDigestSize>);
 
-impl<'a> AlgorithmDigestSizes<'a> {
-    fn get_size(&self, alg: AlgorithmId) -> Option<u16> {
-        self.0.iter().find_map(|elem| {
-            if { elem.algorithm_id } == alg {
-                Some(elem.digest_size)
-            } else {
-                None
-            }
-        })
-    }
-}
-
 /// Header stored at the beginning of the event log.
 ///
 /// Layout compatible with the C type `TCG_EfiSpecIDEventStruct`.
@@ -217,46 +204,18 @@ pub struct EventLogHeader<'a> {
 /// This type of event log can contain multiple hash types (e.g. SHA-1, SHA-256,
 /// SHA-512, etc).
 #[derive(Debug)]
-pub struct EventLog<'a> {
-    // Tie the lifetime to the protocol, and by extension, boot services.
-    _lifetime: PhantomData<&'a Tcg>,
+pub struct EventLog {
+    pub location: *const u8,
+    pub last_entry: *const u8,
 
-    location: *const u8,
-    last_entry: *const u8,
-
-    is_truncated: bool,
+    pub is_truncated: bool,
 }
 
 /// Digests in a PCR event.
 #[derive(Clone)]
 pub struct PcrEventDigests<'a> {
-    data: &'a [u8],
-    algorithm_digest_sizes: AlgorithmDigestSizes<'a>,
-}
-
-/// PCR event from an [`EventLog`].
-///
-/// This roughly corresponds to the C type `TCG_PCR_EVENT2`, but is not layout
-/// compatible.
-///
-/// The TPM v1 spec uses a single generic event type for both creating a
-/// new event and reading an event from the log. The v2 spec splits this
-/// into two structs: `EFI_TCG2_EVENT` for creating events, and
-/// `TCG_PCR_EVENT2` for reading events. To help clarify the usage, our
-/// API renames these types to `PcrEventInputs` and `PcrEvent`,
-/// respectively.
-#[derive(Debug)]
-pub struct PcrEvent<'a> {
-    pcr_index: PcrIndex,
-    event_type: EventType,
-    digests: &'a [u8],
-    event_data: &'a [u8],
-
-    // Precalculate the pointer to the next event.
-    next: *const u8,
-
-    // This data from the v2 log header is needed to parse the digest data.
-    algorithm_digest_sizes: AlgorithmDigestSizes<'a>,
+    pub data: &'a [u8],
+    pub algorithm_digest_sizes: AlgorithmDigestSizes<'a>,
 }
 
 /// Protocol for interacting with TPM devices.

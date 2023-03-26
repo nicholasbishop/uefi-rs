@@ -3,8 +3,8 @@ use fs_err as fs;
 use std::path::{Path, PathBuf};
 use syn::spanned::Spanned;
 use syn::{
-    File, Item, ItemConst, ItemEnum, ItemImpl, ItemMacro, ItemMod, ItemStruct, ItemType, ItemUnion,
-    ItemUse, Visibility,
+    File, Item, ItemConst, ItemEnum, ItemExternCrate, ItemImpl, ItemMacro, ItemMod, ItemStruct,
+    ItemTrait, ItemType, ItemUnion, ItemUse, Visibility,
 };
 use walkdir::WalkDir;
 
@@ -67,6 +67,12 @@ fn check_file(path: &Path, errors: &mut Vec<Error>) -> Result<()> {
                 // TODO: decide if we actually want to allow any Rust enums
             }
             Item::Union(ItemUnion { .. }) => {
+                // TODO
+            }
+            Item::Trait(ItemTrait { .. }) => {
+                // TODO
+            }
+            Item::ExternCrate(ItemExternCrate { .. }) => {
                 // TODO
             }
             item => {
