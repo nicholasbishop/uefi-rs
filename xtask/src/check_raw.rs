@@ -13,6 +13,7 @@ struct Error {
     path: PathBuf,
     line: usize,
     column: usize,
+    code: String,
 }
 
 fn check_file(path: &Path, errors: &mut Vec<Error>) -> Result<()> {
@@ -25,6 +26,7 @@ fn check_file(path: &Path, errors: &mut Vec<Error>) -> Result<()> {
             path: path.to_path_buf(),
             line: span.start().line,
             column: span.start().column,
+            code: span.source_text().unwrap(),
         });
     };
 
@@ -50,7 +52,7 @@ fn check_file(path: &Path, errors: &mut Vec<Error>) -> Result<()> {
                 }
             }
             Item::Impl(ItemImpl { .. }) => {
-                // TODO
+                add_error("unexpected impl", item);
             }
             Item::Macro(ItemMacro { .. }) => {
                 // TODO
@@ -97,11 +99,12 @@ pub fn check_raw() -> Result<()> {
 
     for error in &errors {
         eprintln!(
-            "error: {}\n  --> {}:{}:{}",
+            "error: {}\n  --> {}:{}:{}\n{}",
             error.msg,
             error.path.display(),
             error.line,
             error.column,
+            error.code,
         );
     }
 
