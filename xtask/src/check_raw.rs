@@ -1,9 +1,11 @@
 use anyhow::{bail, Result};
 use fs_err as fs;
 use std::path::{Path, PathBuf};
+use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
+use syn::token::Comma;
 use syn::{
-    Attribute, Fields, FieldsNamed, FieldsUnnamed, File, Item, ItemConst, ItemEnum,
+    Attribute, Field, Fields, FieldsNamed, FieldsUnnamed, File, Item, ItemConst, ItemEnum,
     ItemExternCrate, ItemImpl, ItemMacro, ItemMod, ItemStruct, ItemTrait, ItemType, ItemUnion,
     ItemUse, Visibility,
 };
@@ -81,24 +83,18 @@ fn check_file(path: &Path, errors: &mut Vec<Error>) -> Result<()> {
                     add_error("missing pub", item);
                 }
 
+                let mut check_fields = |fields: &Punctuated<Field, Comma>| {
+                    for field in fields {
+                        // TODO: dedup
+                        if !allow_non_pub && !matches!(field.vis, Visibility::Public(_)) {
+                            add_error("missing pub", field);
+                        }
+                    }
+                };
+
                 match fields {
-                    Fields::Named(FieldsNamed { named, .. }) => {
-                        for field in named {
-                            // TODO: dedup
-                            if !allow_non_pub && !matches!(field.vis, Visibility::Public(_)) {
-                                add_error("missing pub", field);
-                            }
-                        }
-                    }
-                    Fields::Unnamed(FieldsUnnamed { unnamed, .. }) => {
-                        // TODO: dedup with above?
-                        for field in unnamed {
-                            // TODO: dedup
-                            if !allow_non_pub && !matches!(field.vis, Visibility::Public(_)) {
-                                add_error("missing pub", field);
-                            }
-                        }
-                    }
+                    Fields::Named(FieldsNamed { named, .. }) => check_fields(named),
+                    Fields::Unnamed(FieldsUnnamed { unnamed, .. }) => check_fields(unnamed),
                     Fields::Unit => {}
                 }
 
