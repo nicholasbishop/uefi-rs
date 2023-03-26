@@ -42,7 +42,7 @@ impl Handle {
 /// If you need to have a nullable event, use `Option<Event>`.
 #[repr(transparent)]
 #[derive(Debug)]
-pub struct Event(NonNull<c_void>);
+pub struct Event(pub(crate) NonNull<c_void>);
 
 impl Event {
     /// Clone this `Event`
@@ -120,9 +120,7 @@ pub type PhysicalAddress = u64;
 /// of target platform.
 pub type VirtualAddress = u64;
 
-mod guid;
-pub use self::guid::Guid;
-pub use self::guid::Identify;
+pub use uefi_raw::{Guid, Identify};
 
 pub mod chars;
 pub use self::chars::{Char16, Char8};
