@@ -2,9 +2,7 @@
 //!
 //! This module defines the basic data types that are used throughout uefi-rs
 
-use core::ffi::c_void;
-
-pub use uefi::raw::{Event, Handle};
+pub use uefi_raw::{Event, Handle};
 
 /// Trait for querying the alignment of a struct.
 ///

@@ -19,7 +19,8 @@ use core::ptr::NonNull;
 use core::{ptr, slice};
 
 pub use uefi_raw::table::boot::{
-    EventNotifyFn, EventType, MemoryDescriptor, MemoryMapKey, MemoryType, Tpl,
+    EventNotifyFn, EventType, InterfaceType, MemoryDescriptor, MemoryMapKey, MemoryType,
+    ProtocolSearchKey, Tpl,
 };
 
 // TODO: this similar to `SyncUnsafeCell`. Once that is stabilized we
@@ -895,7 +896,7 @@ impl BootServices {
         unsafe {
             // TODO: implement returning exit data to the caller.
             let mut exit_data_size: usize = 0;
-            let mut exit_data: *mut Char16 = ptr::null_mut();
+            let mut exit_data: *mut uefi_raw::Char16 = ptr::null_mut();
             (self.0.start_image)(image_handle, &mut exit_data_size, &mut exit_data).into()
         }
     }
@@ -916,7 +917,13 @@ impl BootServices {
         exit_data_size: usize,
         exit_data: *mut Char16,
     ) -> ! {
-        (self.0.exit)(image_handle, exit_status, exit_data_size, exit_data)
+        (self.0.exit)(
+            image_handle,
+            exit_status,
+            exit_data_size,
+            // TODO
+            mem::transmute(exit_data),
+        )
     }
 
     /// Exits the UEFI boot services
@@ -1199,7 +1206,7 @@ impl BootServices {
         if !status.is_error() {
             // Ensure that protocols isn't null, and that none of the GUIDs
             // returned are null.
-            if protocols.0.is_null() {
+            if protocols.is_null() {
                 status = Status::OUT_OF_RESOURCES;
             } else {
                 let protocols: &[*const Guid] = unsafe { slice::from_raw_parts(protocols, count) };
@@ -1969,22 +1976,6 @@ impl<'a> HandleBuffer<'a> {
         unsafe { slice::from_raw_parts(self.buffer, self.count) }
     }
 }
-
-newtype_enum! {
-/// Interface type of a protocol interface
-///
-/// Only has one variant when this was written (v2.10 of the UEFI spec)
-pub enum InterfaceType: i32 => {
-    /// Native interface
-    NATIVE_INTERFACE    = 0,
-}
-}
-
-/// Opaque pointer returned by [`BootServices::register_protocol_notify`] to be used
-/// with [`BootServices::locate_handle`] via [`SearchType::ByRegisterNotify`].
-#[derive(Debug, Clone, Copy)]
-#[repr(transparent)]
-pub struct ProtocolSearchKey(NonNull<c_void>);
 
 #[cfg(test)]
 mod tests {
