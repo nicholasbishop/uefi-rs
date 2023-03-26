@@ -57,61 +57,6 @@ impl Event {
     }
 }
 
-/// Trait for querying the alignment of a struct.
-///
-/// For a statically-sized type the alignment can be retrieved with
-/// [`core::mem::align_of`]. For a dynamically-sized type (DST),
-/// [`core::mem::align_of_val`] provides the alignment given a reference. But in
-/// some cases it's helpful to know the alignment of a DST prior to having a
-/// value, meaning there's no reference to pass to `align_of_val`. For example,
-/// when using an API that creates a value using a `[u8]` buffer, the alignment
-/// of the buffer must be checked. The `Align` trait makes that possible by
-/// allowing the appropriate alignment to be manually specified.
-pub trait Align {
-    /// Required memory alignment for this type
-    fn alignment() -> usize;
-
-    /// Calculate the offset from `val` necessary to make it aligned,
-    /// rounding up. For example, if `val` is 1 and the alignment is 8,
-    /// this will return 7. Returns 0 if `val == 0`.
-    #[must_use]
-    fn offset_up_to_alignment(val: usize) -> usize {
-        assert!(Self::alignment() != 0);
-        let r = val % Self::alignment();
-        if r == 0 {
-            0
-        } else {
-            Self::alignment() - r
-        }
-    }
-
-    /// Round `val` up so that it is aligned.
-    #[must_use]
-    fn round_up_to_alignment(val: usize) -> usize {
-        val + Self::offset_up_to_alignment(val)
-    }
-
-    /// Get a subslice of `buf` where the address of the first element
-    /// is aligned. Returns `None` if no element of the buffer is
-    /// aligned.
-    fn align_buf(buf: &mut [u8]) -> Option<&mut [u8]> {
-        let addr = buf.as_ptr() as usize;
-        let offset = Self::offset_up_to_alignment(addr);
-        buf.get_mut(offset..)
-    }
-
-    /// Assert that some storage is correctly aligned for this type
-    fn assert_aligned(storage: &mut [u8]) {
-        if !storage.is_empty() {
-            assert_eq!(
-                (storage.as_ptr() as usize) % Self::alignment(),
-                0,
-                "The provided storage is not correctly aligned for this type"
-            )
-        }
-    }
-}
-
 /// Physical memory address. This is always a 64-bit value, regardless
 /// of target platform.
 pub type PhysicalAddress = u64;

@@ -1,15 +1,15 @@
 use anyhow::Result;
+use fs_err as fs;
+use std::path::Path;
+use std::process;
+use syn::spanned::Spanned;
 use syn::{File, Item, ItemConst, ItemImpl, ItemMacro, ItemStruct, ItemType, ItemUse, Visibility};
+use walkdir::WalkDir;
 
-pub fn check_raw() -> Result<()> {
-    // Load a single file for now. Parse it with syn. Check all the top-level stuff.
-    //
-    // Need at least a two-phase check...
+fn check_file(path: &Path) -> Result<()> {
+    let code = fs::read_to_string(path)?;
 
-    // TODO
-    let code_text = include_str!("../../uefi-raw/src/table/boot.rs");
-
-    let ast: File = syn::parse_str(code_text).unwrap();
+    let ast: File = syn::parse_str(&code)?;
 
     for item in ast.items.iter() {
         match item {
@@ -33,9 +33,36 @@ pub fn check_raw() -> Result<()> {
             Item::Type(ItemType { .. }) => {
                 // TODO
             }
-            _ => {
-                dbg!(item);
-                todo!()
+            item => {
+                let span = item.span();
+                eprintln!(
+                    "error: unexpected item\n  --> {}:{}:{}",
+                    path.display(),
+                    span.start().line,
+                    span.start().column + 1,
+                );
+                todo!();
+                process::exit(1);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+pub fn check_raw() -> Result<()> {
+    // TODO: will need a two-phase check?
+
+    // TODO
+    assert!(Path::new("uefi-raw").exists());
+
+    for entry in WalkDir::new("uefi-raw") {
+        let entry = entry?;
+        let path = entry.path();
+        if let Some(ext) = path.extension() {
+            if ext == "rs" {
+                println!("checking {}", path.display());
+                check_file(path)?;
             }
         }
     }
