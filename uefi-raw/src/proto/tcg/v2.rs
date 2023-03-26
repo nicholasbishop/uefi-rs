@@ -11,8 +11,8 @@
 //! [TPM]: https://en.wikipedia.org/wiki/Trusted_Platform_Module
 
 use super::{AlgorithmId, EventType, HashAlgorithm, PcrIndex};
-use crate::data_types::PhysicalAddress;
 use crate::proto::unsafe_protocol;
+use crate::PhysicalAddress;
 use crate::Status;
 use bitflags::bitflags;
 use core::fmt::{self, Debug, Formatter};

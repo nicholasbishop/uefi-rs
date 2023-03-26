@@ -49,6 +49,7 @@ fn check_file(path: &Path, errors: &mut Vec<Error>) -> Result<()> {
     // * Maybe add a macro for "extern" types
     // * Get rid of all feature cfgs
     // * get rid of deprecated
+    // * Auto-reformat all the `use`
 
     for item in ast.items.iter() {
         match item {

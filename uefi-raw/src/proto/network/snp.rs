@@ -8,7 +8,7 @@
 //! called first.
 
 use super::{IpAddress, MacAddress};
-use crate::data_types::Event;
+use crate::Event;
 use crate::Status;
 use bitflags::bitflags;
 use core::ffi::c_void;

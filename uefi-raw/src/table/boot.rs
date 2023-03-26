@@ -1,9 +1,8 @@
 //! UEFI services available during boot.
 
 use super::Header;
-use crate::data_types::{PhysicalAddress, VirtualAddress};
 use crate::proto::device_path::FfiDevicePath;
-use crate::{Char16, Event, Guid, Handle, Status};
+use crate::{Char16, Event, Guid, Handle, PhysicalAddress, Status, VirtualAddress};
 use bitflags::bitflags;
 use core::ffi::c_void;
 use core::fmt::Debug;
