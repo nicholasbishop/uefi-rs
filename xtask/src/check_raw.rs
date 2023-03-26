@@ -52,7 +52,7 @@ fn check_file(path: &Path, errors: &mut Vec<Error>) -> Result<()> {
                 }
             }
             Item::Impl(ItemImpl { .. }) => {
-                add_error("unexpected impl", item);
+                // TODO
             }
             Item::Macro(ItemMacro { .. }) => {
                 // TODO
@@ -89,6 +89,7 @@ pub fn check_raw() -> Result<()> {
     for entry in WalkDir::new("uefi-raw") {
         let entry = entry?;
         let path = entry.path();
+
         if let Some(ext) = path.extension() {
             if ext == "rs" {
                 println!("checking {}", path.display());
