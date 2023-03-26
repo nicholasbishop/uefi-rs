@@ -9,7 +9,7 @@
 
 use crate::proto::unsafe_protocol;
 use crate::result::Error;
-use crate::{Result, Status};
+use crate::{ Status};
 use core::ffi::c_void;
 use core::mem::MaybeUninit;
 

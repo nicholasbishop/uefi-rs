@@ -1,5 +1,5 @@
 use crate::proto::unsafe_protocol;
-use crate::{Char16, Event, Result, Status};
+use crate::{Char16, Event,  Status};
 use core::mem::MaybeUninit;
 
 /// Interface for text-based input devices.
@@ -42,7 +42,7 @@ impl Input {
     /// use log::info;
     /// use uefi::proto::console::text::{Input, Key, ScanCode};
     /// use uefi::table::boot::BootServices;
-    /// use uefi::{Char16, Result, ResultExt};
+    /// use uefi::{Char16,  ResultExt};
     ///
     /// fn read_keyboard_events(boot_services: &BootServices, input: &mut Input) -> Result {
     ///     loop {

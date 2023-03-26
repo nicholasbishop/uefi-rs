@@ -1,7 +1,7 @@
 //! Disk I/O protocols.
 
 use crate::proto::unsafe_protocol;
-use crate::{Event, Result, Status};
+use crate::{Event,  Status};
 use core::ptr::NonNull;
 
 /// The disk I/O protocol.

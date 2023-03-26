@@ -13,7 +13,7 @@ use crate::data_types::PhysicalAddress;
 use crate::polyfill::maybe_uninit_slice_as_mut_ptr;
 use crate::proto::unsafe_protocol;
 use crate::util::{ptr_write_unaligned_and_add, usize_from_u32};
-use crate::{Error, Result, Status};
+use crate::{Error,  Status};
 use core::fmt::{self, Debug, Formatter};
 use core::marker::{PhantomData, PhantomPinned};
 use core::mem::{self, MaybeUninit};

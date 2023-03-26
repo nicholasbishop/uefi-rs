@@ -1,7 +1,7 @@
 //! Block I/O protocols.
 
 use crate::proto::unsafe_protocol;
-use crate::{Result, Status};
+use crate::{ Status};
 
 /// The Block I/O protocol.
 #[repr(C)]

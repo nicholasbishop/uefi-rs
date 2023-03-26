@@ -14,7 +14,7 @@ use crate::{polyfill::maybe_uninit_slice_as_mut_ptr, proto::unsafe_protocol};
 use bitflags::bitflags;
 use ptr_meta::Pointee;
 
-use crate::{CStr8, Char8, Result, Status};
+use crate::{CStr8, Char8,  Status};
 
 use super::{IpAddress, MacAddress};
 
