@@ -12,16 +12,16 @@ use core::fmt;
 #[repr(C)]
 pub struct Guid {
     /// The low field of the timestamp.
-    a: u32,
+    pub a: u32,
     /// The middle field of the timestamp.
-    b: u16,
+    pub b: u16,
     /// The high field of the timestamp multiplexed with the version number.
-    c: u16,
+    pub c: u16,
     /// Contains, in this order:
     /// - The high field of the clock sequence multiplexed with the variant.
     /// - The low field of the clock sequence.
     /// - The spatially unique node identifier.
-    d: [u8; 8],
+    pub d: [u8; 8],
 }
 
 impl Guid {
@@ -113,64 +113,14 @@ impl fmt::Display for Guid {
 /// Several entities in the UEFI specification can be referred to by their GUID,
 /// this trait is a building block to interface them in uefi-rs.
 ///
-/// You should never need to use the `Identify` trait directly, but instead go
-/// for more specific traits such as [`Protocol`] or [`FileProtocolInfo`], which
-/// indicate in which circumstances an `Identify`-tagged type should be used.
-///
-/// For the common case of implementing this trait for a protocol, use
-/// the [`unsafe_protocol`] macro.
-///
 /// # Safety
 ///
 /// Implementing `Identify` is unsafe because attaching an incorrect GUID to a
 /// type can lead to type unsafety on both the Rust and UEFI side.
 ///
 /// [`Protocol`]: crate::proto::Protocol
-/// [`FileProtocolInfo`]: crate::proto::media::file::FileProtocolInfo
 /// [`unsafe_protocol`]: crate::proto::unsafe_protocol
 pub unsafe trait Identify {
     /// Unique protocol identifier.
     const GUID: Guid;
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use uefi::guid;
-
-    #[test]
-    fn test_guid_display() {
-        assert_eq!(
-            alloc::format!(
-                "{}",
-                Guid::from_values(0x12345678, 0x9abc, 0xdef0, 0x1234, 0x56789abcdef0)
-            ),
-            "12345678-9abc-def0-1234-56789abcdef0"
-        );
-    }
-
-    #[test]
-    fn test_guid_macro() {
-        assert_eq!(
-            guid!("12345678-9abc-def0-1234-56789abcdef0"),
-            Guid::from_values(0x12345678, 0x9abc, 0xdef0, 0x1234, 0x56789abcdef0)
-        );
-    }
-
-    #[test]
-    fn test_to_from_bytes() {
-        #[rustfmt::skip]
-        let bytes = [
-            0x78, 0x56, 0x34, 0x12,
-            0xbc, 0x9a,
-            0xf0, 0xde,
-            0x12, 0x34,
-            0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0,
-        ];
-        assert_eq!(
-            Guid::from_bytes(bytes),
-            Guid::from_values(0x12345678, 0x9abc, 0xdef0, 0x1234, 0x56789abcdef0)
-        );
-        assert_eq!(Guid::from_bytes(bytes).to_bytes(), bytes);
-    }
 }

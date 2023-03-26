@@ -7,9 +7,10 @@ use core::fmt::{Debug, Display};
 /// kind is encoded in the `status` field (see [`Status`]). Additional payload
 /// may be inside the `data` field.
 #[derive(Debug, PartialEq, Eq)]
+#[repr(C)] // TODO
 pub struct Error<Data: Debug = ()> {
-    status: Status,
-    data: Data,
+    pub status: Status,
+    pub data: Data,
 }
 
 impl<Data: Debug> Error<Data> {

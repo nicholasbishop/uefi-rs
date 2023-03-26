@@ -1,20 +1,20 @@
 //! UEFI services available at runtime, even after the OS boots.
 
-use super::{Header, Revision};
+use super::Revision;
 #[cfg(feature = "alloc")]
 use crate::data_types::FromSliceWithNulError;
 use crate::result::Error;
-use crate::table::boot::MemoryDescriptor;
-use crate::{guid, CStr16, Char16, Guid, Result, Status};
+use crate::{guid, CStr16, Guid, Result, Status};
 #[cfg(feature = "alloc")]
 use alloc::{vec, vec::Vec};
-use bitflags::bitflags;
-use core::ffi::c_void;
 use core::fmt::{Debug, Formatter};
 #[cfg(feature = "alloc")]
 use core::mem;
 use core::mem::MaybeUninit;
 use core::{fmt, ptr};
+
+pub use uefi_raw::table::runtime::{Daylight, ResetType, TimeCapabilities, VariableAttributes};
+
 /// Contains pointers to all of the runtime services.
 ///
 /// This table, and the function pointers it contains are valid
@@ -25,78 +25,23 @@ use core::{fmt, ptr};
 /// A reference to `RuntimeServices` can only be accessed by calling [`SystemTable::runtime_services`].
 ///
 /// [`SystemTable::runtime_services`]: crate::table::SystemTable::runtime_services
-#[repr(C)]
-pub struct RuntimeServices {
-    header: Header,
-    get_time:
-        unsafe extern "efiapi" fn(time: *mut Time, capabilities: *mut TimeCapabilities) -> Status,
-    set_time: unsafe extern "efiapi" fn(time: &Time) -> Status,
-    get_wakeup_time:
-        unsafe extern "efiapi" fn(enabled: *mut u8, pending: *mut u8, time: *mut Time) -> Status,
-    set_wakeup_time: unsafe extern "efiapi" fn(enable: u8, time: *const Time) -> Status,
-    pub(crate) set_virtual_address_map: unsafe extern "efiapi" fn(
-        map_size: usize,
-        desc_size: usize,
-        desc_version: u32,
-        virtual_map: *mut MemoryDescriptor,
-    ) -> Status,
-    convert_pointer:
-        unsafe extern "efiapi" fn(debug_disposition: usize, address: *mut *const c_void) -> Status,
-    get_variable: unsafe extern "efiapi" fn(
-        variable_name: *const Char16,
-        vendor_guid: *const Guid,
-        attributes: *mut VariableAttributes,
-        data_size: *mut usize,
-        data: *mut u8,
-    ) -> Status,
-    get_next_variable_name: unsafe extern "efiapi" fn(
-        variable_name_size: *mut usize,
-        variable_name: *mut u16,
-        vendor_guid: *mut Guid,
-    ) -> Status,
-    set_variable: unsafe extern "efiapi" fn(
-        variable_name: *const Char16,
-        vendor_guid: *const Guid,
-        attributes: VariableAttributes,
-        data_size: usize,
-        data: *const u8,
-    ) -> Status,
-    get_next_high_monotonic_count: unsafe extern "efiapi" fn(high_count: *mut u32) -> Status,
-    reset: unsafe extern "efiapi" fn(
-        rt: ResetType,
-
-        status: Status,
-        data_size: usize,
-        data: *const u8,
-    ) -> !,
-
-    // UEFI 2.0 Capsule Services.
-    update_capsule: usize,
-    query_capsule_capabilities: usize,
-
-    // Miscellaneous UEFI 2.0 Service.
-    query_variable_info: unsafe extern "efiapi" fn(
-        attributes: VariableAttributes,
-        maximum_variable_storage_size: *mut u64,
-        remaining_variable_storage_size: *mut u64,
-        maximum_variable_size: *mut u64,
-    ) -> Status,
-}
+#[repr(transparent)]
+pub struct RuntimeServices(pub(crate) uefi_raw::table::runtime::RuntimeServices);
 
 impl RuntimeServices {
     /// Query the current time and date information
     pub fn get_time(&self) -> Result<Time> {
-        let mut time = MaybeUninit::<Time>::uninit();
-        unsafe { (self.get_time)(time.as_mut_ptr(), ptr::null_mut()) }
-            .into_with_val(|| unsafe { time.assume_init() })
+        let mut time = uefi_raw::table::runtime::Time::default();
+        unsafe { (self.0.get_time)(&mut time, ptr::null_mut()) }.into_with_val(|| Time(time))
     }
 
     /// Query the current time and date information and the RTC capabilities
     pub fn get_time_and_caps(&self) -> Result<(Time, TimeCapabilities)> {
-        let mut time = MaybeUninit::<Time>::uninit();
+        let mut time = uefi_raw::table::runtime::Time::default();
+        // TODO: remove maybeuninit?
         let mut caps = MaybeUninit::<TimeCapabilities>::uninit();
-        unsafe { (self.get_time)(time.as_mut_ptr(), caps.as_mut_ptr()) }
-            .into_with_val(|| unsafe { (time.assume_init(), caps.assume_init()) })
+        unsafe { (self.0.get_time)(&mut time, caps.as_mut_ptr()) }
+            .into_with_val(|| (Time(time), unsafe { caps.assume_init() }))
     }
 
     /// Sets the current local time and date information
@@ -109,7 +54,7 @@ impl RuntimeServices {
     /// Undefined behavior could happen if multiple tasks try to
     /// use this function at the same time without synchronisation.
     pub unsafe fn set_time(&mut self, time: &Time) -> Result {
-        (self.set_time)(time).into()
+        (self.0.set_time)(&time.0).into()
     }
 
     /// Get the size (in bytes) of a variable. This can be used to find out how
@@ -117,8 +62,8 @@ impl RuntimeServices {
     pub fn get_variable_size(&self, name: &CStr16, vendor: &VariableVendor) -> Result<usize> {
         let mut data_size = 0;
         let status = unsafe {
-            (self.get_variable)(
-                name.as_ptr(),
+            (self.0.get_variable)(
+                name.as_ptr().cast(),
                 &vendor.0,
                 ptr::null_mut(),
                 &mut data_size,
@@ -148,8 +93,8 @@ impl RuntimeServices {
         let mut attributes = VariableAttributes::empty();
         let mut data_size = buf.len();
         unsafe {
-            (self.get_variable)(
-                name.as_ptr(),
+            (self.0.get_variable)(
+                name.as_ptr().cast(),
                 &vendor.0,
                 &mut attributes,
                 &mut data_size,
@@ -174,7 +119,7 @@ impl RuntimeServices {
         loop {
             let mut name_size_in_bytes = name.len() * mem::size_of::<u16>();
             status = unsafe {
-                (self.get_next_variable_name)(
+                (self.0.get_next_variable_name)(
                     &mut name_size_in_bytes,
                     name.as_mut_ptr(),
                     &mut vendor,
@@ -237,8 +182,8 @@ impl RuntimeServices {
         data: &[u8],
     ) -> Result {
         unsafe {
-            (self.set_variable)(
-                name.as_ptr(),
+            (self.0.set_variable)(
+                name.as_ptr().cast(),
                 &vendor.0,
                 attributes,
                 data.len(),
@@ -264,13 +209,13 @@ impl RuntimeServices {
         &self,
         attributes: VariableAttributes,
     ) -> Result<VariableStorageInfo> {
-        if self.header.revision < Revision::EFI_2_00 {
+        if self.0.header.revision < Revision::EFI_2_00 {
             return Err(Status::UNSUPPORTED.into());
         }
 
         let mut info = VariableStorageInfo::default();
         unsafe {
-            (self.query_variable_info)(
+            (self.0.query_variable_info)(
                 attributes,
                 &mut info.maximum_variable_storage_size,
                 &mut info.remaining_variable_storage_size,
@@ -293,7 +238,7 @@ impl RuntimeServices {
             None => (0, ptr::null()),
         };
 
-        unsafe { (self.reset)(rt, status, size, data) }
+        unsafe { (self.0.reset)(rt, status, size, data) }
     }
 }
 
@@ -304,34 +249,24 @@ impl super::Table for RuntimeServices {
 impl Debug for RuntimeServices {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_struct("RuntimeServices")
-            .field("header", &self.header)
-            .field("get_time", &(self.get_time as *const u64))
-            .field("set_time", &(self.set_time as *const u64))
+            .field("header", &self.0.header)
+            .field("get_time", &(self.0.get_time as *const u64))
+            .field("set_time", &(self.0.set_time as *const u64))
             .field(
                 "set_virtual_address_map",
-                &(self.set_virtual_address_map as *const u64),
+                &(self.0.set_virtual_address_map as *const u64),
             )
-            .field("reset", &(self.reset as *const u64))
+            .field("reset", &(self.0.reset as *const u64))
             .finish()
     }
 }
 
+// TODO: consider whether to just move the whole time thing to raw and reexport?
+
 /// Date and time representation.
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub struct Time {
-    year: u16,  // 1900 - 9999
-    month: u8,  // 1 - 12
-    day: u8,    // 1 - 31
-    hour: u8,   // 0 - 23
-    minute: u8, // 0 - 59
-    second: u8, // 0 - 59
-    _pad1: u8,
-    nanosecond: u32, // 0 - 999_999_999
-    time_zone: i16,  // -1440 to 1440, or 2047 if unspecified
-    daylight: Daylight,
-    _pad2: u8,
-}
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
+#[repr(transparent)]
+pub struct Time(uefi_raw::table::runtime::Time);
 
 /// Input parameters for [`Time::new`].
 #[derive(Copy, Clone, Debug)]
@@ -366,17 +301,6 @@ pub struct TimeParams {
     pub daylight: Daylight,
 }
 
-bitflags! {
-    /// A bitmask containing daylight savings time information.
-    #[repr(transparent)]
-    pub struct Daylight: u8 {
-        /// Time is affected by daylight savings time.
-        const ADJUST_DAYLIGHT = 0x01;
-        /// Time has been adjusted for daylight savings time.
-        const IN_DAYLIGHT = 0x02;
-    }
-}
-
 /// Error returned by [`Time`] methods if the input is outside the valid range.
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub struct TimeError;
@@ -388,19 +312,19 @@ impl Time {
     /// Create a `Time` value. If a field is not in the valid range,
     /// [`TimeError`] is returned.
     pub fn new(params: TimeParams) -> core::result::Result<Self, TimeError> {
-        let time = Self {
+        let time = Self(uefi_raw::table::runtime::Time {
             year: params.year,
             month: params.month,
             day: params.day,
             hour: params.hour,
             minute: params.minute,
             second: params.second,
-            _pad1: 0,
+            pad1: 0,
             nanosecond: params.nanosecond,
             time_zone: params.time_zone.unwrap_or(Self::UNSPECIFIED_TIMEZONE),
             daylight: params.daylight,
-            _pad2: 0,
-        };
+            pad2: 0,
+        });
         if time.is_valid() {
             Ok(time)
         } else {
@@ -416,208 +340,83 @@ impl Time {
     /// [`File::set_info`]: uefi::proto::media::file::File::set_info
     #[must_use]
     pub const fn invalid() -> Self {
-        Self {
+        Self(uefi_raw::table::runtime::Time {
             year: 0,
             month: 0,
             day: 0,
             hour: 0,
             minute: 0,
             second: 0,
-            _pad1: 0,
+            pad1: 0,
             nanosecond: 0,
             time_zone: 0,
             daylight: Daylight::empty(),
-            _pad2: 0,
-        }
+            pad2: 0,
+        })
     }
 
     /// True if all fields are within valid ranges, false otherwise.
     #[must_use]
     pub fn is_valid(&self) -> bool {
-        (1900..=9999).contains(&self.year)
-            && (1..=12).contains(&self.month)
-            && (1..=31).contains(&self.day)
-            && self.hour <= 23
-            && self.minute <= 59
-            && self.second <= 59
-            && self.nanosecond <= 999_999_999
-            && ((-1440..=1440).contains(&self.time_zone)
-                || self.time_zone == Self::UNSPECIFIED_TIMEZONE)
+        self.0.is_valid()
     }
 
     /// Query the year.
     #[must_use]
     pub const fn year(&self) -> u16 {
-        self.year
+        self.0.year
     }
 
     /// Query the month.
     #[must_use]
     pub const fn month(&self) -> u8 {
-        self.month
+        self.0.month
     }
 
     /// Query the day.
     #[must_use]
     pub const fn day(&self) -> u8 {
-        self.day
+        self.0.day
     }
 
     /// Query the hour.
     #[must_use]
     pub const fn hour(&self) -> u8 {
-        self.hour
+        self.0.hour
     }
 
     /// Query the minute.
     #[must_use]
     pub const fn minute(&self) -> u8 {
-        self.minute
+        self.0.minute
     }
 
     /// Query the second.
     #[must_use]
     pub const fn second(&self) -> u8 {
-        self.second
+        self.0.second
     }
 
     /// Query the nanosecond.
     #[must_use]
     pub const fn nanosecond(&self) -> u32 {
-        self.nanosecond
+        self.0.nanosecond
     }
 
     /// Query the time offset in minutes from UTC, or None if using local time.
     #[must_use]
     pub const fn time_zone(&self) -> Option<i16> {
-        if self.time_zone == 2047 {
+        if self.0.time_zone == 2047 {
             None
         } else {
-            Some(self.time_zone)
+            Some(self.0.time_zone)
         }
     }
 
     /// Query the daylight savings time information.
     #[must_use]
     pub const fn daylight(&self) -> Daylight {
-        self.daylight
-    }
-}
-
-impl fmt::Debug for Time {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:04}-{:02}-{:02} ", self.year, self.month, self.day)?;
-        write!(
-            f,
-            "{:02}:{:02}:{:02}.{:09}",
-            self.hour, self.minute, self.second, self.nanosecond
-        )?;
-        if self.time_zone == Self::UNSPECIFIED_TIMEZONE {
-            write!(f, ", Timezone=local")?;
-        } else {
-            write!(f, ", Timezone={}", self.time_zone)?;
-        }
-        write!(f, ", Daylight={:?}", self.daylight)
-    }
-}
-
-impl fmt::Display for Time {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{:04}-{:02}-{:02} ", self.year, self.month, self.day)?;
-        write!(
-            f,
-            "{:02}:{:02}:{:02}.{:09}",
-            self.hour, self.minute, self.second, self.nanosecond
-        )?;
-
-        if self.time_zone == Self::UNSPECIFIED_TIMEZONE {
-            write!(f, " (local)")?;
-        } else {
-            let offset_in_hours = self.time_zone as f32 / 60.0;
-            let integer_part = offset_in_hours as i16;
-            // We can't use "offset_in_hours.fract()" because it is part of `std`.
-            let fraction_part = offset_in_hours - (integer_part as f32);
-            // most time zones
-            if fraction_part == 0.0 {
-                write!(f, "UTC+{offset_in_hours}")?;
-            }
-            // time zones with 30min offset (and perhaps other special time zones)
-            else {
-                write!(f, "UTC+{offset_in_hours:.1}")?;
-            }
-        }
-
-        Ok(())
-    }
-}
-
-impl PartialEq for Time {
-    fn eq(&self, other: &Time) -> bool {
-        self.year == other.year
-            && self.month == other.month
-            && self.day == other.day
-            && self.hour == other.hour
-            && self.minute == other.minute
-            && self.second == other.second
-            && self.nanosecond == other.nanosecond
-            && self.time_zone == other.time_zone
-            && self.daylight == other.daylight
-    }
-}
-
-impl Eq for Time {}
-
-/// Real time clock capabilities
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-#[repr(C)]
-pub struct TimeCapabilities {
-    /// Reporting resolution of the clock in counts per second. 1 for a normal
-    /// PC-AT CMOS RTC device, which reports the time with 1-second resolution.
-    pub resolution: u32,
-
-    /// Timekeeping accuracy in units of 1e-6 parts per million.
-    pub accuracy: u32,
-
-    /// Whether a time set operation clears the device's time below the
-    /// "resolution" reporting level. False for normal PC-AT CMOS RTC devices.
-    pub sets_to_zero: bool,
-}
-
-bitflags! {
-    /// Flags describing the attributes of a variable.
-    #[repr(transparent)]
-    pub struct VariableAttributes: u32 {
-        /// Variable is maintained across a power cycle.
-        const NON_VOLATILE = 0x01;
-
-        /// Variable is accessible during the time that boot services are
-        /// accessible.
-        const BOOTSERVICE_ACCESS = 0x02;
-
-        /// Variable is accessible during the time that runtime services are
-        /// accessible.
-        const RUNTIME_ACCESS = 0x04;
-
-        /// Variable is stored in the portion of NVR allocated for error
-        /// records.
-        const HARDWARE_ERROR_RECORD = 0x08;
-
-        /// Deprecated.
-        const AUTHENTICATED_WRITE_ACCESS = 0x10;
-
-        /// Variable payload begins with an EFI_VARIABLE_AUTHENTICATION_2
-        /// structure.
-        const TIME_BASED_AUTHENTICATED_WRITE_ACCESS = 0x20;
-
-        /// This is never set in the attributes returned by
-        /// `get_variable`. When passed to `set_variable`, the variable payload
-        /// will be appended to the current value of the variable if supported
-        /// by the firmware.
-        const APPEND_WRITE = 0x40;
-
-        /// Variable payload begins with an EFI_VARIABLE_AUTHENTICATION_3
-        /// structure.
-        const ENHANCED_AUTHENTICATED_ACCESS = 0x80;
+        self.0.daylight
     }
 }
 
@@ -689,26 +488,4 @@ pub struct VariableStorageInfo {
 
     /// Maximum size of an individual variable of the specified type.
     pub maximum_variable_size: u64,
-}
-
-/// The type of system reset.
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-#[repr(u32)]
-pub enum ResetType {
-    /// Resets all the internal circuitry to its initial state.
-    ///
-    /// This is analogous to power cycling the device.
-    Cold = 0,
-    /// The processor is reset to its initial state.
-    Warm,
-    /// The components are powered off.
-    Shutdown,
-    /// A platform-specific reset type.
-    ///
-    /// The additional data must be a pointer to
-    /// a null-terminated string followed by an UUID.
-    PlatformSpecific,
-    // SAFETY: This enum is never exposed to the user, but only fed as input to
-    //         the firmware. Therefore, unexpected values can never come from
-    //         the firmware, and modeling this as a Rust enum seems safe.
 }

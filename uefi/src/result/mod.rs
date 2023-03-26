@@ -1,27 +1,7 @@
 ///! Facilities for dealing with UEFI operation results.
 use core::fmt::Debug;
 
-/// The error type that we use, essentially a status code + optional additional data
-mod error;
-pub use self::error::Error;
-
-/// Definition of UEFI's standard status codes
-mod status;
-pub use self::status::Status;
-
-/// Return type of most UEFI functions. Both success and error payloads are optional.
-///
-/// Almost all UEFI operations provide a status code as an output which
-/// indicates either success, a warning, or an error. This type alias maps
-/// [`Status::SUCCESS`] to the `Ok` variant (with optional `Output` data), and
-/// maps both warning and error statuses to the `Err` variant of type [`Error`],
-/// which may carry optional inner `ErrData`.
-///
-/// Warnings are treated as errors by default because they generally indicate
-/// an abnormal situation.
-///
-/// Some convenience methods are provided by the [`ResultExt`] trait.
-pub type Result<Output = (), ErrData = ()> = core::result::Result<Output, Error<ErrData>>;
+pub use uefi_raw::{Error, Result, Status};
 
 /// Extension trait which provides some convenience methods for [`Result`].
 pub trait ResultExt<Output, ErrData: Debug> {
@@ -43,9 +23,9 @@ pub trait ResultExt<Output, ErrData: Debug> {
     /// # Example
     ///
     /// ```
-    /// use uefi::{Result, ResultExt, Status};
+    /// use uefi_raw::{Result, ResultExt, Status};
     ///
-    /// # fn x() -> uefi::Result {
+    /// # fn x() -> uefi_raw::Result {
     /// # let some_result = Result::from(Status::WARN_RESET_REQUIRED);
     /// // Treat a specific warning as success, propagate others as errors.
     /// some_result.handle_warning(|err| {

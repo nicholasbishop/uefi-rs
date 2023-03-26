@@ -318,7 +318,7 @@ impl SystemTable<Runtime> {
         let entry_size = core::mem::size_of::<MemoryDescriptor>();
         let entry_version = crate::table::boot::MEMORY_DESCRIPTOR_VERSION;
         let map_ptr = map.as_mut_ptr();
-        ((*(*self.table).runtime).set_virtual_address_map)(
+        ((*(*self.table).runtime).0.set_virtual_address_map)(
             map_size,
             entry_size,
             entry_version,

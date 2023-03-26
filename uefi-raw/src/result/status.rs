@@ -2,7 +2,7 @@ use super::{Error, Result};
 use core::fmt::Debug;
 
 /// Bit indicating that an UEFI status code is an error
-const ERROR_BIT: usize = 1 << (core::mem::size_of::<usize>() * 8 - 1);
+pub const ERROR_BIT: usize = 1 << (core::mem::size_of::<usize>() * 8 - 1);
 
 newtype_enum! {
 /// UEFI uses status codes in order to report successes, errors, and warnings.
