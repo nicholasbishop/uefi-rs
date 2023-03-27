@@ -652,12 +652,7 @@ pub enum BootstrapType {
     PxeTest = 65535,
 }
 
-opaque_type! {
-    /// Opaque type that should be used to represent a pointer to a [`DiscoverInfo`] in
-    /// foreign function interfaces. This type produces a thin pointer, unlike
-    /// [`DiscoverInfo`].
-    pub struct FfiDiscoverInfo;
-}
+pub use uefi_raw::proto::network::pxe::FfiDiscoverInfo;
 
 /// This struct contains optional parameters for [`BaseCode::discover`].
 ///
