@@ -84,7 +84,9 @@ pub fn test(bt: &BootServices) {
         // The Windows CI job sometimes fails the read with a timeout; retry a
         // few times before giving up.
         let mut read_result = Ok(0);
+        let mut i = 0;
         for _ in 0..5 {
+            i += 1;
             read_result = base_code.udp_read(
                 UdpOpFlags::USE_FILTER,
                 Some(&mut dest_ip),
@@ -99,6 +101,8 @@ pub fn test(bt: &BootServices) {
             }
         }
         read_result.unwrap();
+
+        assert_eq!(i, 1);
 
         // Check the header.
         assert_eq!(header[0] as usize, payload.len());
