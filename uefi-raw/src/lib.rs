@@ -14,3 +14,6 @@
 #![deny(clippy::ptr_as_ptr, unused)]
 #![deny(clippy::all)]
 #![deny(clippy::must_use_candidate)]
+
+#[macro_use]
+mod enums;
