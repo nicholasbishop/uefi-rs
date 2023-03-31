@@ -576,6 +576,7 @@ dependencies = [
  "ptr_meta",
  "ucs2",
  "uefi-macros",
+ "uefi-raw",
 ]
 
 [[package]]
@@ -587,6 +588,15 @@ dependencies = [
  "syn 2.0.8",
  "trybuild",
  "uefi",
+]
+
+[[package]]
+name = "uefi-raw"
+version = "0.1.0"
+dependencies = [
+ "bitflags",
+ "ptr_meta",
+ "uefi-macros",
 ]
 
 [[package]]
