@@ -20,6 +20,8 @@ mod enums;
 
 pub mod result;
 
+mod guid;
 mod status;
 
+pub use guid::Guid;
 pub use status::Status;

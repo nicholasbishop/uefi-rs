@@ -122,7 +122,8 @@ pub type PhysicalAddress = u64;
 pub type VirtualAddress = u64;
 
 mod guid;
-pub use self::guid::{Guid, Identify};
+pub use self::guid::Identify;
+pub use uefi_raw::Guid;
 
 pub mod chars;
 pub use self::chars::{Char16, Char8};
