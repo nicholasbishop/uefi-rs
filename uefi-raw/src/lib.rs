@@ -17,3 +17,9 @@
 
 #[macro_use]
 mod enums;
+
+pub mod result;
+
+mod status;
+
+pub use status::Status;

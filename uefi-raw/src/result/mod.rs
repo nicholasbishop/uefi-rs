@@ -1,13 +1,16 @@
-///! Facilities for dealing with UEFI operation results.
+//! Facilities for dealing with UEFI operation results.
+//!
+//! The types provided by this module are not used elsewhere in `uefi-raw`. They
+//! are only used in `uefi`. However, to provide convenient conversions between
+//! `Status`, `Result`, and `Error` it's easiest to define them all in the same
+//! crate.
+
+use crate::Status;
 use core::fmt::Debug;
 
 /// The error type that we use, essentially a status code + optional additional data
 mod error;
 pub use self::error::Error;
-
-/// Definition of UEFI's standard status codes
-mod status;
-pub use self::status::Status;
 
 /// Return type of most UEFI functions. Both success and error payloads are optional.
 ///
