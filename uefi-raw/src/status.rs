@@ -1,4 +1,4 @@
-use super::{Error, Result};
+use crate::result::{Error, Result};
 use core::fmt::Debug;
 
 /// Bit indicating that an UEFI status code is an error

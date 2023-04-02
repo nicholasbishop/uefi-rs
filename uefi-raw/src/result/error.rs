@@ -1,6 +1,6 @@
 //! Module for UEFI-specific error encodings. See [`Error`].
 
-use super::Status;
+use crate::Status;
 use core::fmt::{Debug, Display};
 
 /// An UEFI-related error with optionally additional payload data. The error
