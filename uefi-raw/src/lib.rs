@@ -22,6 +22,7 @@ extern crate self as uefi;
 #[macro_use]
 mod enums;
 
+pub mod protocol;
 pub mod result;
 pub mod table;
 
