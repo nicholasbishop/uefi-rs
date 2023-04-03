@@ -19,6 +19,7 @@
 mod enums;
 
 pub mod result;
+pub mod table;
 
 mod guid;
 mod status;
