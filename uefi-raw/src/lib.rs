@@ -15,6 +15,10 @@
 #![deny(clippy::all)]
 #![deny(clippy::must_use_candidate)]
 
+// Allow the uefi-raw crate to internally access itself under the "uefi" name so
+// that macros like `guid!` work.
+extern crate self as uefi;
+
 #[macro_use]
 mod enums;
 
@@ -26,3 +30,4 @@ mod status;
 
 pub use guid::Guid;
 pub use status::Status;
+pub use uefi_macros::guid;

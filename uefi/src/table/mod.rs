@@ -18,4 +18,4 @@ pub use self::system::{Boot, Runtime, SystemTable};
 pub mod boot;
 pub mod runtime;
 
-pub mod cfg;
+pub use uefi_raw::table::cfg;
