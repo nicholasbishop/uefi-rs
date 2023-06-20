@@ -1,7 +1,6 @@
 use core::ffi::c_void;
 use core::fmt::{Debug, Formatter};
 use core::marker::PhantomData;
-use core::ptr::NonNull;
 use core::{ptr, slice};
 
 use crate::proto::console::text;
@@ -107,8 +106,8 @@ impl<View: SystemTableView> SystemTable<View> {
     /// is valid. Otherwise, further operations on the object might result in
     /// undefined behaviour, even if the methods aren't marked as unsafe.
     pub unsafe fn from_ptr(ptr: *mut c_void) -> Option<Self> {
-        NonNull::new(ptr.cast()).map(|ptr| Self {
-            table: ptr.as_ref(),
+        (!ptr.is_null()).then(|| Self {
+            table: ptr.cast(),
             _marker: PhantomData,
         })
     }
