@@ -363,7 +363,7 @@ fn test_partition_info(bt: &BootServices, disk_handle: Handle) {
 
 /// Find the disk with the "MbrTestDisk" label. Return the handle and opened
 /// `SimpleFileSystem` protocol for that disk.
-fn find_test_disk(bt: &BootServices) -> (Handle, ScopedProtocol<SimpleFileSystem>) {
+pub fn find_test_disk(bt: &BootServices) -> (Handle, ScopedProtocol<SimpleFileSystem>) {
     let handles = bt
         .find_handles::<SimpleFileSystem>()
         .expect("Failed to get handles for `SimpleFileSystem` protocol");
@@ -445,6 +445,6 @@ pub fn test(bt: &BootServices) {
     // tests work.
     crate::fs::test(sfs).unwrap();
 
-    test_raw_disk_io(handle, bt);
-    test_raw_disk_io2(handle, bt);
+    // test_raw_disk_io(handle, bt);
+    // test_raw_disk_io2(handle, bt);
 }

@@ -165,14 +165,17 @@ impl Feature {
 /// So to get everything working and include coverage of the examples,
 /// allow each cargo invocation to specify if it wants the default set
 /// of types or some more specific combo.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum TargetTypes {
     /// Use this to not specify any target types in the cargo command
     /// line; this will enable bins, libs, and tests if they are present.
     Default,
 
     /// Build bins and examples.
-    BinsExamples,
+    Bins,
+
+    /// Build examples.
+    //Examples,
 
     /// Build bins, examples, and libs.
     BinsExamplesLib,
@@ -182,7 +185,8 @@ impl TargetTypes {
     const fn args(self) -> &'static [&'static str] {
         match self {
             TargetTypes::Default => &[],
-            TargetTypes::BinsExamples => &["--bins", "--examples"],
+            TargetTypes::Bins => &["--bins"],
+            //TargetTypes::Examples => &["--examples"],
             TargetTypes::BinsExamplesLib => &[
                 "--bins",
                 "--examples",
@@ -291,6 +295,13 @@ impl Cargo {
         cmd.arg(action);
         if let Some(sub_action) = sub_action {
             cmd.arg(sub_action);
+        }
+
+        if self.target_types == TargetTypes::Bins {
+            cmd.env(
+                "RUSTFLAGS",
+                "-Cinstrument-coverage -Zno-profiler-runtime -Ccodegen-units=1",
+            );
         }
 
         if self.release {

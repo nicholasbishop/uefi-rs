@@ -82,5 +82,9 @@ fn efi_main(image: Handle, mut st: SystemTable<Boot>) -> Status {
         .start_image(shell_image_handle)
         .expect("failed to launch the shell app");
 
+    // TODO
+    let mut buf = alloc::vec![];
+    unsafe { minicov::capture_coverage(&mut buf).unwrap() };
+
     Status::SUCCESS
 }

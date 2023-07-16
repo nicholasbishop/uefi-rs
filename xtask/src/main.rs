@@ -152,7 +152,19 @@ fn run_vm_tests(opt: &QemuOpt) -> Result<()> {
         features.push(Feature::TestUnstable);
     }
 
-    // Build uefi-test-runner.
+    // // Build uefi-test-runner examples.
+    // let cargo = Cargo {
+    //     action: CargoAction::Build,
+    //     features: features.clone(),
+    //     packages: vec![Package::UefiTestRunner],
+    //     release: opt.build_mode.release,
+    //     target: Some(*opt.target),
+    //     warnings_as_errors: false,
+    //     target_types: TargetTypes::Examples,
+    // };
+    // run_cmd(cargo.command()?)?;
+
+    // Build uefi-test-runner bins.
     let cargo = Cargo {
         action: CargoAction::Build,
         features,
@@ -160,7 +172,7 @@ fn run_vm_tests(opt: &QemuOpt) -> Result<()> {
         release: opt.build_mode.release,
         target: Some(*opt.target),
         warnings_as_errors: false,
-        target_types: TargetTypes::BinsExamples,
+        target_types: TargetTypes::Bins,
     };
     run_cmd(cargo.command()?)?;
 

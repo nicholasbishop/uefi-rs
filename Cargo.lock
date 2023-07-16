@@ -510,6 +510,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f665ee40bc4a3c5590afb1e9677db74a508659dfd71e126420da8274909a0167"
 
 [[package]]
+name = "minicov"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "39f85413e6e1b67d6addd3c64e9dae468845c941448b2007675236d3b3f23858"
+dependencies = [
+ "cc",
+ "walkdir",
+]
+
+[[package]]
 name = "miniz_oxide"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1019,7 +1029,9 @@ dependencies = [
 name = "uefi-test-runner"
 version = "0.2.0"
 dependencies = [
+ "base64",
  "log",
+ "minicov",
  "qemu-exit",
  "uefi",
  "uefi-services",

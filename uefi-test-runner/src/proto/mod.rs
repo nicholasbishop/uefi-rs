@@ -60,7 +60,7 @@ mod debug;
 mod device_path;
 mod driver;
 mod loaded_image;
-mod media;
+pub mod media;
 mod network;
 mod pi;
 mod rng;

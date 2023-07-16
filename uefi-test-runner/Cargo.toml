@@ -11,6 +11,8 @@ uefi-services = { path = "../uefi-services" }
 
 log.workspace = true
 
+base64 = { version = "0.21.2", default-features = false, features = ["alloc"] }
+minicov = "0.3.3"
 qemu-exit = "3.0.0"
 
 [features]

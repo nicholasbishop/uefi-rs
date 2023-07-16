@@ -137,5 +137,11 @@ pub fn check_mbr_test_disk(path: &Path) -> Result<()> {
     let children: Vec<_> = dir.iter().map(|e| e.unwrap().file_name()).collect();
     assert_eq!(children, [".", ".."]);
 
+    // TODO, hack
+    let mut file = root_dir.open_file("code_cov.profraw")?;
+    let mut bytes = Vec::new();
+    file.read_to_end(&mut bytes)?;
+    fs_err::write("code_cov.profraw", bytes)?;
+
     Ok(())
 }
