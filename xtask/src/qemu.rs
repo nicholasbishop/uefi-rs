@@ -643,7 +643,26 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt) -> Result<()> {
         );
     }
 
+    // TODO: hack
+    fs_err::remove_file("code_cov.profraw")?;
+    fs_err::remove_dir_all("cov_report")?;
+
     check_mbr_test_disk(&test_disk)?;
+
+    // TODO: Hack
+    let mut cmd = Command::new("grcov");
+    cmd.args([
+        "code_cov.profraw",
+        "--binary-path",
+        "target/x86_64-unknown-uefi/debug/uefi-test-runner.efi",
+        "--source-dir",
+        ".",
+        "-t",
+        "html",
+        "-o",
+        "cov_report",
+    ]);
+    crate::run_cmd(cmd)?;
 
     Ok(())
 }

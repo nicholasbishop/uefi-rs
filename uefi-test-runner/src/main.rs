@@ -7,6 +7,7 @@ extern crate log;
 extern crate alloc;
 
 use alloc::string::ToString;
+use uefi::fs::FileSystem;
 use uefi::prelude::*;
 use uefi::proto::console::serial::Serial;
 use uefi::Result;
@@ -16,6 +17,17 @@ mod boot;
 mod fs;
 mod proto;
 mod runtime;
+
+#[no_mangle]
+fn ___chkstk_ms() {
+    panic!();
+}
+
+#[no_mangle]
+fn bish_print(s: *const i8, num: u64) {
+    let s = unsafe { core::ffi::CStr::from_ptr(s).to_str().unwrap() };
+    info!("BISH: {}, num={}", s, num);
+}
 
 #[entry]
 fn efi_main(image: Handle, mut st: SystemTable<Boot>) -> Status {
@@ -60,6 +72,19 @@ fn efi_main(image: Handle, mut st: SystemTable<Boot>) -> Status {
 
     runtime::test(st.runtime_services());
 
+    // TODO
+    let mut buf = vec![];
+    unsafe { minicov::capture_coverage(&mut buf).unwrap() };
+    info!("BISH: {}", buf.len());
+    //send_request_to_host(st.boot_services(), HostRequest::CodeCoverage(&buf));
+
+    // TODO: hack
+    {
+        let sfs = proto::media::find_test_disk(st.boot_services()).1;
+        let mut fs = FileSystem::new(sfs);
+        fs.write(cstr16!("code_cov.profraw"), &buf).unwrap();
+    }
+
     shutdown(st);
 }
 
@@ -76,7 +101,7 @@ fn check_revision(rev: uefi::table::Revision) {
 }
 
 #[derive(Clone, Copy, Debug)]
-enum HostRequest {
+enum HostRequest<'a> {
     /// Tell the host to take a screenshot and compare against the
     /// golden image.
     Screenshot(&'static str),
@@ -84,12 +109,20 @@ enum HostRequest {
     /// Tell the host that tests are complete. The host will consider
     /// the tests failed if this message is not received.
     TestsComplete,
+
+    /// TODO
+    CodeCoverage(&'a [u8]),
 }
 
 fn send_request_helper(serial: &mut Serial, request: HostRequest) -> Result {
     let request = match request {
         HostRequest::Screenshot(name) => format!("SCREENSHOT: {name}\n"),
         HostRequest::TestsComplete => "TESTS_COMPLETE\n".to_string(),
+        HostRequest::CodeCoverage(cov_data) => {
+            use base64::{engine::general_purpose, Engine as _};
+            let cov_data_b64 = general_purpose::STANDARD.encode(cov_data);
+            format!("CODE_COVERAGE: {cov_data_b64}")
+        }
     };
 
     // Set a 10 second timeout for the read and write operations.

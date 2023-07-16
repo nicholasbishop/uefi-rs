@@ -82,5 +82,19 @@ fn efi_main(image: Handle, mut st: SystemTable<Boot>) -> Status {
         .start_image(shell_image_handle)
         .expect("failed to launch the shell app");
 
+    // TODO
+    let mut buf = alloc::vec![];
+    unsafe { minicov::capture_coverage(&mut buf).unwrap() };
+
     Status::SUCCESS
+}
+
+// TODO
+#[no_mangle]
+fn ___chkstk_ms() {}
+
+#[no_mangle]
+fn bish_print(s: *const i8, num: u64) {
+    let s = unsafe { core::ffi::CStr::from_ptr(s).to_str().unwrap() };
+    info!("BISH: {}, num={}", s, num);
 }
