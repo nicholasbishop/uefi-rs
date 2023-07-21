@@ -644,8 +644,8 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt) -> Result<()> {
     }
 
     // TODO: hack
-    fs_err::remove_file("code_cov.profraw")?;
-    fs_err::remove_dir_all("cov_report")?;
+    let _ = fs_err::remove_file("code_cov.profraw");
+    let _ = fs_err::remove_dir_all("cov_report");
 
     check_mbr_test_disk(&test_disk)?;
 
