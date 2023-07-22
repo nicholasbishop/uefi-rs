@@ -654,7 +654,7 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt) -> Result<()> {
     cmd.args([
         "code_cov.profraw",
         "--binary-path",
-        "target/x86_64-unknown-uefi/debug/uefi-test-runner.efi",
+        &format!("target/{}/debug/uefi-test-runner.efi", arch.as_triple()),
         "--source-dir",
         ".",
         "-t",
