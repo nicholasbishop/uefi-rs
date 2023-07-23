@@ -106,6 +106,7 @@ pub use uguid::guid;
 mod result;
 pub use self::result::{Error, Result, ResultExt, Status, StatusExt};
 
+pub mod boot;
 pub mod table;
 
 pub mod proto;
