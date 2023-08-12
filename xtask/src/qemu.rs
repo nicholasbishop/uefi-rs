@@ -421,6 +421,11 @@ fn build_esp_dir(opt: &QemuOpt, ovmf_paths: &OvmfPaths) -> Result<PathBuf> {
 
         fs_err::copy(&ovmf_paths.shell, boot_dir.join("shell.efi"))?;
 
+        fs_err::copy(
+            build_dir.join("quick_exit.efi"),
+            boot_dir.join("quick_exit.efi"),
+        )?;
+
         let test_runner = build_dir.join("uefi-test-runner.efi");
         fs_err::copy(test_runner, boot_dir.join("test_runner.efi"))?;
     };

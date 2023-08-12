@@ -18,13 +18,14 @@ use uefi::proto::device_path::build::{self, DevicePathBuilder};
 use uefi::proto::device_path::{DevicePath, DeviceSubType, DeviceType, LoadedImageDevicePath};
 use uefi::proto::loaded_image::LoadedImage;
 use uefi::table::boot::LoadImageSource;
-use uefi::Status;
+use uefi::{CStr16, Status};
 
-/// Get the device path of the shell app. This is the same as the
+/// Get the device path of another app. This is the same as the
 /// currently-loaded image's device path, but with the file path part changed.
-fn get_shell_app_device_path<'a>(
+fn get_app_device_path<'a>(
     boot_services: &BootServices,
     storage: &'a mut Vec<u8>,
+    file_path: &CStr16,
 ) -> &'a DevicePath {
     let loaded_image_device_path = boot_services
         .open_protocol_exclusive::<LoadedImageDevicePath>(boot_services.image_handle())
@@ -39,10 +40,34 @@ fn get_shell_app_device_path<'a>(
     }
     builder = builder
         .push(&build::media::FilePath {
-            path_name: cstr16!(r"efi\boot\shell.efi"),
+            path_name: file_path,
         })
         .unwrap();
     builder.finalize().unwrap()
+}
+
+fn run_quick_exit(boot_services: &BootServices) {
+    let mut storage = Vec::new();
+    let child_image_path = get_app_device_path(
+        boot_services,
+        &mut storage,
+        cstr16!(r"efi\boot\quick_exit.efi"),
+    );
+
+    let child_image_handle = boot_services
+        .load_image(
+            boot_services.image_handle(),
+            LoadImageSource::FromDevicePath {
+                device_path: child_image_path,
+                from_boot_manager: false,
+            },
+        )
+        .expect("failed to load quick-exit app");
+
+    info!("launching the quick-exit app");
+    boot_services
+        .start_image(child_image_handle)
+        .expect("failed to launch the quick-exit app");
 }
 
 #[entry]
@@ -51,7 +76,10 @@ fn efi_main(image: Handle, mut st: SystemTable<Boot>) -> Status {
     let boot_services = st.boot_services();
 
     let mut storage = Vec::new();
-    let shell_image_path = get_shell_app_device_path(boot_services, &mut storage);
+    let shell_image_path =
+        get_app_device_path(boot_services, &mut storage, cstr16!(r"efi\boot\shell.efi"));
+
+    run_quick_exit(boot_services);
 
     // Load the shell app.
     let shell_image_handle = boot_services
