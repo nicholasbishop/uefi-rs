@@ -6,25 +6,20 @@ use crate::tpm::Swtpm;
 use crate::util::command_to_string;
 use crate::{net, platform};
 use anyhow::{bail, Context, Result};
+use ovmf_prebuilt::{Artifact, PrebuiltCache, PrebuiltDir, PrebuiltId};
 use regex::bytes::Regex;
 use serde_json::{json, Value};
-use sha2::{Digest, Sha256};
 use std::env;
 use std::ffi::OsString;
-use std::io::{BufRead, BufReader, Cursor, Read, Write};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
-use tar::Archive;
 use tempfile::TempDir;
-use ureq::Agent;
 #[cfg(target_os = "linux")]
 use {std::fs::Permissions, std::os::unix::fs::PermissionsExt};
 
-/// Name of the ovmf-prebuilt release tag.
-const OVMF_PREBUILT_TAG: &str = "edk2-stable202311-r2";
-
-/// SHA-256 hash of the release tarball.
-const OVMF_PREBUILT_HASH: &str = "4a7d01b7dc6b0fdbf3a0e17dacd364b772fb5b712aaf64ecf328273584185ca0";
+/// Ovmf-prebuilt release tag.
+const OVMF_PREBUILT_ID: PrebuiltId = PrebuiltId::EDK2_STABLE202311_R2;
 
 /// Directory into which the prebuilts will be download (relative to the repo root).
 const OVMF_PREBUILT_DIR: &str = "target/ovmf";
@@ -38,161 +33,44 @@ const ENV_VAR_OVMF_VARS: &str = "OVMF_VARS";
 /// Environment variable for overriding the path of the OVMF shell file.
 const ENV_VAR_OVMF_SHELL: &str = "OVMF_SHELL";
 
-/// Download `url` and return the raw data.
-fn download_url(url: &str) -> Result<Vec<u8>> {
-    let agent: Agent = ureq::AgentBuilder::new()
-        .user_agent("uefi-rs-ovmf-downloader")
-        .build();
+/// Get the local directory containing prebuilt OVMF files, downloading them if
+/// necessary.
+fn get_ovmf_prebuilt_dir() -> Result<PrebuiltDir> {
+    let cache = PrebuiltCache {
+        cache_dir: PathBuf::from(OVMF_PREBUILT_DIR),
+        ..Default::default()
+    };
 
-    // Limit the size of the download.
-    let max_size_in_bytes = 5 * 1024 * 1024;
-
-    // Download the file.
-    println!("downloading {url}");
-    let resp = agent.get(url).call()?;
-    let mut data = Vec::with_capacity(max_size_in_bytes);
-    resp.into_reader()
-        .take(max_size_in_bytes.try_into().unwrap())
-        .read_to_end(&mut data)?;
-    println!("received {} bytes", data.len());
-
-    Ok(data)
+    Ok(cache
+        .get(OVMF_PREBUILT_ID)
+        .context("failed to get OVMF prebuilts")?)
 }
 
-// Extract the tarball's files into `prebuilt_dir`.
-//
-// `tarball_data` is raw decompressed tar data.
-fn extract_prebuilt(tarball_data: &[u8], prebuilt_dir: &Path) -> Result<()> {
-    let cursor = Cursor::new(tarball_data);
-    let mut archive = Archive::new(cursor);
-
-    // Extract each file entry.
-    for entry in archive.entries()? {
-        let mut entry = entry?;
-
-        // Skip directories.
-        if entry.size() == 0 {
-            continue;
+/// Get a user-provided path for the given OVMF file type.
+///
+/// This uses the command-line arg if present, otherwise it falls back to an
+/// environment variable. If neither is present, returns `None`.
+fn get_user_provided_path(artifact: Artifact, opt: &QemuOpt) -> Option<PathBuf> {
+    let opt_path;
+    let var_name;
+    match artifact {
+        Artifact::Code => {
+            opt_path = &opt.ovmf_code;
+            var_name = ENV_VAR_OVMF_CODE;
         }
-
-        let path = entry.path()?;
-        // Strip the leading directory, which is the release name.
-        let path: PathBuf = path.components().skip(1).collect();
-
-        let dir = path.parent().unwrap();
-        let dst_dir = prebuilt_dir.join(dir);
-        let dst_path = prebuilt_dir.join(path);
-        println!("unpacking to {}", dst_path.display());
-        fs_err::create_dir_all(dst_dir)?;
-        entry.unpack(dst_path)?;
-    }
-
-    Ok(())
-}
-
-/// Update the local copy of the prebuilt OVMF files. Does nothing if the local
-/// copy is already up to date.
-fn update_prebuilt() -> Result<PathBuf> {
-    let prebuilt_dir = Path::new(OVMF_PREBUILT_DIR);
-    let hash_path = prebuilt_dir.join("sha256");
-
-    // Check if the hash file already has the expected hash in it. If so, assume
-    // that we've already got the correct prebuilt downloaded and unpacked.
-    if let Ok(current_hash) = fs_err::read_to_string(&hash_path) {
-        if current_hash == OVMF_PREBUILT_HASH {
-            return Ok(prebuilt_dir.to_path_buf());
+        Artifact::Vars => {
+            opt_path = &opt.ovmf_vars;
+            var_name = ENV_VAR_OVMF_VARS;
+        }
+        Artifact::Shell => {
+            opt_path = &None;
+            var_name = ENV_VAR_OVMF_SHELL;
         }
     }
-
-    let base_url = "https://github.com/rust-osdev/ovmf-prebuilt/releases/download";
-    let url = format!(
-        "{base_url}/{release}/{release}-bin.tar.xz",
-        release = OVMF_PREBUILT_TAG
-    );
-
-    let data = download_url(&url)?;
-
-    // Validate the hash.
-    let actual_hash = format!("{:x}", Sha256::digest(&data));
-    if actual_hash != OVMF_PREBUILT_HASH {
-        bail!(
-            "file hash {actual_hash} does not match {}",
-            OVMF_PREBUILT_HASH
-        );
-    }
-
-    // Unpack the tarball.
-    println!("decompressing tarball");
-    let mut decompressed = Vec::new();
-    let mut compressed = Cursor::new(data);
-    lzma_rs::xz_decompress(&mut compressed, &mut decompressed)?;
-
-    // Clear out the existing prebuilt dir, if present.
-    let _ = fs_err::remove_dir_all(prebuilt_dir);
-
-    // Extract the files.
-    extract_prebuilt(&decompressed, prebuilt_dir)?;
-
-    // Rename the x64 directory to x86_64, to match `Arch::as_str`.
-    fs_err::rename(prebuilt_dir.join("x64"), prebuilt_dir.join("x86_64"))?;
-
-    // Write out the hash file. When we upgrade to a new release of
-    // ovmf-prebuilt, the hash will no longer match, triggering a fresh
-    // download.
-    fs_err::write(&hash_path, actual_hash)?;
-
-    Ok(prebuilt_dir.to_path_buf())
-}
-
-#[derive(Clone, Copy, Debug)]
-enum OvmfFileType {
-    Code,
-    Vars,
-    Shell,
-}
-
-impl OvmfFileType {
-    fn as_str(&self) -> &'static str {
-        match self {
-            Self::Code => "code",
-            Self::Vars => "vars",
-            Self::Shell => "shell",
-        }
-    }
-
-    fn extension(&self) -> &'static str {
-        match self {
-            Self::Code | Self::Vars => "fd",
-            Self::Shell => "efi",
-        }
-    }
-
-    /// Get a user-provided path for the given OVMF file type.
-    ///
-    /// This uses the command-line arg if present, otherwise it falls back to an
-    /// environment variable. If neither is present, returns `None`.
-    fn get_user_provided_path(self, opt: &QemuOpt) -> Option<PathBuf> {
-        let opt_path;
-        let var_name;
-        match self {
-            Self::Code => {
-                opt_path = &opt.ovmf_code;
-                var_name = ENV_VAR_OVMF_CODE;
-            }
-            Self::Vars => {
-                opt_path = &opt.ovmf_vars;
-                var_name = ENV_VAR_OVMF_VARS;
-            }
-            Self::Shell => {
-                opt_path = &None;
-                var_name = ENV_VAR_OVMF_SHELL;
-            }
-        }
-        if let Some(path) = opt_path {
-            Some(path.clone())
-        } else {
-            env::var_os(var_name).map(PathBuf::from)
-        }
+    if let Some(path) = opt_path {
+        Some(path.clone())
+    } else {
+        env::var_os(var_name).map(PathBuf::from)
     }
 }
 
@@ -210,8 +88,8 @@ impl OvmfPaths {
     /// 1. Command-line arg
     /// 2. Environment variable
     /// 3. Prebuilt file (automatically downloaded)
-    fn find_ovmf_file(file_type: OvmfFileType, opt: &QemuOpt, arch: UefiArch) -> Result<PathBuf> {
-        if let Some(path) = file_type.get_user_provided_path(opt) {
+    fn find_ovmf_file(artifact: Artifact, opt: &QemuOpt, arch: UefiArch) -> Result<PathBuf> {
+        if let Some(path) = get_user_provided_path(artifact, opt) {
             // The user provided an exact path to use; verify that it
             // exists.
             if path.exists() {
@@ -219,27 +97,23 @@ impl OvmfPaths {
             } else {
                 bail!(
                     "ovmf {} file does not exist: {}",
-                    file_type.as_str(),
+                    artifact.file_name(),
                     path.display()
                 );
             }
         } else {
-            let prebuilt_dir = update_prebuilt()?;
+            let prebuilt_dir = get_ovmf_prebuilt_dir()?;
 
-            Ok(prebuilt_dir.join(format!(
-                "{arch}/{}.{}",
-                file_type.as_str(),
-                file_type.extension()
-            )))
+            Ok(prebuilt_dir.get(arch.as_prebuilt_arch(), artifact))
         }
     }
 
     /// Find path to OVMF files by the strategy documented for
     /// [`Self::find_ovmf_file`].
     fn find(opt: &QemuOpt, arch: UefiArch) -> Result<Self> {
-        let code = Self::find_ovmf_file(OvmfFileType::Code, opt, arch)?;
-        let vars = Self::find_ovmf_file(OvmfFileType::Vars, opt, arch)?;
-        let shell = Self::find_ovmf_file(OvmfFileType::Shell, opt, arch)?;
+        let code = Self::find_ovmf_file(Artifact::Code, opt, arch)?;
+        let vars = Self::find_ovmf_file(Artifact::Vars, opt, arch)?;
+        let shell = Self::find_ovmf_file(Artifact::Shell, opt, arch)?;
 
         Ok(Self { code, vars, shell })
     }

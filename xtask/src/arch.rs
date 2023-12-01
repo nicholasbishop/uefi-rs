@@ -28,6 +28,14 @@ impl UefiArch {
             Self::X86_64 => "x86_64-unknown-uefi",
         }
     }
+
+    pub fn as_prebuilt_arch(self) -> ovmf_prebuilt::Arch {
+        match self {
+            Self::AArch64 => ovmf_prebuilt::Arch::Aarch64,
+            Self::IA32 => ovmf_prebuilt::Arch::Ia32,
+            Self::X86_64 => ovmf_prebuilt::Arch::X64,
+        }
+    }
 }
 
 impl Default for UefiArch {

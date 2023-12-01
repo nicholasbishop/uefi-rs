@@ -14,7 +14,6 @@ fatfs = { version = "0.3.6", default-features = false, features = ["alloc", "std
 fs-err = "2.6.0"
 heck = "0.4.0"
 itertools = "0.12.0"
-lzma-rs = "0.3.0"
 mbrman = "0.5.1"
 nix = { version = "0.27.1", default-features = false, features = ["fs"] }
 os_info = { version = "3.6.0", default-features = false }
@@ -22,9 +21,10 @@ proc-macro2 = { version = "1.0.46", features = ["span-locations"] }
 quote = "1.0.21"
 regex = "1.10.2"
 serde_json = "1.0.73"
-sha2 = "0.10.6"
 syn = { version = "2.0.0", features = ["full"] }
-tar = "0.4.38"
 tempfile = "3.6.0"
 ureq = { version = "2.8.0", features = ["http-interop"] }
 walkdir = "2.4.0"
+
+# TODO
+ovmf-prebuilt = { path = "../../ovmf-prebuilt/ovmf-prebuilt" }

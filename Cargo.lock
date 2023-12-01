@@ -546,6 +546,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ovmf-prebuilt"
+version = "0.2.0"
+dependencies = [
+ "log",
+ "lzma-rs",
+ "sha2",
+ "tar",
+ "tempfile",
+ "ureq",
+]
+
+[[package]]
 name = "percent-encoding"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1325,17 +1337,15 @@ dependencies = [
  "fs-err",
  "heck",
  "itertools",
- "lzma-rs",
  "mbrman",
  "nix",
  "os_info",
+ "ovmf-prebuilt",
  "proc-macro2",
  "quote",
  "regex",
  "serde_json",
- "sha2",
  "syn 2.0.50",
- "tar",
  "tempfile",
  "ureq",
  "walkdir",
