@@ -160,7 +160,7 @@ pub use self::owned_strs::{CString16, FromStrError};
 mod unaligned_slice;
 pub use unaligned_slice::UnalignedSlice;
 
-pub use uefi_raw::{PhysicalAddress, VirtualAddress};
+pub use uefi_raw::{Ipv4Address, Ipv6Address, PhysicalAddress, VirtualAddress};
 
 #[cfg(test)]
 mod tests {
