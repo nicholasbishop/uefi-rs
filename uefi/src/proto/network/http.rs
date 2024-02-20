@@ -18,6 +18,7 @@ pub use uefi_raw::protocol::network::http::{HttpV4AccessPoint, HttpV6AccessPoint
 pub struct Http(HttpProtocol);
 
 impl Http {
+    // TODO: pretty sure we need to think about pinning here
     pub fn get_configuration(&self) -> Result<HttpConfiguration> {
         let mut config = HttpConfigData::default();
         let mut access_point = HttpV6AccessPoint::default();
@@ -67,6 +68,10 @@ impl Http {
 
         unsafe { (self.0.configure)(&mut self.0, &raw_config) }.to_result()
     }
+
+    pub fn request(&mut self, request: HttpRequest) -> Result<HttpToken> {
+        todo!()
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -94,6 +99,15 @@ impl Default for HttpAccessPoint {
             local_port: 80,
         })
     }
+}
+
+pub struct HttpRequest {
+
+    // TODO
+}
+
+pub struct HttpToken {
+    // TODO
 }
 
 #[derive(Debug)]
