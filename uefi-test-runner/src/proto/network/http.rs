@@ -1,6 +1,9 @@
+use core::time::Duration;
 use log::info;
-use uefi::boot;
-use uefi::proto::network::http::{Http, HttpConfiguration, HttpServiceBinding, HttpVersion};
+use uefi::proto::network::http::{
+    Http, HttpConfiguration, HttpMethod, HttpRequest, HttpServiceBinding, HttpVersion,
+};
+use uefi::{boot, cstr16};
 
 // TODO: unwraps
 pub fn test() {
@@ -12,11 +15,19 @@ pub fn test() {
 
     let config = HttpConfiguration {
         http_version: HttpVersion::HTTP_VERSION_11,
-        time_out_millisec: 1000,
+        timeout: Duration::from_secs(1),
         access_point: Default::default(),
     };
     http.configure(&config).unwrap();
 
     assert_eq!(config, http.get_configuration().unwrap());
     info!("HTTP configuration: {config:?}");
+
+    http.send_request_sync(HttpRequest {
+        method: HttpMethod::GET,
+        url: cstr16!("http://example.com"),
+        headers: &[],
+        body: &[],
+    })
+    .unwrap();
 }
