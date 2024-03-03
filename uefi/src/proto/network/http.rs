@@ -2,15 +2,18 @@
 #![allow(missing_docs)]
 
 use crate::data_types::Ipv4Address;
-use crate::{Handle, Result, StatusExt};
+use crate::{CStr16, Handle, Result, Status, StatusExt};
 use core::ops::Deref;
 use core::ptr;
+use core::time::Duration;
 use log::error;
 use uefi_macros::unsafe_protocol;
 use uefi_raw::protocol::driver::ServiceBindingProtocol;
 use uefi_raw::protocol::network::http::{HttpConfigData, HttpProtocol};
 
-pub use uefi_raw::protocol::network::http::{HttpV4AccessPoint, HttpV6AccessPoint, HttpVersion};
+pub use uefi_raw::protocol::network::http::{
+    HttpMethod, HttpV4AccessPoint, HttpV6AccessPoint, HttpVersion,
+};
 
 #[derive(Debug)]
 #[repr(transparent)]
@@ -18,17 +21,20 @@ pub use uefi_raw::protocol::network::http::{HttpV4AccessPoint, HttpV6AccessPoint
 pub struct Http(HttpProtocol);
 
 impl Http {
-    // TODO: pretty sure we need to think about pinning here
     pub fn get_configuration(&self) -> Result<HttpConfiguration> {
+        // Allocate memory to pass into `get_mode_data`.
         let mut config = HttpConfigData::default();
         let mut access_point = HttpV6AccessPoint::default();
-        // TODO: deal with dealloc by making a better config type
         config.access_point.ipv6_node = &mut access_point;
 
         unsafe { (self.0.get_mode_data)(&self.0, &mut config) }.to_result_with_val(|| {
+            // Convert from the raw `HttpConfigData` type to
+            // `HttpConfiguration`. The latter uses a Rust enum for the access
+            // point, so it does not require additional allocations or `unsafe`
+            // to access.
             HttpConfiguration {
                 http_version: config.http_version,
-                time_out_millisec: config.time_out_millisec,
+                timeout: Duration::from_millis(config.time_out_millisec.into()),
                 access_point: if config.local_addr_is_ipv6 {
                     let node = unsafe { &*config.access_point.ipv6_node };
                     HttpAccessPoint::IpV6(HttpV6AccessPoint {
@@ -51,7 +57,11 @@ impl Http {
     pub fn configure(&mut self, config: &HttpConfiguration) -> Result {
         let mut raw_config = HttpConfigData {
             http_version: config.http_version,
-            time_out_millisec: config.time_out_millisec,
+            time_out_millisec: config
+                .timeout
+                .as_millis()
+                .try_into()
+                .map_err(|_| Status::INVALID_PARAMETER)?,
             ..Default::default()
         };
 
@@ -66,10 +76,12 @@ impl Http {
             }
         }
 
+        // SAFETY: the data in `raw_config` is copied internally by the driver,
+        // so it's OK to pass in pointers to short-lived data.
         unsafe { (self.0.configure)(&mut self.0, &raw_config) }.to_result()
     }
 
-    pub fn request(&mut self, request: HttpRequest) -> Result<HttpToken> {
+    pub fn request(&mut self, _request: HttpRequest) -> Result<HttpToken> {
         todo!()
     }
 }
@@ -77,8 +89,7 @@ impl Http {
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct HttpConfiguration {
     pub http_version: HttpVersion,
-    // TODO: field naming
-    pub time_out_millisec: u32,
+    pub timeout: Duration,
     pub access_point: HttpAccessPoint,
 }
 
@@ -101,9 +112,18 @@ impl Default for HttpAccessPoint {
     }
 }
 
-pub struct HttpRequest {
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct HttpHeader<'a> {
+    pub name: &'a str,
+    pub value: &'a str,
+}
 
-    // TODO
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct HttpRequest<'a> {
+    pub method: HttpMethod,
+    pub url: &'a CStr16,
+    pub headers: &'a [HttpHeader<'a>],
+    pub body: &'a [u8],
 }
 
 pub struct HttpToken {
