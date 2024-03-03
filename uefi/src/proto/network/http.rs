@@ -2,28 +2,33 @@
 #![allow(missing_docs)]
 
 use crate::data_types::Ipv4Address;
-use crate::{CStr16, Handle, Result, Status, StatusExt};
+use crate::table::boot::{BootServices, EventType, MemoryType, Tpl};
+use crate::{CStr16, CStr8, Event, Handle, Result, Status, StatusExt};
+use core::ffi::c_void;
+use core::mem;
 use core::ops::Deref;
-use core::ptr;
+use core::ptr::{self, NonNull};
 use core::time::Duration;
 use log::error;
 use uefi_macros::unsafe_protocol;
 use uefi_raw::protocol::driver::ServiceBindingProtocol;
-use uefi_raw::protocol::network::http::{HttpConfigData, HttpProtocol};
+use uefi_raw::protocol::network::http as http_raw;
 
+// TODO, not pub for most of these
 pub use uefi_raw::protocol::network::http::{
-    HttpMethod, HttpV4AccessPoint, HttpV6AccessPoint, HttpVersion,
+    HttpMessage, HttpMethod, HttpRequestData, HttpRequestOrResponse, HttpToken, HttpV4AccessPoint,
+    HttpV6AccessPoint, HttpVersion,
 };
 
 #[derive(Debug)]
 #[repr(transparent)]
-#[unsafe_protocol(HttpProtocol::GUID)]
-pub struct Http(HttpProtocol);
+#[unsafe_protocol(http_raw::HttpProtocol::GUID)]
+pub struct Http(http_raw::HttpProtocol);
 
 impl Http {
     pub fn get_configuration(&self) -> Result<HttpConfiguration> {
         // Allocate memory to pass into `get_mode_data`.
-        let mut config = HttpConfigData::default();
+        let mut config = http_raw::HttpConfigData::default();
         let mut access_point = HttpV6AccessPoint::default();
         config.access_point.ipv6_node = &mut access_point;
 
@@ -55,7 +60,7 @@ impl Http {
     }
 
     pub fn configure(&mut self, config: &HttpConfiguration) -> Result {
-        let mut raw_config = HttpConfigData {
+        let mut raw_config = http_raw::HttpConfigData {
             http_version: config.http_version,
             time_out_millisec: config
                 .timeout
@@ -81,8 +86,67 @@ impl Http {
         unsafe { (self.0.configure)(&mut self.0, &raw_config) }.to_result()
     }
 
-    pub fn request(&mut self, _request: HttpRequest) -> Result<HttpToken> {
-        todo!()
+    // TODO, not sure about API yet.
+    // TODO: add an asyn request or something less safe?
+    pub fn send_request_sync(
+        &mut self,
+        boot_services: &BootServices,
+        request: HttpRequest,
+    ) -> Result<()> {
+        let request_data = HttpRequestData {
+            method: request.method,
+            url: request.url.as_ptr().cast(),
+        };
+
+        let headers: *mut http_raw::HttpHeader = boot_services
+            .allocate_pool(
+                // TODO: maybe have a global somewhere for memtype?
+                MemoryType::LOADER_DATA,
+                mem::size_of::<http_raw::HttpHeader>() * request.headers.len(),
+            )?
+            .cast();
+        for i in 0..request.headers.len() {
+            let dst = unsafe { &mut *headers.add(i) };
+            dst.field_name = request.headers[i].name.as_ptr().cast();
+            dst.field_value = request.headers[i].value.as_ptr().cast();
+        }
+
+        let message = HttpMessage {
+            data: HttpRequestOrResponse {
+                request: &request_data,
+            },
+            header_count: request.headers.len(),
+            headers,
+            body_length: request.body.len(),
+            body: request.body.as_ptr().cast(),
+        };
+
+        let mut is_done = false;
+        let is_done_ptr: *mut bool = &mut is_done;
+
+        let event = unsafe {
+            boot_services.create_event(
+                EventType::NOTIFY_SIGNAL,
+                Tpl::NOTIFY,
+                Some(request_done_callback),
+                NonNull::new(is_done_ptr.cast()),
+            )?
+        };
+
+        let mut token = HttpToken {
+            event: event.as_ptr(),
+            status: Status::SUCCESS,
+            message: &message,
+        };
+
+        unsafe { (self.0.request)(&mut self.0, &mut token) }.to_result()
+    }
+}
+
+unsafe extern "efiapi" fn request_done_callback(_event: Event, context: Option<NonNull<c_void>>) {
+    if let Some(context) = context {
+        let is_done: *mut bool = context.as_ptr().cast();
+        *is_done = true;
     }
 }
 
@@ -114,8 +178,8 @@ impl Default for HttpAccessPoint {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct HttpHeader<'a> {
-    pub name: &'a str,
-    pub value: &'a str,
+    pub name: &'a CStr8,
+    pub value: &'a CStr8,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -126,13 +190,9 @@ pub struct HttpRequest<'a> {
     pub body: &'a [u8],
 }
 
-pub struct HttpToken {
-    // TODO
-}
-
 #[derive(Debug)]
 #[repr(transparent)]
-#[unsafe_protocol(HttpProtocol::SERVICE_BINDING_GUID)]
+#[unsafe_protocol(http_raw::HttpProtocol::SERVICE_BINDING_GUID)]
 pub struct HttpServiceBinding(ServiceBindingProtocol);
 
 impl HttpServiceBinding {

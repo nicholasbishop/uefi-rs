@@ -1,6 +1,9 @@
-use crate::BootServices;
+use crate::{cstr16, BootServices};
+use core::time::Duration;
 use log::info;
-use uefi::proto::network::http::{Http, HttpConfiguration, HttpServiceBinding, HttpVersion};
+use uefi::proto::network::http::{
+    Http, HttpConfiguration, HttpMethod, HttpRequest, HttpServiceBinding, HttpVersion,
+};
 
 // TODO: unwraps
 pub fn test(bt: &BootServices) {
@@ -14,11 +17,22 @@ pub fn test(bt: &BootServices) {
 
     let config = HttpConfiguration {
         http_version: HttpVersion::HTTP_VERSION_11,
-        time_out_millisec: 1000,
+        timeout: Duration::from_secs(1),
         access_point: Default::default(),
     };
     http.configure(&config).unwrap();
 
     assert_eq!(config, http.get_configuration().unwrap());
     info!("HTTP configuration: {config:?}");
+
+    http.send_request_sync(
+        bt,
+        HttpRequest {
+            method: HttpMethod::GET,
+            url: cstr16!("http://example.com"),
+            headers: &[],
+            body: &[],
+        },
+    )
+    .unwrap();
 }
