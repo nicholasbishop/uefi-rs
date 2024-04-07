@@ -16,7 +16,7 @@ use runtime::{VariableData, VariableKey};
 use shared_box::{SharedAnyBox, SharedBox};
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
-use std::ptr;
+use std::ptr::{self, addr_of_mut};
 use std::rc::Rc;
 use uefi::proto::device_path::build::{self, DevicePathBuilder};
 use uefi::proto::device_path::media::{PartitionFormat, PartitionSignature};
@@ -46,8 +46,8 @@ macro_rules! try_status {
 
 pub struct State {
     system_table: SharedBox<SystemTable>,
-    boot_services: SharedBox<BootServices>,
-    runtime_services: SharedBox<RuntimeServices>,
+    boot_services: BootServices,
+    runtime_services: RuntimeServices,
     configuration_tables: Vec<ConfigurationTable>,
 
     // Boot state.
@@ -68,8 +68,8 @@ pub struct State {
 thread_local! {
     pub static STATE: Rc<RefCell<State>> = Rc::new(RefCell::new(State {
         system_table: SharedBox::default(),
-        boot_services: SharedBox::default(),
-        runtime_services: SharedBox::default(),
+        boot_services: boot::new_boot_services(),
+        runtime_services: runtime::new_runtime_services(),
         configuration_tables: Vec::new(),
 
         handle_db: HashMap::new(),
@@ -93,9 +93,6 @@ pub fn launch<E>(entry: E) -> Status
 where
     E: Fn(Handle, *mut SystemTable) -> Status,
 {
-    let mut runtime_services = SharedBox::new(&runtime::new_runtime_services());
-    let mut boot_services = SharedBox::new(&boot::new_boot_services());
-
     let fw_vendor = CString16::try_from("uefi_stub").unwrap();
 
     let stdout_handle = proto::text::install_output_protocol().unwrap();
@@ -296,14 +293,12 @@ where
             stderr_handle,
             stderr: stderr_ptr.cast(),
 
-            runtime_services: runtime_services.as_mut_ptr(),
-            boot_services: boot_services.as_mut_ptr(),
+            runtime_services: addr_of_mut!(state.runtime_services),
+            boot_services: addr_of_mut!(state.boot_services),
 
             number_of_configuration_table_entries: 0,
             configuration_table: ptr::null_mut(),
         });
-        state.boot_services = boot_services;
-        state.runtime_services = runtime_services;
         state.system_table.as_mut_ptr()
     });
 
