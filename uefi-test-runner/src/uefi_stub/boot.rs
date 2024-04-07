@@ -510,7 +510,7 @@ extern "efiapi" fn install_configuration_table(
             vendor_table: table_ptr.cast_mut(),
         });
         let configuration_tables_ptr = state.configuration_tables.as_mut_ptr();
-        let system_table = state.system_table.as_mut().unwrap().as_mut();
+        let system_table = state.system_table.as_mut();
         system_table.configuration_table = configuration_tables_ptr;
         system_table.number_of_configuration_table_entries += 1;
 
@@ -644,7 +644,7 @@ unsafe extern "efiapi" fn exit_boot_services(
         let mut state = state.borrow_mut();
 
         // TODO: clear more state, including the std handles
-        let system_table = state.system_table.as_mut().unwrap().as_mut();
+        let system_table = state.system_table.as_mut();
         system_table.stdin = ptr::null_mut();
         system_table.stdout = ptr::null_mut();
         system_table.stderr = ptr::null_mut();

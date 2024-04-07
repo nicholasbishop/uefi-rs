@@ -45,10 +45,9 @@ macro_rules! try_status {
 }
 
 pub struct State {
-    // TODO: de-option?
-    system_table: Option<SharedBox<SystemTable>>,
-    boot_services: Option<SharedBox<BootServices>>,
-    runtime_services: Option<SharedBox<RuntimeServices>>,
+    system_table: SharedBox<SystemTable>,
+    boot_services: SharedBox<BootServices>,
+    runtime_services: SharedBox<RuntimeServices>,
     configuration_tables: Vec<ConfigurationTable>,
 
     // Boot state.
@@ -68,9 +67,9 @@ pub struct State {
 // between threads.
 thread_local! {
     pub static STATE: Rc<RefCell<State>> = Rc::new(RefCell::new(State {
-        system_table: None,
-        boot_services: None,
-        runtime_services: None,
+        system_table: SharedBox::default(),
+        boot_services: SharedBox::default(),
+        runtime_services: SharedBox::default(),
         configuration_tables: Vec::new(),
 
         handle_db: HashMap::new(),
@@ -276,7 +275,7 @@ where
 
     let system_table: *mut SystemTable = STATE.with(|state| {
         let mut state = state.borrow_mut();
-        state.system_table = Some(SharedBox::new(&SystemTable {
+        state.system_table = SharedBox::new(&SystemTable {
             header: Header {
                 signature: 0x1234_5678,
                 revision: Revision::new(2, 90),
@@ -302,10 +301,10 @@ where
 
             number_of_configuration_table_entries: 0,
             configuration_table: ptr::null_mut(),
-        }));
-        state.boot_services = Some(boot_services);
-        state.runtime_services = Some(runtime_services);
-        state.system_table.as_mut().unwrap().as_mut_ptr()
+        });
+        state.boot_services = boot_services;
+        state.runtime_services = runtime_services;
+        state.system_table.as_mut_ptr()
     });
 
     entry(image, system_table)
