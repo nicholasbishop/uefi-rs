@@ -64,11 +64,6 @@ impl<T: ?Sized + ptr_meta::Pointee> SharedBox<T> {
         Self { ptr, layout }
     }
 
-    pub fn as_mut(&mut self) -> &mut T {
-        assert!(!self.ptr.is_null());
-        unsafe { &mut *self.ptr }
-    }
-
     pub fn as_mut_ptr(&mut self) -> *mut T {
         assert!(!self.ptr.is_null());
         self.ptr

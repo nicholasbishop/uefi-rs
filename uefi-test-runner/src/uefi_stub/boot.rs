@@ -510,9 +510,11 @@ extern "efiapi" fn install_configuration_table(
             vendor_table: table_ptr.cast_mut(),
         });
         let configuration_tables_ptr = state.configuration_tables.as_mut_ptr();
-        let system_table = state.system_table.as_mut();
-        system_table.configuration_table = configuration_tables_ptr;
-        system_table.number_of_configuration_table_entries += 1;
+        state.system_table.get_mut().configuration_table = configuration_tables_ptr;
+        state
+            .system_table
+            .get_mut()
+            .number_of_configuration_table_entries += 1;
 
         Status::SUCCESS
     })
@@ -644,11 +646,10 @@ unsafe extern "efiapi" fn exit_boot_services(
         let mut state = state.borrow_mut();
 
         // TODO: clear more state, including the std handles
-        let system_table = state.system_table.as_mut();
-        system_table.stdin = ptr::null_mut();
-        system_table.stdout = ptr::null_mut();
-        system_table.stderr = ptr::null_mut();
-        system_table.boot_services = ptr::null_mut();
+        state.system_table.get_mut().stdin = ptr::null_mut();
+        state.system_table.get_mut().stdout = ptr::null_mut();
+        state.system_table.get_mut().stderr = ptr::null_mut();
+        state.system_table.get_mut().boot_services = ptr::null_mut();
         // TODO: update CRC
 
         // Very TODO

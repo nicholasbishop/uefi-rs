@@ -14,7 +14,7 @@ use core::pin::Pin;
 use proto::fs::FsDb;
 use runtime::{VariableData, VariableKey};
 use shared_box::{SharedAnyBox, SharedBox};
-use std::cell::RefCell;
+use std::cell::{RefCell, UnsafeCell};
 use std::collections::{BTreeMap, HashMap};
 use std::ptr::{self, addr_of_mut};
 use std::rc::Rc;
@@ -45,7 +45,7 @@ macro_rules! try_status {
 }
 
 pub struct State {
-    system_table: SharedBox<SystemTable>,
+    system_table: UnsafeCell<SystemTable>,
     boot_services: BootServices,
     runtime_services: RuntimeServices,
     configuration_tables: Vec<ConfigurationTable>,
@@ -67,7 +67,7 @@ pub struct State {
 // between threads.
 thread_local! {
     pub static STATE: Rc<RefCell<State>> = Rc::new(RefCell::new(State {
-        system_table: SharedBox::default(),
+        system_table: UnsafeCell::new(SystemTable::default()),
         boot_services: boot::new_boot_services(),
         runtime_services: runtime::new_runtime_services(),
         configuration_tables: Vec::new(),
@@ -272,7 +272,7 @@ where
 
     let system_table: *mut SystemTable = STATE.with(|state| {
         let mut state = state.borrow_mut();
-        state.system_table = SharedBox::new(&SystemTable {
+        state.system_table = UnsafeCell::new(SystemTable {
             header: Header {
                 signature: 0x1234_5678,
                 revision: Revision::new(2, 90),
@@ -299,7 +299,7 @@ where
             number_of_configuration_table_entries: 0,
             configuration_table: ptr::null_mut(),
         });
-        state.system_table.as_mut_ptr()
+        state.system_table.get()
     });
 
     entry(image, system_table)
