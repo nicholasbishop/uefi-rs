@@ -1,5 +1,5 @@
 use crate::uefi_stub::boot::install_protocol_interface;
-use crate::uefi_stub::{install_owned_protocol, SharedAnyBox};
+use crate::uefi_stub::install_protocol_simple;
 use std::ptr;
 use uefi::{CStr16, Result, Status, StatusExt};
 use uefi_raw::protocol::console::{
@@ -23,20 +23,15 @@ unsafe extern "efiapi" fn read_key_stroke(
 }
 
 pub fn install_input_protocol() -> Result<Handle> {
-    let mut interface = SharedAnyBox::new(SimpleTextInputProtocol {
+    let interface = Box::new(SimpleTextInputProtocol {
         reset: reset_input,
         read_key_stroke,
         wait_for_key: ptr::null_mut(),
     });
+    // TODO: leak
+    let interface: *const _ = Box::leak(interface);
 
-    install_owned_protocol(
-        None,
-        SimpleTextInputProtocol::GUID,
-        interface.as_mut_ptr().cast(),
-        interface,
-        // TODO: event data
-        None,
-    )
+    install_protocol_simple(None, &SimpleTextInputProtocol::GUID, interface.cast())
 }
 
 extern "efiapi" fn reset(this: *mut SimpleTextOutputProtocol, extended: bool) -> Status {

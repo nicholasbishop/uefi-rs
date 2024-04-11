@@ -6,14 +6,12 @@ pub mod uefi_services;
 mod boot;
 mod proto;
 mod runtime;
-mod shared_box;
 
-use boot::{install_owned_protocol, open_protocol, EventImpl, HandleImpl, Pages};
+use boot::{install_protocol_simple, open_protocol, EventImpl, HandleImpl, Pages};
 use core::mem::MaybeUninit;
 use core::pin::Pin;
 use proto::fs::FsDb;
 use runtime::{VariableData, VariableKey};
-use shared_box::{SharedAnyBox, SharedBox};
 use std::cell::{RefCell, UnsafeCell};
 use std::collections::{BTreeMap, HashMap};
 use std::ptr::{self, addr_of_mut};
@@ -23,7 +21,6 @@ use uefi::proto::device_path::media::{PartitionFormat, PartitionSignature};
 use uefi::proto::device_path::DevicePath;
 use uefi::{cstr16, CString16, Identify, Status};
 use uefi_raw::protocol::console::{SimpleTextInputProtocol, SimpleTextOutputProtocol};
-use uefi_raw::protocol::device_path::{DevicePathFromTextProtocol, DevicePathToTextProtocol};
 use uefi_raw::protocol::loaded_image::LoadedImageProtocol;
 use uefi_raw::table::boot::{BootServices, MemoryAttribute, MemoryDescriptor, MemoryType};
 use uefi_raw::table::configuration::ConfigurationTable;
@@ -51,7 +48,7 @@ pub struct State {
     configuration_tables: Vec<ConfigurationTable>,
 
     // Boot state.
-    handle_db: HashMap<Handle, Box<HandleImpl>>,
+    handle_db: Vec<Pin<Box<HandleImpl>>>,
     events: HashMap<Event, Box<EventImpl>>,
     pages: Vec<Pages>,
     memory_descriptors: Vec<MemoryDescriptor>,
@@ -60,6 +57,22 @@ pub struct State {
 
     // Runtime state.
     variables: BTreeMap<VariableKey, VariableData>,
+}
+
+impl State {
+    fn find_handle(&self, handle: Handle) -> Option<&HandleImpl> {
+        self.handle_db
+            .iter()
+            .map(|hi| &**hi)
+            .find(|hi| hi.handle() == handle)
+    }
+
+    fn find_handle_mut(&mut self, handle: Handle) -> Option<&mut HandleImpl> {
+        self.handle_db
+            .iter_mut()
+            .map(|hi| &mut **hi)
+            .find(|hi| hi.handle() == handle)
+    }
 }
 
 // All "global" state goes in this thread local block. UEFI is single
@@ -72,7 +85,7 @@ thread_local! {
         runtime_services: runtime::new_runtime_services(),
         configuration_tables: Vec::new(),
 
-        handle_db: HashMap::new(),
+        handle_db: Vec::new(),
         events: HashMap::new(),
         pages: Vec::new(),
         // Stub in some data to get past the memory test.
@@ -100,26 +113,14 @@ where
     let stdin_handle = proto::text::install_input_protocol().unwrap();
 
     let boot_fs_handle = {
-        let mut buf = [MaybeUninit::uninit(); 256];
-        // TODO: make a real path
-        let path = DevicePathBuilder::with_buf(&mut buf).finalize().unwrap();
+        let buf = Box::new([MaybeUninit::uninit(); 256]);
+        // TODO: leak.
+        let buf = Box::leak(buf);
+        let path = DevicePathBuilder::with_buf(buf).finalize().unwrap();
 
-        // Wrap the DST device path in an intermediate struct so that we can store
-        // it in a SharedAnyBox.
-        #[repr(transparent)]
-        struct DevicePathWrapper(SharedBox<DevicePath>);
-        let mut interface = SharedAnyBox::new(DevicePathWrapper(SharedBox::new(path)));
-        let tmp = interface.downcast_mut::<DevicePathWrapper>().unwrap();
-        let interface_ptr = tmp.0.as_mut_ptr();
+        let interface = path.as_ffi_ptr().cast();
 
-        install_owned_protocol(
-            None,
-            DevicePath::GUID,
-            interface_ptr.cast(),
-            interface,
-            None,
-        )
-        .unwrap()
+        install_protocol_simple(None, &DevicePath::GUID, interface).unwrap()
     };
 
     proto::fs::install_simple_file_system(boot_fs_handle).unwrap();
@@ -202,31 +203,7 @@ where
         );
     }
 
-    {
-        let mut interface = SharedAnyBox::new(proto::device_path_text::make_device_path_to_text());
-        install_owned_protocol(
-            None,
-            DevicePathToTextProtocol::GUID,
-            interface.as_mut_ptr().cast(),
-            interface,
-            None,
-        )
-        .unwrap();
-    }
-
-    {
-        let mut interface =
-            SharedAnyBox::new(proto::device_path_text::make_device_path_from_text());
-        install_owned_protocol(
-            None,
-            DevicePathFromTextProtocol::GUID,
-            interface.as_mut_ptr().cast(),
-            interface,
-            None,
-        )
-        .unwrap();
-    }
-
+    proto::device_path_text::install().unwrap();
     proto::console::install_serial_protocol().unwrap();
     proto::gop::install_gop_protocol().unwrap();
     proto::pointer::install_pointer_protocol().unwrap();

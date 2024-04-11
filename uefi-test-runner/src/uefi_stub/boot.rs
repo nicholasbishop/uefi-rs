@@ -1,15 +1,12 @@
 use crate::try_status;
-use crate::uefi_stub::shared_box::SharedAnyBox;
 use crate::uefi_stub::STATE;
 use log::debug;
-use std::collections::HashMap;
 use std::ffi::c_void;
 use std::{mem, ptr};
 use uefi::data_types::Align;
 use uefi::proto::device_path::DevicePath;
 use uefi::proto::device_path::LoadedImageDevicePath;
-use uefi::proto::Protocol;
-use uefi::{Identify, Result};
+use uefi::{Identify, Result, StatusExt};
 use uefi_raw::protocol::device_path::DevicePathProtocol;
 use uefi_raw::protocol::loaded_image::LoadedImageProtocol;
 use uefi_raw::table::boot::{
@@ -21,36 +18,39 @@ use uefi_raw::table::Header;
 use uefi_raw::Event;
 use uefi_raw::{Char16, Guid, Handle, Status};
 
-enum ProtocolInterface {
-    Owned {
-        #[allow(dead_code)]
-        interface: SharedAnyBox,
-        #[allow(dead_code)]
-        data: Option<SharedAnyBox>,
-        ptr: *mut c_void,
-    },
-    Raw(*mut c_void),
-}
-
-impl ProtocolInterface {
-    fn as_mut_ptr(&mut self) -> *mut c_void {
-        match self {
-            Self::Owned { ptr, .. } => *ptr,
-            Self::Raw(ptr) => *ptr,
-        }
-    }
-}
-
-pub struct ProtocolWrapper {
-    interface: ProtocolInterface,
-    in_use: bool,
-}
-
 // TODO
 type MemoryMapKey = usize;
 type ProtocolSearchKey = *const c_void;
 
-pub type HandleImpl = HashMap<Guid, ProtocolWrapper>;
+#[derive(Default)]
+pub struct HandleImpl {
+    protocols: Vec<ProtocolWrapper>,
+}
+
+impl HandleImpl {
+    pub fn handle(&self) -> Handle {
+        let ptr: *const Self = self;
+        ptr.cast_mut().cast()
+    }
+
+    fn find_protocol(&self, guid: &Guid) -> Option<&ProtocolWrapper> {
+        self.protocols.iter().find(|p| p.guid == *guid)
+    }
+
+    fn find_protocol_mut(&mut self, guid: &Guid) -> Option<&mut ProtocolWrapper> {
+        self.protocols.iter_mut().find(|p| p.guid == *guid)
+    }
+
+    fn has_protocol(&self, guid: &Guid) -> bool {
+        self.find_protocol(guid).is_some()
+    }
+}
+
+struct ProtocolWrapper {
+    guid: Guid,
+    interface: *mut c_void,
+    in_use: bool,
+}
 
 pub struct EventImpl {
     ty: EventType,
@@ -239,93 +239,21 @@ unsafe extern "efiapi" fn check_event(event: Event) -> Status {
     })
 }
 
-// TODO: what if we had some new kind of OwnedProtocol trait with associated
-// types for the protocol interface type and data type? Then maybe could avoid
-// some of this Any stuff.
-
-#[allow(dead_code)]
-pub fn with_owned_protocol_data<D: 'static, P, F>(key: &P, f: F) -> Result
-where
-    P: Protocol,
-    F: FnOnce(&D),
-{
-    let key: *const _ = key;
-    STATE.with(|state| {
-        let mut state = state.borrow_mut();
-        let db = &mut state.handle_db;
-
-        for handle_data in db.values_mut() {
-            if let Some(protocol_wrapper) = handle_data.get(&P::GUID) {
-                match &protocol_wrapper.interface {
-                    ProtocolInterface::Owned { ptr, data, .. } => {
-                        if ptr.cast_const() == key.cast() {
-                            if let Some(data) = data {
-                                if let Some(data) = data.downcast::<D>() {
-                                    f(data);
-                                    return Ok(());
-                                } else {
-                                    return Err(Status::ABORTED.into());
-                                }
-                            } else {
-                                return Err(Status::ABORTED.into());
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-
-        Err(Status::NOT_FOUND.into())
-    })
-}
-
-// TODO: dedup
-pub fn install_owned_protocol(
+pub fn install_protocol_simple(
     handle: Option<Handle>,
-    guid: Guid,
-    interface_ptr: *mut c_void,
-    interface: SharedAnyBox,
-    data: Option<SharedAnyBox>,
+    guid: &Guid,
+    interface: *const c_void,
 ) -> Result<Handle> {
-    STATE.with(|state| {
-        let mut state = state.borrow_mut();
-        let db = &mut state.handle_db;
-
-        let handle = if let Some(handle) = handle {
-            handle
-        } else {
-            // Create a new handle.
-
-            let mut handle_impl = Box::new(HandleImpl::default());
-            let handle_impl_ptr = handle_impl.as_mut() as *mut HandleImpl;
-            let handle: Handle = handle_impl_ptr.cast();
-
-            db.insert(handle, handle_impl);
-            handle
-        };
-
-        let group = db.get_mut(&handle).unwrap();
-
-        // Not allowed to have Duplicate protocols on a handle.
-        if group.contains_key(&guid) {
-            return Err(Status::INVALID_PARAMETER.into());
-        }
-
-        group.insert(
+    let mut in_out_handle: Handle = handle.unwrap_or(ptr::null_mut());
+    let status = unsafe {
+        install_protocol_interface(
+            &mut in_out_handle,
             guid,
-            ProtocolWrapper {
-                interface: ProtocolInterface::Owned {
-                    ptr: interface_ptr,
-                    interface,
-                    data,
-                },
-                in_use: false,
-            },
-        );
-
-        Ok(handle)
-    })
+            InterfaceType::NATIVE_INTERFACE,
+            interface.cast_mut(),
+        )
+    };
+    status.to_result_with_val(|| in_out_handle)
 }
 
 // TODO: pub
@@ -335,38 +263,46 @@ pub unsafe extern "efiapi" fn install_protocol_interface(
     interface_type: InterfaceType,
     interface: *const c_void,
 ) -> Status {
+    if interface_type != InterfaceType::NATIVE_INTERFACE {
+        println!("invalid interface type: {interface_type:?}");
+        return Status::INVALID_PARAMETER;
+    }
+
     STATE.with(|state| {
         let mut state = state.borrow_mut();
         let db = &mut state.handle_db;
 
-        let handle = if !(*in_out_handle).is_null() {
-            *in_out_handle
-        } else {
-            // Create a new handle.
+        let mut handle = *in_out_handle;
+        let handle_impl: &mut HandleImpl;
 
-            let mut handle_impl = Box::new(HandleImpl::default());
-            let handle_impl_ptr = handle_impl.as_mut() as *mut HandleImpl;
-            let handle: Handle = handle_impl_ptr.cast();
-
-            db.insert(handle, handle_impl);
+        // Create a new handle if needed.
+        if handle.is_null() {
+            db.push(Box::pin(HandleImpl::default()));
+            // OK to unwrap, we just pushed to the vec.
+            handle_impl = db.last_mut().unwrap();
+            let handle_impl_ptr: *mut HandleImpl = handle_impl;
+            handle = handle_impl_ptr.cast();
             *in_out_handle = handle;
-            handle
-        };
+        } else {
+            handle_impl = if let Some(hi) = db.iter_mut().find(|hi| hi.handle() == handle) {
+                hi
+            } else {
+                return Status::INVALID_PARAMETER;
+            }
+        }
 
-        let group = db.get_mut(&handle).unwrap();
-
-        // Not allowed to have Duplicate protocols on a handle.
-        if group.contains_key(&*guid) {
+        // Not allowed to have duplicate protocols on a handle.
+        if handle_impl.has_protocol(&*guid) {
+            // TODO: log?
+            println!("handle already has a protocol with this guid: {}", &*guid);
             return Status::INVALID_PARAMETER;
         }
 
-        group.insert(
-            *guid,
-            ProtocolWrapper {
-                interface: ProtocolInterface::Raw(interface.cast_mut()),
-                in_use: false,
-            },
-        );
+        handle_impl.protocols.push(ProtocolWrapper {
+            guid: *guid,
+            interface: interface.cast_mut(),
+            in_use: false,
+        });
 
         Status::SUCCESS
     })
@@ -424,7 +360,7 @@ fn find_handles_impl(search_ty: i32, proto: *const Guid, key: ProtocolSearchKey)
 
         match search_ty {
             // AllHandles
-            0 => state.handle_db.keys().cloned().collect(),
+            0 => state.handle_db.iter().map(|hi| hi.handle()).collect(),
             // ByRegisterNotify
             1 => {
                 todo!();
@@ -433,14 +369,13 @@ fn find_handles_impl(search_ty: i32, proto: *const Guid, key: ProtocolSearchKey)
             2 => state
                 .handle_db
                 .iter()
-                .filter_map(|(handle, v)| {
-                    if v.contains_key(unsafe { &*proto }) {
-                        Some(handle)
+                .filter_map(|hi| {
+                    if hi.has_protocol(unsafe { &*proto }) {
+                        Some(hi.handle())
                     } else {
                         None
                     }
                 })
-                .cloned()
                 .collect(),
             _ => {
                 panic!("invalid {search_ty}");
@@ -484,10 +419,10 @@ unsafe extern "efiapi" fn locate_device_path(
     STATE.with(|state| {
         let state = state.borrow();
 
-        for (handle, pg) in state.handle_db.iter() {
-            if pg.contains_key(&DevicePath::GUID) {
-                if pg.contains_key(&*proto) {
-                    out_handle.write(*handle);
+        for hi in state.handle_db.iter() {
+            if hi.has_protocol(&DevicePath::GUID) {
+                if hi.has_protocol(&*proto) {
+                    out_handle.write(hi.handle());
                     return Status::SUCCESS;
                 }
             }
@@ -710,13 +645,13 @@ pub extern "efiapi" fn open_protocol(
     STATE.with(|state| {
         let mut state = state.borrow_mut();
 
-        if let Some(pg) = state.handle_db.get_mut(&handle) {
-            if let Some(pw) = pg.get_mut(protocol) {
+        if let Some(hi) = state.find_handle_mut(handle) {
+            if let Some(pw) = hi.find_protocol_mut(&*protocol) {
                 // TODO: only matters for exclusive access
                 assert!(!pw.in_use);
 
                 pw.in_use = true;
-                unsafe { *interface = pw.interface.as_mut_ptr() };
+                unsafe { *interface = pw.interface };
 
                 Status::SUCCESS
             } else {
@@ -742,8 +677,8 @@ pub extern "efiapi" fn close_protocol(
     STATE.with(|state| {
         let mut state = state.borrow_mut();
 
-        if let Some(pg) = state.handle_db.get_mut(&handle) {
-            if let Some(pw) = pg.get_mut(&*protocol) {
+        if let Some(hi) = state.find_handle_mut(handle) {
+            if let Some(pw) = hi.find_protocol_mut(&*protocol) {
                 // TODO: only matters for exclusive access
                 assert!(pw.in_use);
 
@@ -778,8 +713,8 @@ unsafe extern "efiapi" fn protocols_per_handle(
     let num_protocols = if let Some(num_protocols) = STATE.with(|state| {
         let state = state.borrow();
 
-        let handle_impl = state.handle_db.get(&handle)?;
-        Some(handle_impl.len())
+        let hi = state.find_handle(handle)?;
+        Some(hi.protocols.len())
     }) {
         num_protocols
     } else {
@@ -797,9 +732,9 @@ unsafe extern "efiapi" fn protocols_per_handle(
     STATE.with(|state| {
         let state = state.borrow();
 
-        let handle_impl = state.handle_db.get(&handle).unwrap();
-        for (i, protocol_guid) in handle_impl.keys().enumerate() {
-            buf.add(i).write(protocol_guid);
+        let handle_impl = state.find_handle(handle).unwrap();
+        for (i, p) in handle_impl.protocols.iter().enumerate() {
+            buf.add(i).write(&p.guid);
         }
 
         *protocol_buffer = buf.cast();
@@ -846,9 +781,9 @@ unsafe extern "efiapi" fn locate_protocol(
         let mut state = state.borrow_mut();
 
         // Look for any handle that implements the protocol.
-        for handle_impl in state.handle_db.values_mut() {
-            if let Some(pw) = handle_impl.get_mut(&*proto) {
-                *out_proto = pw.interface.as_mut_ptr();
+        for hi in state.handle_db.iter_mut() {
+            if let Some(pw) = hi.find_protocol(&*proto) {
+                *out_proto = pw.interface;
                 return Status::SUCCESS;
             }
         }

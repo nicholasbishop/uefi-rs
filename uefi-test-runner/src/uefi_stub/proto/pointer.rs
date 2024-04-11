@@ -1,5 +1,5 @@
 use crate::uefi_stub::boot::create_event;
-use crate::uefi_stub::{install_owned_protocol, SharedAnyBox};
+use crate::uefi_stub::install_protocol_simple;
 use core::ptr;
 use uefi::table::boot::{EventType, Tpl};
 use uefi::{Event, Result, Status};
@@ -26,13 +26,16 @@ extern "efiapi" fn get_state(
 }
 
 pub fn install_pointer_protocol() -> Result<Handle> {
-    let mut data = SharedAnyBox::new(SimplePointerMode {
+    let mode = Box::new(SimplePointerMode {
         resolution_x: 1024,
         resolution_y: 1024,
         resolution_z: 0,
         left_button: 1,
         right_button: 1,
     });
+    // TODO: leak
+    let mode = Box::leak(mode);
+
     let mut wait_for_input = None;
     let wait_for_input_ptr: *mut Option<Event> = &mut wait_for_input;
     // TODO: not sure if these are right
@@ -46,18 +49,14 @@ pub fn install_pointer_protocol() -> Result<Handle> {
         )
     }
     .is_success());
-    let mut interface = SharedAnyBox::new(SimplePointerProtocol {
+    let interface = Box::new(SimplePointerProtocol {
         reset,
         get_state,
         wait_for_input: wait_for_input.unwrap().as_ptr(),
-        mode: data.as_mut_ptr().cast(),
+        mode,
     });
+    // TODO: leak
+    let interface: *const _ = Box::leak(interface);
 
-    install_owned_protocol(
-        None,
-        SimplePointerProtocol::GUID,
-        interface.as_mut_ptr().cast(),
-        interface,
-        Some(data),
-    )
+    install_protocol_simple(None, &SimplePointerProtocol::GUID, interface.cast())
 }

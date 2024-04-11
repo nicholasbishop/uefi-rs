@@ -1,7 +1,8 @@
+use crate::uefi_stub::boot::install_protocol_simple;
 use std::ptr;
 use uefi::proto::device_path::media::{PartitionFormat, PartitionSignature};
 use uefi::proto::device_path::{DevicePath, DevicePathNode, DevicePathNodeEnum};
-use uefi::CString16;
+use uefi::{CString16, Result};
 use uefi_raw::protocol::device_path::{
     DevicePathFromTextProtocol, DevicePathProtocol, DevicePathToTextProtocol,
 };
@@ -112,16 +113,23 @@ pub extern "efiapi" fn convert_text_to_device_path(
     ptr::null()
 }
 
-pub fn make_device_path_to_text() -> DevicePathToTextProtocol {
-    DevicePathToTextProtocol {
-        convert_device_node_to_text,
-        convert_device_path_to_text,
-    }
-}
+pub static DEVICE_PATH_TO_TEXT_INTERFACE: DevicePathToTextProtocol = DevicePathToTextProtocol {
+    convert_device_node_to_text,
+    convert_device_path_to_text,
+};
 
-pub fn make_device_path_from_text() -> DevicePathFromTextProtocol {
+pub static DEVICE_PATH_FROM_TEXT_INTERFACE: DevicePathFromTextProtocol =
     DevicePathFromTextProtocol {
         convert_text_to_device_node,
         convert_text_to_device_path,
-    }
+    };
+
+pub fn install() -> Result {
+    let ptr: *const _ = &DEVICE_PATH_TO_TEXT_INTERFACE;
+    install_protocol_simple(None, &DevicePathToTextProtocol::GUID, ptr.cast())?;
+
+    let ptr: *const _ = &DEVICE_PATH_FROM_TEXT_INTERFACE;
+    install_protocol_simple(None, &DevicePathFromTextProtocol::GUID, ptr.cast())?;
+
+    Ok(())
 }

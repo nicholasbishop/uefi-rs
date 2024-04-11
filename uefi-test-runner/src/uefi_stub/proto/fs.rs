@@ -1,5 +1,5 @@
-use crate::uefi_stub::{install_owned_protocol, SharedAnyBox, STATE};
-use std::collections::HashMap;
+use crate::uefi_stub::{install_protocol_simple, STATE};
+use core::pin::Pin;
 use std::ffi::c_void;
 use std::{mem, ptr, slice};
 use uefi::proto::media::file::{FileInfo, FileInfoCreationError};
@@ -15,11 +15,12 @@ use uefi_raw::{Char16, Handle};
 struct FileImpl {
     // TODO: signature
     interface: FileProtocol,
-    fs: *mut FsImpl,
+    // TODO: is there any way to make this parent pointer work with Miri?
+    // fs: *mut FsImpl,
 }
 
 impl FileImpl {
-    fn new(fs: *mut FsImpl) -> Self {
+    fn new() -> Self {
         Self {
             interface: FileProtocol {
                 revision: FileProtocolRevision::REVISION_1,
@@ -34,42 +35,40 @@ impl FileImpl {
                 set_info,
                 flush,
             },
-            fs,
         }
     }
 }
 
+#[repr(C)]
 pub struct FsImpl {
-    open_files: Vec<Box<FileImpl>>,
+    interface: SimpleFileSystemProtocol,
+    open_files: Vec<Pin<Box<FileImpl>>>,
 }
 
-pub type FsDb = HashMap<*const SimpleFileSystemProtocol, Box<FsImpl>>;
+pub type FsDb = Vec<Pin<Box<FsImpl>>>;
 
 pub fn install_simple_file_system(handle: Handle) -> Result {
-    let mut interface = SharedAnyBox::new(SimpleFileSystemProtocol {
-        revision: 0,
-        open_volume,
-    });
-    let sfs = interface.as_mut_ptr();
+    let mut interface = ptr::null_mut();
 
     STATE.with(|state| {
         let mut state = state.borrow_mut();
 
-        // TODO: move fs_db into protocol owned data?
-        state.fs_db.insert(
-            sfs.cast(),
-            Box::new(FsImpl {
-                open_files: Vec::new(),
-            }),
-        );
+        let mut fs = Box::pin(FsImpl {
+            interface: SimpleFileSystemProtocol {
+                // TODO
+                revision: 0,
+                open_volume,
+            },
+            open_files: Vec::new(),
+        });
+        interface = ptr::addr_of_mut!(fs.interface);
+        state.fs_db.push(fs);
     });
 
-    install_owned_protocol(
+    install_protocol_simple(
         Some(handle),
-        SimpleFileSystemProtocol::GUID,
-        sfs.cast(),
-        interface,
-        None,
+        &SimpleFileSystemProtocol::GUID,
+        interface.cast(),
     )?;
 
     Ok(())
@@ -82,11 +81,15 @@ unsafe extern "efiapi" fn open_volume(
     STATE.with(|state| {
         let mut state = state.borrow_mut();
 
-        let this: *const SimpleFileSystemProtocol = this;
-        let fs_impl = state.fs_db.get_mut(&this).unwrap();
-        let mut file = Box::new(FileImpl::new(ptr::addr_of_mut!(**fs_impl)));
+        let fs = state
+            .fs_db
+            .iter_mut()
+            .find(|fs| this.cast_const() == ptr::addr_of!(fs.interface))
+            .unwrap();
+
+        let mut file = Box::pin(FileImpl::new());
         *root = ptr::addr_of_mut!(file.interface);
-        fs_impl.open_files.push(file);
+        fs.open_files.push(file);
 
         Status::SUCCESS
     })
@@ -99,14 +102,29 @@ unsafe extern "efiapi" fn open(
     open_mode: FileMode,
     attributes: FileAttribute,
 ) -> Status {
-    // TODO
     let this_impl: *const FileImpl = this.cast();
 
-    let mut file = Box::new(FileImpl::new((*this_impl).fs));
-    *new_handle = ptr::addr_of_mut!(file.interface);
-    (*(*this_impl).fs).open_files.push(file);
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
 
-    Status::SUCCESS
+        // TODO: not very efficient, but on the other hand UEFI won't typically
+        // have many open file systems or open files.
+        let fs = state
+            .fs_db
+            .iter_mut()
+            .find(|fs| {
+                fs.open_files
+                    .iter()
+                    .any(|f| ptr::addr_of!(**f) == this_impl)
+            })
+            .unwrap();
+
+        let mut file = Box::pin(FileImpl::new());
+        *new_handle = ptr::addr_of_mut!(file.interface);
+        fs.open_files.push(file);
+
+        Status::SUCCESS
+    })
 }
 
 extern "efiapi" fn close(this: *mut FileProtocol) -> Status {

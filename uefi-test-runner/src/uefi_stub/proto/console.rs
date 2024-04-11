@@ -1,8 +1,8 @@
-use crate::uefi_stub::{install_owned_protocol, SharedAnyBox};
+use crate::uefi_stub::install_protocol_simple;
 use core::slice;
-use uefi::proto::console::serial::{ControlBits, IoMode, Parity, Serial, StopBits};
+use uefi::proto::console::serial::{ControlBits, Parity, Serial, StopBits};
 use uefi::{Identify, Result, Status};
-use uefi_raw::protocol::console::serial::SerialIoProtocol;
+use uefi_raw::protocol::console::serial::{SerialIoMode, SerialIoProtocol};
 use uefi_raw::Handle;
 
 extern "efiapi" fn reset(this: *mut SerialIoProtocol) -> Status {
@@ -58,8 +58,11 @@ unsafe extern "efiapi" fn read(
 }
 
 pub fn install_serial_protocol() -> Result<Handle> {
-    let mut data = SharedAnyBox::new(IoMode::default());
-    let mut interface = SharedAnyBox::new(SerialIoProtocol {
+    let mode = Box::new(SerialIoMode::default());
+    // TODO: leak
+    let mode = Box::leak(mode);
+
+    let interface = Box::new(SerialIoProtocol {
         // TODO
         revision: 1,
 
@@ -69,13 +72,10 @@ pub fn install_serial_protocol() -> Result<Handle> {
         get_control_bits,
         write,
         read,
-        mode: data.as_mut_ptr().cast(),
+        mode,
     });
-    install_owned_protocol(
-        None,
-        Serial::GUID,
-        interface.as_mut_ptr().cast(),
-        interface,
-        Some(data),
-    )
+    // TODO: leak
+    let interface: *const _ = Box::leak(interface);
+
+    install_protocol_simple(None, &Serial::GUID, interface.cast())
 }

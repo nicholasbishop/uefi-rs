@@ -1,18 +1,11 @@
-use crate::uefi_stub::{install_owned_protocol, SharedAnyBox};
-use core::ptr::addr_of_mut;
-use core::{mem, ptr};
-use uefi::{Result, Status};
+use crate::uefi_stub::install_protocol_simple;
+use core::mem;
+use uefi::Result;
 use uefi_raw::protocol::console::{
     GraphicsOutputBltOperation, GraphicsOutputBltPixel, GraphicsOutputModeInformation,
     GraphicsOutputProtocol, GraphicsOutputProtocolMode, GraphicsPixelFormat, PixelBitmask,
 };
-use uefi_raw::Handle;
-
-type ProtocolData = (
-    GraphicsOutputProtocolMode,
-    GraphicsOutputModeInformation,
-    Vec<u8>,
-);
+use uefi_raw::{Handle, Status};
 
 unsafe extern "efiapi" fn query_mode(
     this: *const GraphicsOutputProtocol,
@@ -52,49 +45,48 @@ unsafe extern "efiapi" fn blt(
 }
 
 pub fn install_gop_protocol() -> Result<Handle> {
-    let mut data = SharedAnyBox::new((
-        GraphicsOutputProtocolMode {
+    let framebuffer = vec![0u8; 1024 * 768 * 4].into_boxed_slice();
+    // TODO: leak
+    let framebuffer = Box::leak(framebuffer);
+
+    let mode_information = Box::new(GraphicsOutputModeInformation {
+        // TODO
+        version: 1,
+        horizontal_resolution: 1024,
+        vertical_resolution: 768,
+        pixel_format: GraphicsPixelFormat::PIXEL_RED_GREEN_BLUE_RESERVED_8_BIT_PER_COLOR,
+        pixel_information: PixelBitmask {
             // TODO
-            max_mode: 1,
-            mode: 0,
-            info: ptr::null_mut(),
-            size_of_info: mem::size_of::<GraphicsOutputModeInformation>(),
-            frame_buffer_base: 0,
-            frame_buffer_size: 1024 * 768 * 4,
+            red: 0,
+            green: 0,
+            blue: 0,
+            reserved: 0,
         },
-        GraphicsOutputModeInformation {
-            // TODO
-            version: 1,
-            horizontal_resolution: 1024,
-            vertical_resolution: 768,
-            pixel_format: GraphicsPixelFormat::PIXEL_RED_GREEN_BLUE_RESERVED_8_BIT_PER_COLOR,
-            pixel_information: PixelBitmask {
-                // TODO
-                red: 0,
-                green: 0,
-                blue: 0,
-                reserved: 0,
-            },
-            pixels_per_scan_line: 0,
-        },
-        // Framebuffer
-        vec![0u8; 1024 * 768 * 4],
-    ));
-    let tmp = data.downcast_mut::<ProtocolData>().unwrap();
-    tmp.0.info = &mut tmp.1;
-    tmp.0.frame_buffer_base = tmp.2.as_ptr() as u64;
-    let mut interface = SharedAnyBox::new(GraphicsOutputProtocol {
+        pixels_per_scan_line: 0,
+    });
+    // TODO: leak
+    let mode_information = Box::leak(mode_information);
+
+    let mode = Box::new(GraphicsOutputProtocolMode {
+        // TODO
+        max_mode: 1,
+        mode: 0,
+        info: mode_information,
+        size_of_info: mem::size_of::<GraphicsOutputModeInformation>(),
+        frame_buffer_base: 0,
+        frame_buffer_size: 1024 * 768 * 4,
+    });
+    // TODO: leak
+    let mode = Box::leak(mode);
+
+    let interface = Box::new(GraphicsOutputProtocol {
         query_mode,
         set_mode,
         blt,
-        mode: addr_of_mut!(tmp.0),
+        mode,
     });
+    // TODO: Leak
+    let interface: *const _ = Box::leak(interface);
 
-    install_owned_protocol(
-        None,
-        GraphicsOutputProtocol::GUID,
-        interface.as_mut_ptr().cast(),
-        interface,
-        Some(data),
-    )
+    install_protocol_simple(None, &GraphicsOutputProtocol::GUID, interface.cast())
 }
