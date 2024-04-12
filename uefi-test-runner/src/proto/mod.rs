@@ -9,9 +9,7 @@ use uefi::{proto, Identify};
 pub fn test(image: Handle, st: &mut SystemTable<Boot>) {
     info!("Testing various protocols");
 
-    if cfg!(not(miri)) {
-        console::test(image, st);
-    }
+    console::test(image, st);
 
     let bt = st.boot_services();
     find_protocol(bt);
@@ -22,7 +20,7 @@ pub fn test(image: Handle, st: &mut SystemTable<Boot>) {
     loaded_image::test(image, bt);
 
     // TODO: disable for now so we can test non-proto stuff
-    if cfg!(not(miri)) {
+    if cfg!(not(feature = "native")) {
         driver::test(bt);
         media::test(bt);
         network::test(bt);
