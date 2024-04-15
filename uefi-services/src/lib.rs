@@ -41,6 +41,7 @@ use core::sync::atomic::{AtomicPtr, Ordering};
 
 use cfg_if::cfg_if;
 
+use uefi::logger::Logger;
 use uefi::table::boot::{EventType, Tpl};
 use uefi::table::{Boot, SystemTable};
 use uefi::{Event, Result, Status, StatusExt};
@@ -171,6 +172,8 @@ unsafe fn init_logger(st: &mut SystemTable<Boot>) {
 
     // Set logger max level to level specified by log features
     log::set_max_level(log::STATIC_MAX_LEVEL);
+
+    Logger::init_freq(st.boot_services());
 }
 
 /// Notify the utility library that boot services are not safe to call anymore

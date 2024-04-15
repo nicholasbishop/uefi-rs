@@ -13,10 +13,13 @@
 //! supported by the UEFI console. Don't expect emoji output support.
 
 use crate::proto::console::text::Output;
+use crate::table::boot::BootServices;
 
 use core::fmt::{self, Write};
 use core::ptr;
-use core::sync::atomic::{AtomicPtr, Ordering};
+use core::sync::atomic::{AtomicPtr, AtomicU64, Ordering};
+
+static TSC_FREQ: AtomicU64 = AtomicU64::new(0);
 
 /// Logging implementation which writes to a UEFI output stream.
 ///
@@ -69,6 +72,15 @@ impl Logger {
     /// Disable the logger.
     pub fn disable(&self) {
         unsafe { self.set_output(ptr::null_mut()) }
+    }
+
+    /// TODO
+    pub fn init_freq(boot_services: &BootServices) {
+        let t1 = get_timestamp();
+        boot_services.stall(1_000_000);
+        let t2 = get_timestamp();
+        let d = t2 - t1;
+        TSC_FREQ.store(d, Ordering::Release);
     }
 }
 
@@ -157,8 +169,27 @@ impl<'writer, 'a, W: fmt::Write> DecoratedLog<'writer, 'a, W> {
     }
 }
 
+fn get_timestamp() -> u64 {
+    unsafe { core::arch::x86_64::_rdtsc() }
+}
+
+static LAST_TIMESTAMP: AtomicU64 = AtomicU64::new(0);
+
 impl<'writer, 'a, W: fmt::Write> fmt::Write for DecoratedLog<'writer, 'a, W> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
+        let timestamp = get_timestamp();
+        let mut last_timestamp = LAST_TIMESTAMP.load(Ordering::Acquire);
+        if last_timestamp == 0 {
+            last_timestamp = timestamp;
+        }
+        let duration = timestamp - last_timestamp;
+        LAST_TIMESTAMP.store(timestamp, Ordering::Release);
+
+        let freq = TSC_FREQ.load(Ordering::Acquire);
+
+        //let d = (duration as f64) / 100_000.0f64;
+        let d = (duration as f64) / (freq as f64);
+
         // Split the input string into lines
         let mut lines = s.lines();
 
@@ -169,8 +200,8 @@ impl<'writer, 'a, W: fmt::Write> fmt::Write for DecoratedLog<'writer, 'a, W> {
         if self.at_line_start {
             write!(
                 self.writer,
-                "[{:>5}]: {:>12}@{:03}: ",
-                self.log_level, self.file, self.line
+                "[{:7.2}] [{:>5}]: {:>12}@{:03}: ",
+                d, self.log_level, self.file, self.line
             )?;
             self.at_line_start = false;
         }
