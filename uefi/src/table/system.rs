@@ -211,6 +211,23 @@ impl SystemTable<Boot> {
     /// abstractions provided by this crate, invoking this function will
     /// automatically disable them.
     ///
+    /// # Safety
+    ///
+    /// The caller is responsible for ensuring that no references to
+    /// boot-services data remain. A non-exhaustive list of resources to check:
+    ///
+    /// * All protocols will be invalid after exiting boot services. This
+    ///   includes the [`Output`] protocols attached to stdout/stderr. The
+    ///   caller must ensure that no protocol references remain.
+    /// * The pool allocator is not usable after exiting boot services. Types
+    ///   such as [`PoolString`] which call [`BootServices::free_pool`] on drop
+    ///   must be cleaned up before calling `exit_boot_services`, or leaked to
+    ///   avoid drop ever being called.
+    /// * All data in the memory map marked as
+    ///   [`MemoryType::BOOT_SERVICES_CODE`] and
+    ///   [`MemoryType::BOOT_SERVICES_DATA`] will become free memory, the caller
+    ///   must ensure that no references to such memory exist.
+    ///
     /// # Errors
     ///
     /// This function will fail if it is unable to allocate memory for
@@ -221,7 +238,7 @@ impl SystemTable<Boot> {
     /// now in an undefined state. Rather than returning control to the
     /// caller, the system will be reset.
     #[must_use]
-    pub fn exit_boot_services(
+    pub unsafe fn exit_boot_services(
         self,
         memory_type: MemoryType,
     ) -> (SystemTable<Runtime>, MemoryMap<'static>) {

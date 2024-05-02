@@ -199,7 +199,7 @@ fn shutdown(mut st: SystemTable<Boot>) -> ! {
     info!("Testing complete, shutting down...");
 
     // Exit boot services as a proof that it works :)
-    let (st, _iter) = st.exit_boot_services(MemoryType::LOADER_DATA);
+    let (st, _iter) = unsafe { st.exit_boot_services(MemoryType::LOADER_DATA) };
 
     #[cfg(target_arch = "x86_64")]
     {
