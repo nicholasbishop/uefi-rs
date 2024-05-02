@@ -10,8 +10,9 @@
 
 use crate::proto::device_path::{DevicePath, DevicePathNode};
 use crate::proto::unsafe_protocol;
-use crate::table::boot::BootServices;
+use crate::table::system_table_boot;
 use crate::{CStr16, Char16, Result, Status};
+use core::marker::PhantomData;
 use core::ops::Deref;
 use uefi_raw::protocol::device_path::{DevicePathFromTextProtocol, DevicePathToTextProtocol};
 
@@ -43,18 +44,18 @@ pub struct AllowShortcuts(pub bool);
 /// UEFI boot services memory.
 #[derive(Debug)]
 pub struct PoolString<'a> {
-    boot_services: &'a BootServices,
     text: *const Char16,
+    phantom: PhantomData<&'a CStr16>,
 }
 
 impl<'a> PoolString<'a> {
-    fn new(boot_services: &'a BootServices, text: *const Char16) -> Result<Self> {
+    fn new(text: *const Char16) -> Result<Self> {
         if text.is_null() {
             Err(Status::OUT_OF_RESOURCES.into())
         } else {
             Ok(Self {
-                boot_services,
                 text,
+                phantom: PhantomData,
             })
         }
     }
@@ -71,7 +72,8 @@ impl<'a> Deref for PoolString<'a> {
 impl Drop for PoolString<'_> {
     fn drop(&mut self) {
         let addr = self.text as *mut u8;
-        unsafe { self.boot_services.free_pool(addr) }.expect("Failed to free pool [{addr:#?}]");
+        unsafe { system_table_boot().boot_services().free_pool(addr) }
+            .expect("Failed to free pool [{addr:#?}]");
     }
 }
 
@@ -93,7 +95,6 @@ impl DevicePathToText {
     /// [`OUT_OF_RESOURCES`]: Status::OUT_OF_RESOURCES
     pub fn convert_device_node_to_text<'boot>(
         &self,
-        boot_services: &'boot BootServices,
         device_node: &DevicePathNode,
         display_only: DisplayOnly,
         allow_shortcuts: AllowShortcuts,
@@ -105,7 +106,7 @@ impl DevicePathToText {
                 allow_shortcuts.0,
             )
         };
-        PoolString::new(boot_services, text_device_node.cast())
+        PoolString::new(text_device_node.cast())
     }
 
     /// Convert a device path to its text representation.
@@ -116,7 +117,6 @@ impl DevicePathToText {
     /// [`OUT_OF_RESOURCES`]: Status::OUT_OF_RESOURCES
     pub fn convert_device_path_to_text<'boot>(
         &self,
-        boot_services: &'boot BootServices,
         device_path: &DevicePath,
         display_only: DisplayOnly,
         allow_shortcuts: AllowShortcuts,
@@ -128,7 +128,7 @@ impl DevicePathToText {
                 allow_shortcuts.0,
             )
         };
-        PoolString::new(boot_services, text_device_path.cast())
+        PoolString::new(text_device_path.cast())
     }
 }
 
