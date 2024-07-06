@@ -3,13 +3,17 @@ on:
   push:
     branches: [main]
     tags: ['*']
+  pull_request:
+    branches:
+      - main
+      - version-*
 permissions:
   contents: write
 # Adapted from:
 # https://github.com/rust-lang/mdBook/wiki/Automated-Deployment%3A-GitHub-Actions#github-pages-deploy
 jobs:
   deploy:
-    if: github.repository == 'rust-osdev/uefi-rs'
+    # if: github.repository == 'rust-osdev/uefi-rs'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,6 +26,10 @@ jobs:
           echo `pwd`/mdbook >> $GITHUB_PATH
       - name: Deploy GitHub Pages
         run: |
+          set -x
+
+          git branch -a
+
           # Configure git user so that `git commit` works.
           git config user.name "Deploy from CI"
           git config user.email ""
