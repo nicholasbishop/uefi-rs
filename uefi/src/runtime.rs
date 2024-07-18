@@ -5,18 +5,28 @@
 //! functions after exiting boot services; see the "Calling Convention" section
 //! of the UEFI specification for details.
 
-use crate::{table, CStr16, Error, Result, Status, StatusExt};
+use crate::data_types::PhysicalAddress;
+use crate::table::{self, Revision};
+use crate::{CStr16, Error, Result, Status, StatusExt};
 use core::ptr::{self, NonNull};
 
 #[cfg(feature = "alloc")]
-use {crate::mem::make_boxed, alloc::boxed::Box};
+use {
+    crate::mem::make_boxed, crate::Guid, alloc::borrow::ToOwned, alloc::boxed::Box,
+    alloc::vec::Vec, core::mem,
+};
 
 #[cfg(all(feature = "unstable", feature = "alloc"))]
 use alloc::alloc::Global;
 
-pub use crate::table::runtime::{Daylight, Time, TimeCapabilities, TimeError, TimeParams};
+pub use crate::table::runtime::{
+    CapsuleInfo, Daylight, Time, TimeCapabilities, TimeError, TimeParams, VariableStorageInfo,
+};
 pub use uefi_raw::capsule::{CapsuleBlockDescriptor, CapsuleFlags, CapsuleHeader};
 pub use uefi_raw::table::runtime::{ResetType, VariableAttributes, VariableVendor};
+
+#[cfg(feature = "alloc")]
+pub use crate::table::runtime::VariableKey;
 
 fn runtime_services_raw_panicking() -> NonNull<uefi_raw::table::runtime::RuntimeServices> {
     let st = table::system_table_raw_panicking();
@@ -141,6 +151,102 @@ pub fn get_variable_boxed(
     }
 }
 
+/// Get an iterator over all UEFI variables.
+#[cfg(feature = "alloc")]
+pub fn variable_keys() -> VariableKeys {
+    VariableKeys::new()
+}
+
+/// Iterator over all UEFI variables.
+#[cfg(feature = "alloc")]
+#[derive(Debug)]
+pub struct VariableKeys {
+    name: Vec<u16>,
+    vendor: VariableVendor,
+    is_done: bool,
+}
+
+#[cfg(feature = "alloc")]
+impl VariableKeys {
+    fn new() -> Self {
+        // Create a the name buffer with a reasonable default capacity, and
+        // initialize it to an empty null-terminated string.
+        let mut name = Vec::with_capacity(32);
+        name.push(0);
+
+        Self {
+            // Give the name buffer a reasonable default capacity.
+            name,
+            // The initial vendor GUID is arbitrary.
+            vendor: VariableVendor(Guid::default()),
+            is_done: false,
+        }
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl Iterator for VariableKeys {
+    type Item = Result<VariableKey>;
+
+    fn next(&mut self) -> Option<Result<VariableKey>> {
+        if self.is_done {
+            return None;
+        }
+
+        let rt = runtime_services_raw_panicking();
+        let rt = unsafe { rt.as_ref() };
+
+        let mut name_size_in_bytes = self.name.len() * mem::size_of::<u16>();
+
+        let mut status = unsafe {
+            (rt.get_next_variable_name)(
+                &mut name_size_in_bytes,
+                self.name.as_mut_ptr(),
+                &mut self.vendor.0,
+            )
+        };
+
+        // If the name buffer passed in was too small, resize it to be big
+        // enough and call `get_next_variable_name` again.
+        if status == Status::BUFFER_TOO_SMALL {
+            self.name
+                .resize(name_size_in_bytes / mem::size_of::<u16>(), 0);
+            status = unsafe {
+                (rt.get_next_variable_name)(
+                    &mut name_size_in_bytes,
+                    self.name.as_mut_ptr(),
+                    &mut self.vendor.0,
+                )
+            }
+        }
+
+        match status {
+            Status::SUCCESS => {
+                let name = if let Some(nul_pos) = self.name.iter().position(|c| *c == 0) {
+                    self.name[..=nul_pos].to_owned()
+                } else {
+                    self.name.clone()
+                };
+                Some(Ok(VariableKey {
+                    name,
+                    vendor: self.vendor,
+                }))
+            }
+            Status::NOT_FOUND => {
+                // This status indicates the end of the list. The final variable
+                // has already been yielded at this point, so return `None`.
+                self.is_done;
+                None
+            }
+            _ => {
+                // Return the error and end iteration.
+                self.is_done = true;
+                Some(Err(Error::from(status)))
+            }
+        }
+    }
+}
+
 /// Sets the value of a variable. This can be used to create a new variable,
 /// update an existing variable, or (when the size of `data` is zero)
 /// delete a variable.
@@ -196,4 +302,87 @@ pub fn set_variable(
 ///   after exiting boot services.
 pub fn delete_variable(name: &CStr16, vendor: &VariableVendor) -> Result {
     set_variable(name, vendor, VariableAttributes::empty(), &[])
+}
+
+/// Get information about UEFI variable storage space for the type
+/// of variable specified in `attributes`.
+///
+/// This operation is only supported starting with UEFI 2.0; earlier
+/// versions will fail with [`Status::UNSUPPORTED`].
+///
+/// See [`VariableStorageInfo`] for details of the information returned.
+pub fn query_variable_info(attributes: VariableAttributes) -> Result<VariableStorageInfo> {
+    let rt = runtime_services_raw_panicking();
+    let rt = unsafe { rt.as_ref() };
+
+    if rt.header.revision < Revision::EFI_2_00 {
+        return Err(Status::UNSUPPORTED.into());
+    }
+
+    let mut info = VariableStorageInfo::default();
+    unsafe {
+        (rt.query_variable_info)(
+            attributes,
+            &mut info.maximum_variable_storage_size,
+            &mut info.remaining_variable_storage_size,
+            &mut info.maximum_variable_size,
+        )
+        .to_result_with_val(|| info)
+    }
+}
+
+/// Resets the computer.
+pub fn reset(reset_type: ResetType, status: Status, data: Option<&[u8]>) -> ! {
+    let rt = runtime_services_raw_panicking();
+    let rt = unsafe { rt.as_ref() };
+
+    let (size, data) = match data {
+        // FIXME: The UEFI spec states that the data must start with a NUL-
+        //        terminated string, which we should check... but it does not
+        //        specify if that string should be Latin-1 or UCS-2!
+        //
+        //        PlatformSpecific resets should also insert a GUID after the
+        //        NUL-terminated string.
+        Some(data) => (data.len(), data.as_ptr()),
+        None => (0, ptr::null()),
+    };
+
+    unsafe { (rt.reset_system)(reset_type, status, size, data) }
+}
+
+/// Passes capsules to the firmware. Capsules are most commonly used to update system firmware.
+pub fn update_capsule(
+    capsule_header_array: &[&CapsuleHeader],
+    capsule_block_descriptors: &[CapsuleBlockDescriptor],
+) -> Result {
+    let rt = runtime_services_raw_panicking();
+    let rt = unsafe { rt.as_ref() };
+
+    unsafe {
+        (rt.update_capsule)(
+            capsule_header_array.as_ptr().cast(),
+            capsule_header_array.len(),
+            capsule_block_descriptors.as_ptr() as PhysicalAddress,
+        )
+        .to_result()
+    }
+}
+
+/// Tests whether a capsule or capsules can be updated via [`update_capsule`].
+///
+/// See [`CapsuleInfo`] for details of the information returned.
+pub fn query_capsule_capabilities(capsule_header_array: &[&CapsuleHeader]) -> Result<CapsuleInfo> {
+    let rt = runtime_services_raw_panicking();
+    let rt = unsafe { rt.as_ref() };
+
+    let mut info = CapsuleInfo::default();
+    unsafe {
+        (rt.query_capsule_capabilities)(
+            capsule_header_array.as_ptr().cast(),
+            capsule_header_array.len(),
+            &mut info.maximum_capsule_size,
+            &mut info.reset_type,
+        )
+        .to_result_with_val(|| info)
+    }
 }
