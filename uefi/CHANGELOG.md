@@ -1,5 +1,39 @@
 # uefi - [Unreleased]
 
+## Added
+- `uefi::system` is a new module that provides freestanding functions for
+  accessing fields of the global system table.
+- `uefi::boot` is a new module that provides freestanding functions for
+  boot services using the global system table.
+- `uefi::runtime` is a new module that provides freestanding functions for
+  runtime services using the global system table.
+- Add standard derives for `ConfigTableEntry`.
+- `PcrEvent`/`PcrEventInputs` impl `Align`, `Eq`, and `PartialEq`.
+- Added `PcrEvent::new_in_box` and `PcrEventInputs::new_in_box`.
+- `VariableKey` impls `Clone`, `Eq`, `PartialEq`, `Ord`, `PartialOrd`, and `Hash`.
+
+## Changed
+- **Breaking:** `uefi::helpers::init` no longer takes an argument.
+- The lifetime of the `SearchType` returned from
+  `BootServices::register_protocol_notify` is now tied to the protocol GUID.
+- The traits `MemoryMap` and `MemoryMapMut` have been introduced together with
+  the implementations `MemoryMapRef`, `MemoryMapRefMut`, and `MemoryMapOwned`.
+  The old `MemoryMap` was renamed to `MemoryMapOwned`.
+  - `pub fn memory_map(&self, mt: MemoryType) -> Result<MemoryMap>` now returns
+     a `MemoryMapOwned`.
+- **Breaking:** `PcrEvent::new_in_buffer` and `PcrEventInputs::new_in_buffer`
+  now take an initialized buffer (`[u8`] instead of `[MaybeUninit<u8>]`), and if
+  the buffer is too small the required size is returned in the error data.
+- **Breaking** Exports of Memory Map-related types from `uefi::table::boot` are
+  now removed. Use `uefi::mem::memory_map` instead. The patch you have to apply
+  to the `use` statements of your code might look as follows:
+  ```diff
+  1c1,2
+  < use uefi::table::boot::{BootServices, MemoryMap, MemoryMapMut, MemoryType};
+  ---
+  > use uefi::mem::memory_map::{MemoryMap, MemoryMapMut, MemoryType};
+  > use uefi::table::boot::BootServices;
+  ```
 
 # uefi - 0.29.0 (2024-07-02)
 

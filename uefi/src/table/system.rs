@@ -1,15 +1,15 @@
+use super::boot::BootServices;
+use super::runtime::{ResetType, RuntimeServices};
+use super::{cfg, Revision};
+use crate::proto::console::text;
+use crate::{CStr16, Result, Status, StatusExt};
 use core::ffi::c_void;
 use core::marker::PhantomData;
 use core::ptr::NonNull;
 use core::slice;
-use uefi::table::boot::{MemoryMapBackingMemory, MemoryMapMeta};
-
-use crate::proto::console::text;
-use crate::{CStr16, Result, Status, StatusExt};
-
-use super::boot::{BootServices, MemoryDescriptor, MemoryMap, MemoryType};
-use super::runtime::{ResetType, RuntimeServices};
-use super::{cfg, Revision};
+use uefi::mem::memory_map::{
+    MemoryDescriptor, MemoryMapBackingMemory, MemoryMapMeta, MemoryMapOwned, MemoryType,
+};
 
 /// Marker trait used to provide different views of the UEFI System Table.
 pub trait SystemTableView {}
@@ -230,7 +230,7 @@ impl SystemTable<Boot> {
     pub unsafe fn exit_boot_services(
         self,
         memory_type: MemoryType,
-    ) -> (SystemTable<Runtime>, MemoryMap) {
+    ) -> (SystemTable<Runtime>, MemoryMapOwned) {
         crate::helpers::exit();
 
         // Reboot the device.
@@ -255,7 +255,7 @@ impl SystemTable<Boot> {
                         table: self.table,
                         _marker: PhantomData,
                     };
-                    return (st, MemoryMap::from_initialized_mem(buf, memory_map));
+                    return (st, MemoryMapOwned::from_initialized_mem(buf, memory_map));
                 }
                 Err(err) => {
                     log::error!("Error retrieving the memory map for exiting the boot services");
