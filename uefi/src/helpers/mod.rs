@@ -18,6 +18,7 @@
 //! [print_macro]: uefi::print!
 //! [println_macro]: uefi::println!
 
+#[allow(deprecated)]
 use crate::prelude::{Boot, SystemTable};
 use crate::{table, Result};
 #[doc(hidden)]
@@ -41,6 +42,7 @@ mod println;
 /// The returned pointer is only valid until boot services are exited.
 #[must_use]
 #[deprecated(note = "use uefi::table::system_table_boot instead")]
+#[allow(deprecated)]
 pub fn system_table() -> SystemTable<Boot> {
     table::system_table_boot().expect("boot services are not active")
 }

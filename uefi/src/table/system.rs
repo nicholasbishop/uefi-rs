@@ -17,11 +17,13 @@ use uefi::mem::memory_map::{
 pub trait SystemTableView {}
 
 /// Marker struct associated with the boot view of the UEFI System Table.
+#[deprecated = "Use the uefi::boot module instead. See https://github.com/rust-osdev/uefi-rs/blob/HEAD/docs/funcs_migration.md"]
 #[derive(Debug)]
 pub struct Boot;
 impl SystemTableView for Boot {}
 
 /// Marker struct associated with the run-time view of the UEFI System Table.
+#[deprecated = "Use the uefi::runtime module instead. See https://github.com/rust-osdev/uefi-rs/blob/HEAD/docs/funcs_migration.md"]
 #[derive(Debug)]
 pub struct Runtime;
 impl SystemTableView for Runtime {}

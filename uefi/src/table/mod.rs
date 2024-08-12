@@ -8,6 +8,7 @@ mod header;
 mod system;
 
 pub use header::Header;
+#[allow(deprecated)]
 pub use system::{Boot, Runtime, SystemTable};
 pub use uefi_raw::table::Revision;
 
@@ -60,6 +61,8 @@ pub unsafe fn set_system_table(ptr: *const uefi_raw::table::system::SystemTable)
 }
 
 /// Get the system table while boot services are active.
+#[deprecated = "Use the uefi::boot module instead. See https://github.com/rust-osdev/uefi-rs/blob/HEAD/docs/funcs_migration.md"]
+#[allow(deprecated)]
 pub fn system_table_boot() -> Option<SystemTable<Boot>> {
     let st = SYSTEM_TABLE.load(Ordering::Acquire);
     if st.is_null() {
@@ -77,6 +80,8 @@ pub fn system_table_boot() -> Option<SystemTable<Boot>> {
 }
 
 /// Get the system table while runtime services are active.
+#[deprecated = "Use the uefi::runtime module instead. See https://github.com/rust-osdev/uefi-rs/blob/HEAD/docs/funcs_migration.md"]
+#[allow(deprecated)]
 pub fn system_table_runtime() -> Option<SystemTable<Runtime>> {
     let st = SYSTEM_TABLE.load(Ordering::Acquire);
     if st.is_null() {
@@ -88,6 +93,7 @@ pub fn system_table_runtime() -> Option<SystemTable<Runtime>> {
         if (*st).runtime_services.is_null() {
             None
         } else {
+            #[allow(deprecated)]
             Some(SystemTable::<Runtime>::from_ptr(st.cast()).unwrap())
         }
     }
