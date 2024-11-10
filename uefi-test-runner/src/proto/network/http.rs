@@ -5,9 +5,22 @@ use uefi::proto::network::http::{
 };
 use uefi::{boot, cstr16};
 
+// TODO: uefi wrappers
+use uefi_raw::protocol::network::ip4_config2::Ip4Config2Protocol;
+
 // TODO: unwraps
 pub fn test() {
     info!("Testing HTTP protocol");
+
+    let handle = boot::get_handle_for_protocol::<HttpServiceBinding>().unwrap();
+
+    Ip4Config2Protocol::pub get_data: unsafe extern "efiapi" fn(
+        this: *mut Self,
+        data_type: Ip4Config2DataType,
+        data_size: *mut usize,
+        data: *mut c_void,
+    ) -> Status,
+
     let handle = boot::get_handle_for_protocol::<HttpServiceBinding>().unwrap();
     let mut http_sb = boot::open_protocol_exclusive::<HttpServiceBinding>(handle).unwrap();
     let child_handle = http_sb.create_child().unwrap();
