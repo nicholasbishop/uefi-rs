@@ -1,25 +1,22 @@
 use core::time::Duration;
 use log::info;
 use uefi::proto::network::http::{
-    Http, HttpConfiguration, HttpMethod, HttpRequest, HttpServiceBinding, HttpVersion,
+    Http, HttpConfiguration, HttpHeader, HttpMethod, HttpRequest, HttpServiceBinding, HttpVersion,
 };
-use uefi::{boot, cstr16};
-
-// TODO: uefi wrappers
-use uefi_raw::protocol::network::ip4_config2::Ip4Config2Protocol;
+use uefi::proto::network::ip4_config2::{Ip4Config2, Ip4Config2Policy};
+use uefi::{boot, cstr16, cstr8};
 
 // TODO: unwraps
 pub fn test() {
     info!("Testing HTTP protocol");
 
-    let handle = boot::get_handle_for_protocol::<HttpServiceBinding>().unwrap();
+    // TODO
+    let handle = boot::get_handle_for_protocol::<Ip4Config2>().unwrap();
+    let mut ipconfig = boot::open_protocol_exclusive::<Ip4Config2>(handle).unwrap();
+    ipconfig.set_policy(Ip4Config2Policy::DHCP).unwrap();
+    info!("Ip4Config2 policy: {:?}", ipconfig.get_policy().unwrap());
 
-    Ip4Config2Protocol::pub get_data: unsafe extern "efiapi" fn(
-        this: *mut Self,
-        data_type: Ip4Config2DataType,
-        data_size: *mut usize,
-        data: *mut c_void,
-    ) -> Status,
+    boot::stall(4_000_000);
 
     let handle = boot::get_handle_for_protocol::<HttpServiceBinding>().unwrap();
     let mut http_sb = boot::open_protocol_exclusive::<HttpServiceBinding>(handle).unwrap();
@@ -28,7 +25,8 @@ pub fn test() {
 
     let config = HttpConfiguration {
         http_version: HttpVersion::HTTP_VERSION_11,
-        timeout: Duration::from_secs(1),
+        // TODO
+        timeout: Duration::from_secs(10),
         access_point: Default::default(),
     };
     http.configure(&config).unwrap();
@@ -39,7 +37,10 @@ pub fn test() {
     http.send_request_sync(HttpRequest {
         method: HttpMethod::GET,
         url: cstr16!("http://example.com"),
-        headers: &[],
+        headers: &[HttpHeader::new(
+            cstr8!("Host"),
+            cstr8!("http://example.com"),
+        )],
         body: &[],
     })
     .unwrap();

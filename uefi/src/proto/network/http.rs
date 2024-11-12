@@ -114,7 +114,8 @@ impl Http {
             header_count: request.headers.len(),
             headers,
             body_length: request.body.len(),
-            body: request.body.as_ptr().cast(),
+            // TODO: body: request.body.as_ptr().cast(),
+            body: ptr::null(),
         };
 
         let mut is_done = false;
@@ -134,6 +135,9 @@ impl Http {
             status: Status::SUCCESS,
             message: &message,
         };
+        // TODO
+        log::info!("token: {token:?}");
+        log::info!("message: {:?}", unsafe { &*token.message });
 
         unsafe { (self.0.request)(&mut self.0, &mut token) }.to_result()
     }
@@ -176,6 +180,13 @@ impl Default for HttpAccessPoint {
 pub struct HttpHeader<'a> {
     pub name: &'a CStr8,
     pub value: &'a CStr8,
+}
+
+impl<'a> HttpHeader<'a> {
+    #[must_use]
+    pub const fn new(name: &'a CStr8, value: &'a CStr8) -> Self {
+        Self { name, value }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
