@@ -364,9 +364,9 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt) -> Result<()> {
 
     cmd.args(["-device", "virtio-rng-pci"]);
 
-    if arch == UefiArch::IA32 || arch == UefiArch::X86_64 {
-        cmd.args(["-debugcon", "file:./integration-test-debugcon.log"]);
-    }
+    // if arch == UefiArch::IA32 || arch == UefiArch::X86_64 {
+    //     cmd.args(["-debugcon", "file:./integration-test-debugcon.log"]);
+    // }
 
     // Set the boot menu timeout to zero. On aarch64 in particular this speeds
     // up the boot a lot. Note that we have to enable the menu here even though
@@ -426,12 +426,12 @@ pub fn run_qemu(arch: UefiArch, opt: &QemuOpt) -> Result<()> {
 
             // OVMF debug builds can output information to a serial `debugcon`.
             // Only enable when debugging UEFI boot.
-            // cmd.args([
-            //     "-debugcon",
-            //     "file:debug.log",
-            //     "-global",
-            //     "isa-debugcon.iobase=0x402",
-            // ]);
+            cmd.args([
+                "-debugcon",
+                "file:debug.log",
+                "-global",
+                "isa-debugcon.iobase=0x402",
+            ]);
         }
     }
 
