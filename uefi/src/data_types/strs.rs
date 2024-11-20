@@ -194,7 +194,7 @@ impl fmt::Debug for CStr8 {
 
 impl fmt::Display for CStr8 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for c in self.0.iter() {
+        for c in &self.0[..&self.0.len() - 1] {
             <Char8 as fmt::Display>::fmt(c, f)?;
         }
         Ok(())

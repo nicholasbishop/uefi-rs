@@ -36,11 +36,13 @@ pub fn test() {
 
     http.send_request_sync(HttpRequest {
         method: HttpMethod::GET,
-        url: cstr16!("http://example.com"),
-        headers: &[HttpHeader::new(
-            cstr8!("Host"),
-            cstr8!("http://example.com"),
-        )],
+        //url: cstr16!("http://example.com/"),
+        url: cstr16!("http://example.com/"),
+        headers: &[
+            HttpHeader::new(cstr8!("Host"), cstr8!("example.com")),
+            HttpHeader::new(cstr8!("Accept"), cstr8!("*/*")),
+            HttpHeader::new(cstr8!("User-Agent"), cstr8!("uefi-rs test runner")),
+        ],
         body: &[],
     })
     .unwrap();
