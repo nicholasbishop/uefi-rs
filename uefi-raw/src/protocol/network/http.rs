@@ -63,7 +63,7 @@ impl Default for HttpAccessPoint {
 pub struct HttpToken {
     pub event: Event,
     pub status: Status,
-    pub message: *const HttpMessage,
+    pub message: *mut HttpMessage,
 }
 
 impl Default for HttpToken {
@@ -71,7 +71,7 @@ impl Default for HttpToken {
         Self {
             event: ptr::null_mut(),
             status: Status::SUCCESS,
-            message: ptr::null(),
+            message: ptr::null_mut(),
         }
     }
 }

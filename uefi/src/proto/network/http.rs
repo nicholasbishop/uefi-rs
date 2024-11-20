@@ -3,16 +3,17 @@
 
 use crate::boot::{self, EventType, MemoryType, Tpl};
 use crate::data_types::Ipv4Address;
-use crate::{CStr16, CStr8, Event, Handle, Result, Status, StatusExt};
+use crate::{CStr16, CStr8, Error, Event, Handle, Result, Status, StatusExt};
 use core::ffi::c_void;
 use core::mem;
 use core::ops::Deref;
 use core::ptr::{self, NonNull};
 use core::time::Duration;
-use log::error;
+use log::{error, info};
 use uefi_macros::unsafe_protocol;
 use uefi_raw::protocol::driver::ServiceBindingProtocol;
 use uefi_raw::protocol::network::http as http_raw;
+use uefi_raw::protocol::network::http::{HttpResponseData, HttpStatusCode};
 
 // TODO, not pub for most of these
 pub use uefi_raw::protocol::network::http::{
@@ -107,43 +108,151 @@ impl Http {
             dst.field_value = request.headers[i].value.as_ptr().cast();
         }
 
-        let message = HttpMessage {
+        let mut message = HttpMessage {
             data: HttpRequestOrResponse {
                 request: &request_data,
             },
             header_count: request.headers.len(),
             headers,
             body_length: request.body.len(),
-            // TODO: body: request.body.as_ptr().cast(),
-            body: ptr::null(),
+            body: request.body.as_ptr().cast(),
         };
 
         let mut is_done = false;
-        let is_done_ptr: *mut bool = &mut is_done;
+        let is_done_ptr = ptr::from_mut(&mut is_done);
 
         let event = unsafe {
             boot::create_event(
                 EventType::NOTIFY_SIGNAL,
                 Tpl::NOTIFY,
-                Some(request_done_callback),
+                Some(done_callback),
                 NonNull::new(is_done_ptr.cast()),
             )?
         };
 
         let mut token = HttpToken {
             event: event.as_ptr(),
-            status: Status::SUCCESS,
-            message: &message,
+            status: Status::NOT_READY,
+            message: &mut message,
         };
+        let token_ptr = ptr::from_mut(&mut token);
         // TODO
-        log::info!("token: {token:?}");
-        log::info!("message: {:?}", unsafe { &*token.message });
+        info!("token: {token:?}");
+        info!("message: {:?}", unsafe { &*token.message });
 
-        unsafe { (self.0.request)(&mut self.0, &mut token) }.to_result()
+        unsafe { (self.0.request)(&mut self.0, &mut token) }.to_result()?;
+
+        // Wait for the request to finish.
+        while unsafe { !is_done_ptr.read_volatile() } {
+            info!("not yet"); // TODO
+            self.poll()?;
+        }
+
+        // TODO
+        info!("request done");
+
+        // Check token status.
+        let status = unsafe { token_ptr.read_volatile() }.status;
+        if status != Status::SUCCESS {
+            return Err(Error::from(status));
+        }
+
+        // TODO: clean up the event.
+
+        self.read_response()
+    }
+
+    // TODO: api
+    fn read_response(&mut self) -> Result<()> {
+        // TODO: dedup with request
+        let mut is_done = false;
+        let is_done_ptr = ptr::from_mut(&mut is_done);
+
+        let event = unsafe {
+            boot::create_event(
+                EventType::NOTIFY_SIGNAL,
+                Tpl::NOTIFY,
+                Some(done_callback),
+                NonNull::new(is_done_ptr.cast()),
+            )?
+        };
+
+        let mut response = HttpResponseData {
+            status_code: HttpStatusCode::STATUS_UNSUPPORTED,
+        };
+
+        // TODO: make sure all allocations are freed.
+        // TODO: make alloc required?
+        let body_len = 4096;
+        let body = boot::allocate_pool(
+            // TODO: maybe have a global somewhere for memtype?
+            MemoryType::LOADER_DATA,
+            // TODO: use page alloc instead?
+            body_len,
+        )?;
+
+        let mut message = HttpMessage {
+            data: HttpRequestOrResponse {
+                response: &mut response,
+            },
+            // TODO
+            header_count: 0,
+            headers: ptr::null_mut(),
+            body_length: body_len,
+            body: body.as_ptr().cast(),
+        };
+
+        let mut token = HttpToken {
+            event: event.as_ptr(),
+            status: Status::NOT_READY,
+            message: &mut message,
+        };
+        let token_ptr = ptr::from_mut(&mut token);
+
+        info!("awaiting response");
+        unsafe { (self.0.response)(&mut self.0, &mut token) }.to_result()?;
+        info!("response call done");
+
+        // Wait for the response to finish.
+        while unsafe { !is_done_ptr.read_volatile() } {
+            info!("not yet"); // TODO
+            self.poll()?;
+        }
+
+        // TODO: handle body buf too small.
+
+        // TODO
+        info!("response done");
+
+        info!("http code: {:?}", unsafe {
+            ptr::from_mut(&mut response).read_volatile()
+        });
+        info!("num headers: {}", message.header_count);
+        for i in 0..message.header_count {
+            let header = unsafe { message.headers.add(i) };
+            let header = unsafe { &*header };
+            let name = unsafe { CStr8::from_ptr(header.field_name.cast()) };
+            let val = unsafe { CStr8::from_ptr(header.field_value.cast()) };
+            info!("header {i}: {name}: {val}");
+        }
+
+        // Check token status.
+        let token = unsafe { token_ptr.read_volatile() };
+        let status = token.status;
+        if status != Status::SUCCESS {
+            return Err(Error::from(status));
+        }
+
+        todo!()
+    }
+
+    // TODO: pub?
+    fn poll(&mut self) -> Result<()> {
+        unsafe { (self.0.poll)(&mut self.0) }.to_result()
     }
 }
 
-unsafe extern "efiapi" fn request_done_callback(_event: Event, context: Option<NonNull<c_void>>) {
+unsafe extern "efiapi" fn done_callback(_event: Event, context: Option<NonNull<c_void>>) {
     if let Some(context) = context {
         let is_done: *mut bool = context.as_ptr().cast();
         *is_done = true;
