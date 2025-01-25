@@ -1,5 +1,9 @@
 # uefi - [Unreleased]
 
+As of this release, the project has been relicensed from MPL-2.0 to
+Apache-2.0/MIT. (This does not alter the license of previous releases.)
+Details at <https://github.com/rust-osdev/uefi-rs/issues/1470>.
+
 ## Added
 - Added `proto::device_path::PoolDevicePath` and
   `proto::device_path::PoolDevicePathNode`.
