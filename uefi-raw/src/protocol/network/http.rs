@@ -83,9 +83,9 @@ impl Default for HttpToken {
 pub struct HttpMessage {
     pub data: HttpRequestOrResponse,
     pub header_count: usize,
-    pub header: *mut HttpHeader,
+    pub headers: *const HttpHeader,
     pub body_length: usize,
-    pub body: *mut c_void,
+    pub body: *const c_void,
 }
 
 impl Default for HttpMessage {
@@ -93,9 +93,9 @@ impl Default for HttpMessage {
         Self {
             data: HttpRequestOrResponse::default(),
             header_count: 0,
-            header: ptr::null_mut(),
+            headers: ptr::null(),
             body_length: 0,
-            body: ptr::null_mut(),
+            body: ptr::null(),
         }
     }
 }
