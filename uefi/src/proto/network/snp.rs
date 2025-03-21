@@ -9,12 +9,13 @@
 //! No interface function must be called until `SimpleNetwork.start` is successfully
 //! called first.
 
-use super::{IpAddress, MacAddress};
+use super::MacAddress;
 use crate::data_types::Event;
 use crate::proto::unsafe_protocol;
 use crate::{Result, Status, StatusExt};
 use bitflags::bitflags;
 use core::ffi::c_void;
+use core::net::IpAddr;
 use core::ptr;
 use core::ptr::NonNull;
 
@@ -49,8 +50,12 @@ pub struct SimpleNetwork {
         stats_size: Option<&mut usize>,
         stats_table: Option<&mut NetworkStats>,
     ) -> Status,
-    mcast_ip_to_mac:
-        extern "efiapi" fn(this: &Self, ipv6: bool, ip: &IpAddress, mac: &mut MacAddress) -> Status,
+    mcast_ip_to_mac: extern "efiapi" fn(
+        this: &Self,
+        ipv6: bool,
+        ip: &uefi_raw::IpAddress,
+        mac: &mut MacAddress,
+    ) -> Status,
     nv_data: extern "efiapi" fn(
         this: &Self,
         read_write: bool,
@@ -166,9 +171,11 @@ impl SimpleNetwork {
     }
 
     /// Convert a multicast IP address to a multicast HW MAC Address.
-    pub fn mcast_ip_to_mac(&self, ipv6: bool, ip: IpAddress) -> Result<MacAddress> {
+    pub fn mcast_ip_to_mac(&self, ip: IpAddr) -> Result<MacAddress> {
         let mut mac_address = MacAddress([0; 32]);
-        let status = (self.mcast_ip_to_mac)(self, ipv6, &ip, &mut mac_address);
+        let is_ipv6 = ip.is_ipv6();
+        let ip = uefi_raw::IpAddress::from(ip);
+        let status = (self.mcast_ip_to_mac)(self, is_ipv6, &ip, &mut mac_address);
         status.to_result_with_val(|| mac_address)
     }
 
